@@ -1,5 +1,4 @@
 <?php
-// --- db_connect.php ---
 
 // Define database connection constants
 define('DB_HOST', 'localhost');
