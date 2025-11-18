@@ -20,8 +20,11 @@
                     <li><a href="offer_ride.php">Offer a Ride</a></li>
                     
                     <li class="dropdown">
-                        <a href="#" class="dropbtn">Login <i class="fa-solid fa-caret-down"></i></a>
-                        <div class="dropdown-content">
+                        <a href="javascript:void(0)" class="dropbtn" onclick="toggleLoginMenu()">
+                            Login <i class="fa-solid fa-caret-down"></i>
+                        </a>
+                        
+                        <div id="loginDropdown" class="dropdown-content">
                             <a href="login.php"><i class="fa-solid fa-person-walking-luggage"></i> Passenger</a>
                             <a href="login.php"><i class="fa-solid fa-car"></i> Driver</a>
                             <a href="admin_login.php" style="color: #e74c3c; border-top: 1px solid #eee;"><i class="fa-solid fa-user-shield"></i> Admin</a>
@@ -63,6 +66,26 @@
             <small>Faculty of Information Science and Technology, MMU</small>
         </div>
     </footer>
+
+    <script>
+        /* Function to toggle the menu open/close */
+        function toggleLoginMenu() {
+            document.getElementById("loginDropdown").classList.toggle("show");
+        }
+
+        /* Close the dropdown if the user clicks outside of it */
+        window.onclick = function(event) {
+            if (!event.target.matches('.dropbtn') && !event.target.matches('.fa-caret-down')) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+    </script>
 
 </body>
 </html>
