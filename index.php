@@ -75,10 +75,13 @@
 
         /* Close the dropdown if the user clicks outside of it */
         window.onclick = function(event) {
-            if (!event.target.matches('.dropbtn') && !event.target.matches('.fa-caret-down')) {
+            // Check if the clicked element is NOT the button AND NOT inside the button (like the icon)
+            if (!event.target.matches('.dropbtn') && !event.target.closest('.dropbtn')) {
+                
                 var dropdowns = document.getElementsByClassName("dropdown-content");
                 for (var i = 0; i < dropdowns.length; i++) {
                     var openDropdown = dropdowns[i];
+                    // If it is open, close it
                     if (openDropdown.classList.contains('show')) {
                         openDropdown.classList.remove('show');
                     }
