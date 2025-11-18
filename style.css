@@ -41,6 +41,8 @@ header {
     padding: 1rem 0;
     border-bottom: 4px solid var(--secondary-color);
     box-shadow: var(--shadow);
+    position: relative; 
+    z-index: 1000;
 }
 
 header .container {

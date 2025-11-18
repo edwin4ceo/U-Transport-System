@@ -68,27 +68,25 @@
     </footer>
 
     <script>
-        /* Function to toggle the menu open/close */
-        function toggleLoginMenu() {
+        function toggleLoginMenu(event) {
+            // 1. Stop the link from jumping to the top of the page
+            event.preventDefault(); 
+            
+            // 2. CRITICAL: Stop the click from telling the window to "close everything"
+            event.stopPropagation(); 
+
+            // 3. Toggle the menu visibility
             document.getElementById("loginDropdown").classList.toggle("show");
         }
 
-        /* Close the dropdown if the user clicks outside of it */
+        // Close the dropdown if the user clicks anywhere else on the screen
         window.onclick = function(event) {
-            // Check if the clicked element is NOT the button AND NOT inside the button (like the icon)
-            if (!event.target.matches('.dropbtn') && !event.target.closest('.dropbtn')) {
-                
-                var dropdowns = document.getElementsByClassName("dropdown-content");
-                for (var i = 0; i < dropdowns.length; i++) {
-                    var openDropdown = dropdowns[i];
-                    // If it is open, close it
-                    if (openDropdown.classList.contains('show')) {
-                        openDropdown.classList.remove('show');
-                    }
-                }
+            var dropdown = document.getElementById("loginDropdown");
+            // If the menu is open, close it
+            if (dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
             }
         }
     </script>
-
 </body>
 </html>
