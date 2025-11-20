@@ -68,8 +68,13 @@ $admin = mysqli_fetch_assoc($result);
                     <label>Phone Number</label>
                     <input type="text" name="phone" value="<?php echo $admin['phone_number']; ?>" required>
 
+                    <script src="script.js" defer></script>
+
                     <label>New Password (Leave blank to keep current)</label>
-                    <input type="password" name="password" placeholder="********">
+                    <div class="password-wrapper">
+                        <input type="password" name="password" id="profilePass" placeholder="********">
+                        <i class="fa-solid fa-eye toggle-password" id="toggleProfile" onclick="togglePassword('profilePass', 'toggleProfile')"></i>
+                    </div>
 
                     <button type="submit" style="background-color: #2c3e50; margin-top: 10px;">Update Profile</button>
                 </form>

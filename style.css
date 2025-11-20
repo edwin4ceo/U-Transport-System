@@ -216,6 +216,31 @@ main {
     box-shadow: 0 6px 12px rgba(39,174,96,0.3);
 }
 
+/* --- View Password Feature --- */
+.password-wrapper {
+    position: relative; /* Allows the icon to stay inside the box */
+    width: 100%;
+}
+
+.password-wrapper input {
+    width: 100%;
+    padding-right: 40px; /* Make space for the icon so text doesn't overlap */
+}
+
+.toggle-password {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%); /* Centers the icon vertically */
+    cursor: pointer;
+    color: #7f8c8d;
+    z-index: 2;
+}
+
+.toggle-password:hover {
+    color: var(--primary-color);
+}
+
 /* --- Footer --- */
 footer {
     background-color: var(--dark-gray);

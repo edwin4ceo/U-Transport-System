@@ -68,8 +68,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <label for="email">Email</label>
             <input type="email" name="email" required placeholder="admin@mmu.edu.my">
 
+            <script src="script.js" defer></script>
+
             <label for="password">Password</label>
-            <input type="password" name="password" required placeholder="Enter password">
+            <div class="password-wrapper">
+                <input type="password" name="password" id="adminPass" required placeholder="Enter password">
+                <i class="fa-solid fa-eye toggle-password" id="toggleAdmin" onclick="togglePassword('adminPass', 'toggleAdmin')"></i>
+            </div>
 
             <button type="submit" class="btn-admin">Login</button>
         </form>
