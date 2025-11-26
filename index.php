@@ -1,5 +1,19 @@
 <?php 
-// Include the Header
+// Start session to check login status
+session_start();
+include "function.php"; // For redirect function
+
+// 1. If Passenger is logged in, send them to Passenger Home
+if(isset($_SESSION['student_id'])){
+    redirect("passenger_home.php");
+}
+
+// 2. If Driver is logged in, send them to Driver Dashboard
+if(isset($_SESSION['driver_id'])){
+    redirect("driver_dashboard.php");
+}
+
+// Include the Header (Header will start session too, but that's fine)
 include "header.php"; 
 ?>
 
