@@ -1,7 +1,7 @@
 <?php
 session_start();
-include "db_connect.php"; 
-include "function.php";   // Optional: only needed if you want custom SweetAlert functions
+include "db_connect.php";
+include "function.php";   // Optional: only needed if you use SweetAlert helpers
 
 // 1. If already logged in, redirect to dashboard
 if (isset($_SESSION['driver_id'])) {
@@ -20,10 +20,11 @@ if (isset($_POST['login'])) {
         $_SESSION['swal_title'] = "Missing Fields";
         $_SESSION['swal_msg']   = "Email and password cannot be empty.";
         $_SESSION['swal_type']  = "warning";
-    } 
+    }
 
-    // Optional domain restriction (remove this if drivers can use ANY email)
-    elseif (!str_contains($email, "@student.mmu.edu.my")) {
+    // 2B. Optional domain restriction (only MMU student email allowed)
+    // If you want to allow ANY email, comment out or remove this block.
+    elseif (strpos($email, "@student.mmu.edu.my") === false) {
         $_SESSION['swal_title'] = "Invalid Email";
         $_SESSION['swal_msg']   = "You must use an MMU email (@student.mmu.edu.my) to login.";
         $_SESSION['swal_type']  = "error";
@@ -31,7 +32,7 @@ if (isset($_POST['login'])) {
 
     else {
 
-        // 2B. Check if driver exists
+        // 2C. Check if driver exists in database
         $stmt = $conn->prepare("SELECT * FROM drivers WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -39,16 +40,15 @@ if (isset($_POST['login'])) {
 
         if ($row = $result->fetch_assoc()) {
 
-            // 2C. Validate password (requires password_hash in registration)
+            // 2D. Validate password (requires password_hash in registration)
             if (password_verify($password, $row['password'])) {
 
-                // 2D. Store correct session data
-                // IMPORTANT: make sure the column names match your database
-                $_SESSION['driver_id']    = $row['driver_id'];   // or $row['id'] if your column is "id"
-                $_SESSION['driver_name']  = $row['fullname'];    // or $row['name'] depending on your DB
+                // 2E. Store correct session data (match your drivers table columns)
+                $_SESSION['driver_id']    = $row['driver_id'];   // from screenshot
+                $_SESSION['driver_name']  = $row['name'];        // from screenshot
                 $_SESSION['driver_email'] = $row['email'];
 
-                // Optional success alert
+                // Optional SweetAlert success message
                 $_SESSION['swal_title'] = "Login Successful";
                 $_SESSION['swal_msg']   = "Welcome, " . $_SESSION['driver_name'] . "!";
                 $_SESSION['swal_type']  = "success";
@@ -56,8 +56,7 @@ if (isset($_POST['login'])) {
                 // Redirect to dashboard
                 header("Location: driver_dashboard.php");
                 exit;
-            } 
-            else {
+            } else {
                 // Password incorrect
                 $_SESSION['swal_title'] = "Incorrect Password";
                 $_SESSION['swal_msg']   = "The password you entered is incorrect.";
@@ -71,8 +70,8 @@ if (isset($_POST['login'])) {
             $_SESSION['swal_type']  = "warning";
 
             // Optional: show "Register" button
-            $_SESSION['swal_btn_text'] = "Register as Driver";
-            $_SESSION['swal_btn_link'] = "driver_register.php";
+            $_SESSION['swal_btn_text']   = "Register as Driver";
+            $_SESSION['swal_btn_link']   = "driver_register.php";
             $_SESSION['swal_show_cancel'] = true;
             $_SESSION['swal_cancel_text'] = "Try Again";
         }
@@ -81,7 +80,6 @@ if (isset($_POST['login'])) {
     }
 }
 ?>
-
 
 <?php include "header.php"; ?>
 
