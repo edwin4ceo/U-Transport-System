@@ -1,19 +1,89 @@
 <?php 
-// Include the Header (Navigation Bar)
+// Include the Header
 include "header.php"; 
 ?>
 
-<h2>Welcome to the U-Transport System!</h2>
-<p>Your convenient and safe solution for campus transportation. Find a ride or offer one today.</p>
+<style>
+    /* Force Footer to bottom for this short page */
+    footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+    }
 
-<h3>Quick Search</h3>
-<form action="search_transport.php" method="GET">
-    <label for="destination">Where to?</label>
-    <input type="text" id="destination" name="destination" placeholder="e.g., University Library">
-    <button type="submit">Search Rides</button>
-</form>
+    /* Style for the selection cards */
+    .selection-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-top: 50px;
+        gap: 20px;
+    }
+
+    .role-card {
+        background-color: #fff;
+        border: 2px solid #ddd;
+        border-radius: 12px;
+        padding: 30px;
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        text-decoration: none; /* Remove underline from links */
+        color: inherit;
+    }
+
+    .role-card:hover {
+        border-color: #005A9C; /* Primary Blue */
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,90,156,0.2);
+    }
+
+    .role-card h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #333;
+    }
+
+    .role-card i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        color: #005A9C;
+    }
+    
+    .role-card.driver:hover {
+        border-color: #27ae60; /* Green for Driver */
+    }
+    .role-card.driver i {
+        color: #27ae60;
+    }
+</style>
+
+<div style="text-align: center; margin-bottom: 30px;">
+    <h2>Are you a Passenger or a Driver?</h2>
+    <p style="color: #666;">Choose your mode to continue.</p>
+</div>
+
+<div class="selection-container">
+    
+    <a href="passanger_login.php" class="role-card">
+        <i class="fa-solid fa-user"></i>
+        <h3>Passenger</h3>
+    </a>
+
+    <a href="driver_login.php" class="role-card driver">
+        <i class="fa-solid fa-car"></i>
+        <h3>Driver</h3>
+    </a>
+
+</div>
 
 <?php 
-// Include the Footer (Copyright)
+// Include the Footer
 include "footer.php"; 
 ?>

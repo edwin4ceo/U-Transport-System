@@ -3,9 +3,9 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
-// Redirect if already logged in
+// Redirect if already logged in -> Go to Dashboard (Old Index)
 if(isset($_SESSION['student_id'])){
-    redirect("passanger_request_transport.php");
+    redirect("passenger_home.php");
 }
 
 if(isset($_POST['login'])){
@@ -25,7 +25,8 @@ if(isset($_POST['login'])){
             $_SESSION['student_name'] = $row['name'];
 
             alert("Login successful! Redirecting...");
-            redirect("passanger_request_transport.php"); 
+            // MODIFIED: Redirect to the new Passenger Home (Old Index)
+            redirect("passenger_home.php"); 
         } 
         else {
             // CASE B: Wrong Password
@@ -36,16 +37,12 @@ if(isset($_POST['login'])){
         }
     } 
     else {
-        // CASE C: Email Not Found (WITH TWO BUTTONS)
+        // CASE C: Email Not Found
         $_SESSION['swal_title'] = "Email Not Found";
         $_SESSION['swal_msg'] = "This email is not registered in our system.";
         $_SESSION['swal_type'] = "warning";
-        
-        // Button 1: Register Now (Redirects)
         $_SESSION['swal_btn_text'] = "Register Now";
         $_SESSION['swal_btn_link'] = "passanger_register.php";
-        
-        // Button 2: Try Again (Closes Popup)
         $_SESSION['swal_show_cancel'] = true;
         $_SESSION['swal_cancel_text'] = "Try Again";
     }
