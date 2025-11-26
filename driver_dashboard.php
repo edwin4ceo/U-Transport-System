@@ -19,6 +19,14 @@ function getDriver($conn, $driver_id) {
     return $stmt->get_result()->fetch_assoc();
 }
 
+/* --------------- Helper function: check if a table exists --------------- */
+function tableExists($conn, $tableName) {
+    $tableName = $conn->real_escape_string($tableName);
+    $sql = "SHOW TABLES LIKE '$tableName'";
+    $result = $conn->query($sql);
+    return ($result && $result->num_rows > 0);
+}
+
 $alert = "";
 
 /* --------------- 1. Edit profile (including driving license) --------------- */
@@ -125,41 +133,53 @@ if (isset($_POST['send_feedback'])) {
 $driver = getDriver($conn, $driver_id);
 
 // Transport list
-$transports_sql = "
-    SELECT * FROM transports 
-    WHERE driver_id = $driver_id 
-    ORDER BY created_at DESC
-";
-$transports = $conn->query($transports_sql);
+if (tableExists($conn, 'transports')) {
+    $transports_sql = "
+        SELECT * FROM transports 
+        WHERE driver_id = $driver_id 
+        ORDER BY created_at DESC
+    ";
+    $transports = $conn->query($transports_sql);
+} else {
+    $transports = false;
+}
 
-// Booking requests (join with transports to show vehicle info)
-// Booking requests (simple version, no driver_id filter)
-$bookings_sql = "
-    SELECT * 
-    FROM bookings
-    ORDER BY 1 DESC
-";
-$bookings = $conn->query($bookings_sql);
+// Booking requests (simple version, no driver filter yet)
+if (tableExists($conn, 'bookings')) {
+    $bookings_sql = "
+        SELECT * 
+        FROM bookings
+        ORDER BY 1 DESC
+    ";
+    $bookings = $conn->query($bookings_sql);
+} else {
+    $bookings = false;
+}
 
-
-// Ratings & reviews
-$ratings_sql = "
-    SELECT r.*, b.requester_name, b.pickup_location, b.dropoff_location
-    FROM ratings r
-    JOIN bookings b ON r.booking_id = b.booking_id
-    WHERE r.driver_id = $driver_id
-    ORDER BY r.created_at DESC
-";
-$ratings = $conn->query($ratings_sql);
+// Ratings & reviews (use your existing `reviews` table)
+if (tableExists($conn, 'reviews')) {
+    $reviews_sql = "
+        SELECT * 
+        FROM reviews
+        ORDER BY 1 DESC
+    ";
+    $reviews = $conn->query($reviews_sql);
+} else {
+    $reviews = false;
+}
 
 // Forum questions
-$questions_sql = "
-    SELECT q.*, d.full_name
-    FROM forum_questions q
-    JOIN drivers d ON q.driver_id = d.driver_id
-    ORDER BY q.created_at DESC
-";
-$questions = $conn->query($questions_sql);
+if (tableExists($conn, 'forum_questions') && tableExists($conn, 'drivers')) {
+    $questions_sql = "
+        SELECT q.*, d.full_name
+        FROM forum_questions q
+        JOIN drivers d ON q.driver_id = d.driver_id
+        ORDER BY q.created_at DESC
+    ";
+    $questions = $conn->query($questions_sql);
+} else {
+    $questions = false;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -345,17 +365,17 @@ $questions = $conn->query($questions_sql);
                     <?php if ($bookings && $bookings->num_rows > 0): ?>
                         <?php while ($b = $bookings->fetch_assoc()): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($b['requester_name']); ?></td>
+                                <td><?php echo htmlspecialchars($b['requester_name'] ?? ''); ?></td>
                                 <td>
-                                    <?php echo htmlspecialchars($b['requester_email']); ?><br>
-                                    <?php echo htmlspecialchars($b['requester_phone']); ?>
+                                    <?php echo htmlspecialchars($b['requester_email'] ?? ''); ?><br>
+                                    <?php echo htmlspecialchars($b['requester_phone'] ?? ''); ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($b['vehicle_type']." - ".$b['vehicle_model']); ?></td>
-                                <td><?php echo htmlspecialchars($b['pickup_location']); ?> → <?php echo htmlspecialchars($b['dropoff_location']); ?></td>
-                                <td><?php echo htmlspecialchars($b['travel_date']); ?><br><?php echo htmlspecialchars($b['travel_time']); ?></td>
-                                <td><?php echo htmlspecialchars($b['status']); ?></td>
+                                <td><?php echo htmlspecialchars(($b['vehicle_type'] ?? '')." - ".($b['vehicle_model'] ?? '')); ?></td>
+                                <td><?php echo htmlspecialchars($b['pickup_location'] ?? ''); ?> → <?php echo htmlspecialchars($b['dropoff_location'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($b['travel_date'] ?? ''); ?><br><?php echo htmlspecialchars($b['travel_time'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($b['status'] ?? ''); ?></td>
                                 <td>
-                                    <?php if ($b['status'] === 'pending'): ?>
+                                    <?php if (($b['status'] ?? '') === 'pending'): ?>
                                         <form method="post" style="display:inline-block;">
                                             <input type="hidden" name="booking_id" value="<?php echo $b['booking_id']; ?>">
                                             <input type="hidden" name="status" value="accepted">
@@ -379,7 +399,7 @@ $questions = $conn->query($questions_sql);
             </div>
         </div>
 
-        <!-- 4. Ratings & Reviews -->
+        <!-- 4. Ratings & Reviews (using `reviews` table) -->
         <div id="ratings" class="section">
             <div class="card">
                 <h2>Ratings & Reviews</h2>
@@ -387,22 +407,20 @@ $questions = $conn->query($questions_sql);
                     <tr>
                         <th>Rating</th>
                         <th>Review</th>
-                        <th>From</th>
-                        <th>Route</th>
+                        <th>Related Booking</th>
                         <th>Date</th>
                     </tr>
-                    <?php if ($ratings && $ratings->num_rows > 0): ?>
-                        <?php while ($r = $ratings->fetch_assoc()): ?>
+                    <?php if ($reviews && $reviews->num_rows > 0): ?>
+                        <?php while ($r = $reviews->fetch_assoc()): ?>
                             <tr>
-                                <td><?php echo (int)$r['rating']; ?>/5</td>
-                                <td><?php echo nl2br(htmlspecialchars($r['review_text'])); ?></td>
-                                <td><?php echo htmlspecialchars($r['requester_name']); ?></td>
-                                <td><?php echo htmlspecialchars($r['pickup_location']); ?> → <?php echo htmlspecialchars($r['dropoff_location']); ?></td>
-                                <td><?php echo htmlspecialchars($r['created_at']); ?></td>
+                                <td><?php echo htmlspecialchars($r['rating'] ?? ''); ?></td>
+                                <td><?php echo nl2br(htmlspecialchars($r['review_text'] ?? '')); ?></td>
+                                <td>Booking ID: <?php echo htmlspecialchars($r['booking_id'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($r['created_at'] ?? ''); ?></td>
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <tr><td colspan="5">No ratings yet.</td></tr>
+                        <tr><td colspan="4">No ratings / reviews yet.</td></tr>
                     <?php endif; ?>
                 </table>
             </div>
@@ -474,5 +492,20 @@ $questions = $conn->query($questions_sql);
         <div id="feedback" class="section">
             <div class="card">
                 <h2>Contact Us (Feedback)</h2>
-           
+                <form method="post">
+                    <label>Subject</label>
+                    <input type="text" name="subject" required>
 
+                    <label>Message</label>
+                    <textarea name="message" rows="4" required></textarea>
+
+                    <button type="submit" name="send_feedback" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>
