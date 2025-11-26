@@ -132,6 +132,17 @@ if (isset($_POST['send_feedback'])) {
 // Driver info
 $driver = getDriver($conn, $driver_id);
 
+// If no driver row is found, use empty defaults to avoid warnings
+if (!$driver) {
+    $driver = [
+        'full_name'      => '',
+        'email'          => '',
+        'phone'          => '',
+        'license_number' => '',
+        'license_expiry' => ''
+    ];
+}
+
 // Transport list
 if (tableExists($conn, 'transports')) {
     $transports_sql = "
@@ -202,7 +213,7 @@ if (tableExists($conn, 'forum_questions') && tableExists($conn, 'drivers')) {
         .card h2{margin:0 0 10px;font-size:18px;}
         label{display:block;margin-top:8px;font-size:14px;}
         input,textarea,select{width:100%;padding:7px;margin-top:3px;
-              box-sizing:border-box;border:1px solid #ccc;border-radius:3px;font-size:14px;}
+              box-sizing:border-box;border:1px solid:#ccc;border-radius:3px;font-size:14px;}
         textarea{resize:vertical;}
         .btn{margin-top:10px;padding:7px 14px;border:none;border-radius:3px;
              font-size:14px;cursor:pointer;}
@@ -233,7 +244,7 @@ if (tableExists($conn, 'forum_questions') && tableExists($conn, 'drivers')) {
 <div class="header">
     <div>Driver Dashboard</div>
     <div>
-        Welcome, <?php echo htmlspecialchars($driver['full_name']); ?>
+        Welcome, <?php echo htmlspecialchars($driver['full_name'] ?: 'Driver'); ?>
         <a href="driver_logout.php">Logout</a>
     </div>
 </div>
