@@ -20,10 +20,10 @@ if(isset($_POST['login'])){
     } 
     // Only allow MMU staff email (assuming drivers are staff?)
     // You can remove this check if drivers use other emails
-    elseif (!str_contains($email, "@mmu.edu.my")) {
+    elseif (!str_contains($email, "@student.mmu.edu.my")) {
         // Custom Error for invalid domain
         $_SESSION['swal_title'] = "Invalid Email";
-        $_SESSION['swal_msg'] = "You must use an MMU email (@mmu.edu.my) to login as a driver.";
+        $_SESSION['swal_msg'] = "You must use an MMU email (@student.mmu.edu.my) to login as a driver.";
         $_SESSION['swal_type'] = "error";
     }
     else {
@@ -86,7 +86,7 @@ if(isset($_POST['login'])){
 
 <form action="" method="POST">
     <label>Email</label>
-    <input type="email" name="email" required placeholder="example@mmu.edu.my">
+    <input type="email" name="email" required placeholder="example@student.mmu.edu.my">
 
     <label>Password</label>
     <input type="password" name="password" required placeholder="Your Password">
