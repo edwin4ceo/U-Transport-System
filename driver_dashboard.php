@@ -1,358 +1,532 @@
 <?php
 session_start();
+include "db_connect.php";
+include "function.php";
 
+// Check if the driver is logged in
 if (!isset($_SESSION['driver_id'])) {
-    header("Location: driver_login.php");
+    redirect("driver_login.php");
     exit;
 }
 
-$driverName = $_SESSION['driver_name'];
+$driver_id = $_SESSION['driver_id'];
+
+// Fetch driver profile data from "drivers" table
+$driver = null;
+$driver_stmt = $conn->prepare("SELECT * FROM drivers WHERE id = ?");
+$driver_stmt->bind_param("i", $driver_id);
+$driver_stmt->execute();
+$driver_result = $driver_stmt->get_result();
+if ($driver_result->num_rows === 1) {
+    $driver = $driver_result->fetch_assoc();
+}
+$driver_stmt->close();
+
+// Fetch existing transport data (if any) from "transports" table
+$transport = null;
+$transport_stmt = $conn->prepare("SELECT * FROM transports WHERE driver_id = ? LIMIT 1");
+$transport_stmt->bind_param("i", $driver_id);
+$transport_stmt->execute();
+$transport_result = $transport_stmt->get_result();
+if ($transport_result->num_rows === 1) {
+    $transport = $transport_result->fetch_assoc();
+}
+$transport_stmt->close();
+
+// Fetch booking requests (example table name: bookings)
+$booking_rows = [];
+if ($conn->query("SHOW TABLES LIKE 'bookings'")->num_rows === 1) {
+    $booking_stmt = $conn->prepare("
+        SELECT b.*
+        FROM bookings b
+        WHERE b.driver_id = ?
+        ORDER BY b.request_time DESC
+    ");
+    $booking_stmt->bind_param("i", $driver_id);
+    $booking_stmt->execute();
+    $booking_result = $booking_stmt->get_result();
+    while ($row = $booking_result->fetch_assoc()) {
+        $booking_rows[] = $row;
+    }
+    $booking_stmt->close();
+}
+
+// Fetch ratings (example table name: ratings)
+$rating_rows = [];
+$average_rating = null;
+if ($conn->query("SHOW TABLES LIKE 'ratings'")->num_rows === 1) {
+    $rating_stmt = $conn->prepare("
+        SELECT r.*
+        FROM ratings r
+        WHERE r.driver_id = ?
+        ORDER BY r.created_at DESC
+    ");
+    $rating_stmt->bind_param("i", $driver_id);
+    $rating_stmt->execute();
+    $rating_result = $rating_stmt->get_result();
+    while ($row = $rating_result->fetch_assoc()) {
+        $rating_rows[] = $row;
+    }
+    $rating_stmt->close();
+
+    // Calculate average rating
+    $avg_result = $conn->query("SELECT AVG(rating) AS avg_rating FROM ratings WHERE driver_id = " . (int)$driver_id);
+    if ($avg_row = $avg_result->fetch_assoc()) {
+        $average_rating = $avg_row['avg_rating'];
+    }
+}
+
+// Fetch Q&A messages (example table: forum_messages)
+$forum_rows = [];
+if ($conn->query("SHOW TABLES LIKE 'forum_messages'")->num_rows === 1) {
+    $forum_stmt = $conn->prepare("
+        SELECT f.*
+        FROM forum_messages f
+        WHERE f.driver_id = ?
+        ORDER BY f.created_at DESC
+        LIMIT 20
+    ");
+    $forum_stmt->bind_param("i", $driver_id);
+    $forum_stmt->execute();
+    $forum_result = $forum_stmt->get_result();
+    while ($row = $forum_result->fetch_assoc()) {
+        $forum_rows[] = $row;
+    }
+    $forum_stmt->close();
+}
+
 ?>
+<?php include "header.php"; ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Driver Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+<style>
+    .dashboard-container {
+        max-width: 900px;
+        margin: 20px auto 80px auto;
+        background: #ffffff;
+        padding: 20px 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
 
-<body class="bg-light">
+    .dashboard-section {
+        margin-bottom: 30px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 20px;
+    }
 
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="#">U-Transport Driver</a>
+    .dashboard-section:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
 
-        <div class="d-flex">
-            <span class="navbar-text text-white me-3">
-                Welcome, <?php echo htmlspecialchars($driverName); ?>
-            </span>
-            <a href="logout.php" class="btn btn-outline-light btn-sm">Logout</a>
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .section-description {
+        font-size: 0.95rem;
+        margin-bottom: 15px;
+        color: #555;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-box {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 12px 15px;
+        text-align: left;
+        border: 1px solid #e0e0e0;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .stat-value {
+        font-size: 1.4rem;
+        font-weight: bold;
+        margin-top: 5px;
+    }
+
+    .dashboard-form label {
+        display: block;
+        margin-top: 10px;
+        font-weight: 500;
+    }
+
+    .dashboard-form input,
+    .dashboard-form select,
+    .dashboard-form textarea {
+        width: 100%;
+        padding: 8px;
+        margin-top: 4px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 0.95rem;
+    }
+
+    .dashboard-form textarea {
+        resize: vertical;
+    }
+
+    .dashboard-form button {
+        margin-top: 15px;
+        padding: 8px 16px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.95rem;
+    }
+
+    .dashboard-form button.btn-secondary {
+        background-color: #6c757d;
+    }
+
+    .dashboard-form button.btn-danger {
+        background-color: #dc3545;
+    }
+
+    .dashboard-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .dashboard-table th,
+    .dashboard-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        vertical-align: top;
+    }
+
+    .dashboard-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+
+    .text-small {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+
+    .badge-pending {
+        background-color: #ffc107;
+        color: #000;
+    }
+
+    .badge-accepted {
+        background-color: #28a745;
+        color: #fff;
+    }
+
+    .badge-rejected {
+        background-color: #dc3545;
+        color: #fff;
+    }
+</style>
+
+<h2>Driver Dashboard</h2>
+<p>Welcome, <?php echo htmlspecialchars($driver['name'] ?? 'Driver'); ?>. Manage your profile, transport, and bookings here.</p>
+
+<div class="dashboard-container">
+
+    <!-- Quick stats -->
+    <div class="dashboard-section">
+        <div class="section-title">Overview</div>
+        <div class="section-description">
+            A quick summary of your activity as a driver.
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="stat-box">
+                <div class="stat-label">Pending Booking Requests</div>
+                <div class="stat-value">
+                    <?php
+                    $pendingCount = 0;
+                    foreach ($booking_rows as $b) {
+                        if (isset($b['status']) && $b['status'] === 'pending') {
+                            $pendingCount++;
+                        }
+                    }
+                    echo (int)$pendingCount;
+                    ?>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Average Rating</div>
+                <div class="stat-value">
+                    <?php
+                    if ($average_rating !== null) {
+                        echo number_format($average_rating, 1);
+                    } else {
+                        echo "N/A";
+                    }
+                    ?>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Total Completed Trips</div>
+                <div class="stat-value">
+                    <?php
+                    $completedCount = 0;
+                    foreach ($booking_rows as $b) {
+                        if (isset($b['status']) && $b['status'] === 'completed') {
+                            $completedCount++;
+                        }
+                    }
+                    echo (int)$completedCount;
+                    ?>
+                </div>
+            </div>
         </div>
     </div>
-</nav>
 
-<div class="container py-4">
-
-    <!-- Dashboard Quick Stats -->
-    <div class="row mb-4">
-        <div class="col-md-4 mb-3">
-            <div class="card h-100 text-center">
-                <div class="card-body">
-                    <h6 class="card-title">Pending Booking Requests</h6>
-                    <h3>0</h3>
-                </div>
-            </div>
+    <!-- Edit Profile -->
+    <div class="dashboard-section">
+        <div class="section-title">Edit Profile</div>
+        <div class="section-description">
+            Update your basic driver information.
         </div>
 
-        <div class="col-md-4 mb-3">
-            <div class="card h-100 text-center">
-                <div class="card-body">
-                    <h6 class="card-title">Average Rating</h6>
-                    <h3>4.8 ★</h3>
-                </div>
-            </div>
-        </div>
+        <form class="dashboard-form" action="update_profile.php" method="post">
+            <input type="hidden" name="driver_id" value="<?php echo (int)$driver_id; ?>">
 
-        <div class="col-md-4 mb-3">
-            <div class="card h-100 text-center">
-                <div class="card-body">
-                    <h6 class="card-title">Total Trips</h6>
-                    <h3>12</h3>
-                </div>
-            </div>
-        </div>
+            <label>Full Name</label>
+            <input type="text" name="name" value="<?php echo htmlspecialchars($driver['name'] ?? ''); ?>" required>
+
+            <label>Identification ID (IC/Passport/License)</label>
+            <input type="text" name="identification_id" value="<?php echo htmlspecialchars($driver['identification_id'] ?? ''); ?>" required>
+
+            <label>Email</label>
+            <input type="email" name="email" value="<?php echo htmlspecialchars($driver['email'] ?? ''); ?>" readonly>
+
+            <label>Car Model</label>
+            <input type="text" name="car_model" value="<?php echo htmlspecialchars($driver['car_model'] ?? ''); ?>" required>
+
+            <label>Car Plate Number</label>
+            <input type="text" name="car_plate_number" value="<?php echo htmlspecialchars($driver['car_plate_number'] ?? ''); ?>" required>
+
+            <button type="submit">Save Profile</button>
+        </form>
     </div>
 
-    <!-- Dashboard Tabs -->
-    <ul class="nav nav-tabs mb-3" id="dashboardTabs" role="tablist">
-
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-pane" type="button">
-                Edit Profile
-            </button>
-        </li>
-
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#transport-pane" type="button">
-                Add Transport
-            </button>
-        </li>
-
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#booking-pane" type="button">
-                Booking Requests
-            </button>
-        </li>
-
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#rating-pane" type="button">
-                Ratings & Reviews
-            </button>
-        </li>
-
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#qa-pane" type="button">
-                Q & A Forum
-            </button>
-        </li>
-
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#contact-pane" type="button">
-                Contact Us
-            </button>
-        </li>
-
-    </ul>
-
-    <div class="tab-content">
-
-        <!-- 1. Edit Profile -->
-        <div class="tab-pane fade show active" id="profile-pane">
-            <div class="card">
-                <div class="card-header">Edit Profile (Driving License Included)</div>
-
-                <div class="card-body">
-                    <form action="update_profile.php" method="post" enctype="multipart/form-data">
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Full Name</label>
-                                <input type="text" name="fullname" class="form-control" required>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label">Phone Number</label>
-                                <input type="text" name="phone" class="form-control" required>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Email (Read-Only)</label>
-                            <input type="email" name="email" class="form-control" readonly>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Driving License Number</label>
-                            <input type="text" name="license_number" class="form-control" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Upload Driving License (Image or PDF)</label>
-                            <input type="file" name="license_file" class="form-control" accept=".jpg,.png,.jpeg,.pdf">
-                        </div>
-
-                        <button class="btn btn-primary">Save Profile</button>
-
-                    </form>
-                </div>
-            </div>
+    <!-- Add / Update Transport -->
+    <div class="dashboard-section">
+        <div class="section-title">Transport Settings</div>
+        <div class="section-description">
+            Define your vehicle category, areas covered, availability, and pricing.
         </div>
 
-<!-- 2. Add Transport -->
-<div class="tab-pane fade" id="transport-pane">
-    <div class="card">
-        <div class="card-header">Add / Update Transport</div>
+        <form class="dashboard-form" action="save_transport.php" method="post">
+            <input type="hidden" name="driver_id" value="<?php echo (int)$driver_id; ?>">
+            <?php if ($transport): ?>
+                <input type="hidden" name="transport_id" value="<?php echo (int)$transport['transport_id']; ?>">
+            <?php endif; ?>
 
-        <div class="card-body">
-            <form action="save_transport.php" method="post">
+            <label>Vehicle Category</label>
+            <select name="vehicle_category" required>
+                <option value="">-- Select --</option>
+                <option value="MPV"   <?php echo ($transport && $transport['vehicle_category'] === 'MPV')   ? 'selected' : ''; ?>>MPV</option>
+                <option value="Sedan" <?php echo ($transport && $transport['vehicle_category'] === 'Sedan') ? 'selected' : ''; ?>>Sedan</option>
+                <option value="SUV"   <?php echo ($transport && $transport['vehicle_category'] === 'SUV')   ? 'selected' : ''; ?>>SUV</option>
+            </select>
 
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Vehicle Category</label>
-                        <select name="vehicle_category" class="form-select" required>
-                            <option value="">-- Select --</option>
-                            <option value="MPV">MPV</option>
-                            <option value="Sedan">Sedan</option>
-                            <option value="SUV">SUV</option>
-                        </select>
-                    </div>
+            <label>Vehicle Model</label>
+            <input type="text" name="vehicle_model" required
+                   value="<?php echo htmlspecialchars($transport['vehicle_model'] ?? $driver['car_model'] ?? ''); ?>">
 
-                    <div class="col-md-4">
-                        <label class="form-label">Vehicle Model</label>
-                        <input type="text" name="vehicle_model" class="form-control" required>
-                    </div>
+            <label>Vehicle Plate Number</label>
+            <input type="text" name="vehicle_plate" required
+                   value="<?php echo htmlspecialchars($transport['vehicle_plate'] ?? $driver['car_plate_number'] ?? ''); ?>">
 
-                    <div class="col-md-4">
-                        <label class="form-label">Vehicle Plate Number</label>
-                        <input type="text" name="vehicle_plate" class="form-control" required>
-                    </div>
-                </div>
+            <label>Destination / Area Covered</label>
+            <input type="text" name="destination" required
+                   placeholder="Example: Penang Island, USM Area"
+                   value="<?php echo htmlspecialchars($transport['destination'] ?? ''); ?>">
 
-                <div class="mb-3">
-                    <label class="form-label">Destination / Area Covered</label>
-                    <input type="text" name="destination" class="form-control"
-                           placeholder="Example: Penang Island, USM Area" required>
-                </div>
+            <label>Day Availability</label>
+            <input type="text" name="day_available" required
+                   placeholder="Example: Mon–Fri, Weekends Only"
+                   value="<?php echo htmlspecialchars($transport['day_available'] ?? ''); ?>">
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Day Availability</label>
-                        <input type="text" name="day_available" class="form-control"
-                               placeholder="Example: Mon–Fri, Weekends Only" required>
-                    </div>
+            <label>Time Availability</label>
+            <input type="text" name="time_available" required
+                   placeholder="Example: 7AM–10AM / 5PM–9PM"
+                   value="<?php echo htmlspecialchars($transport['time_available'] ?? ''); ?>">
 
-                    <div class="col-md-6">
-                        <label class="form-label">Time Availability</label>
-                        <input type="text" name="time_available" class="form-control"
-                               placeholder="Example: 7AM–10AM / 5PM–9PM" required>
-                    </div>
-                </div>
+            <label>Price</label>
+            <input type="text" name="price" required
+                   value="<?php echo htmlspecialchars($transport['price'] ?? ''); ?>">
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Price</label>
-                        <input type="text" name="price" class="form-control" required>
-                    </div>
+            <label>Payment Method</label>
+            <select name="payment_method" required>
+                <option value="">-- Select --</option>
+                <option value="Cash" 
+                    <?php echo ($transport && $transport['payment_method'] === 'Cash') ? 'selected' : ''; ?>>Cash</option>
+                <option value="Online Banking" 
+                    <?php echo ($transport && $transport['payment_method'] === 'Online Banking') ? 'selected' : ''; ?>>Online Banking</option>
+                <option value="E-Wallet" 
+                    <?php echo ($transport && $transport['payment_method'] === 'E-Wallet') ? 'selected' : ''; ?>>E-Wallet</option>
+            </select>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Payment Method</label>
-                        <select name="payment_method" class="form-select" required>
-                            <option value="">-- Select --</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Online Banking">Online Banking</option>
-                            <option value="E-Wallet">E-Wallet (TNG / GrabPay)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <button class="btn btn-success">Save Transport</button>
-
-            </form>
-        </div>
+            <button type="submit">Save Transport Settings</button>
+        </form>
     </div>
+
+    <!-- Booking Requests -->
+    <div class="dashboard-section">
+        <div class="section-title">Booking Requests</div>
+        <div class="section-description">
+            View and manage booking requests from passengers.
+        </div>
+
+        <?php if (count($booking_rows) === 0): ?>
+            <p class="text-small">No booking requests found.</p>
+        <?php else: ?>
+            <table class="dashboard-table">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Passenger</th>
+                    <th>Pickup / Drop-off</th>
+                    <th>Date & Time</th>
+                    <th>Price</th>
+                    <th>Status / Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php $i = 1; foreach ($booking_rows as $b): ?>
+                    <tr>
+                        <td><?php echo $i++; ?></td>
+                        <td><?php echo htmlspecialchars($b['passenger_name'] ?? 'Passenger'); ?></td>
+                        <td>
+                            <strong>From:</strong> <?php echo htmlspecialchars($b['pickup_location'] ?? '-'); ?><br>
+                            <strong>To:</strong> <?php echo htmlspecialchars($b['dropoff_location'] ?? '-'); ?>
+                        </td>
+                        <td><?php echo htmlspecialchars($b['request_time'] ?? ''); ?></td>
+                        <td><?php echo htmlspecialchars($b['price'] ?? ''); ?></td>
+                        <td>
+                            <?php
+                            $status = $b['status'] ?? 'pending';
+                            $badgeClass = 'badge-pending';
+                            if ($status === 'accepted') $badgeClass = 'badge-accepted';
+                            if ($status === 'rejected') $badgeClass = 'badge-rejected';
+                            ?>
+                            <span class="badge <?php echo $badgeClass; ?>">
+                                <?php echo ucfirst($status); ?>
+                            </span>
+
+                            <?php if ($status === 'pending'): ?>
+                                <form action="update_booking_status.php" method="post" style="margin-top: 6px;">
+                                    <input type="hidden" name="booking_id" value="<?php echo (int)$b['booking_id']; ?>">
+                                    <button type="submit" name="status" value="accepted">Accept</button>
+                                    <button type="submit" name="status" value="rejected" class="btn-danger">Reject</button>
+                                </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+
+    <!-- Ratings & Reviews -->
+    <div class="dashboard-section">
+        <div class="section-title">Ratings & Reviews</div>
+        <div class="section-description">
+            Feedback from passengers about your service.
+        </div>
+
+        <?php if (count($rating_rows) === 0): ?>
+            <p class="text-small">No ratings or reviews yet.</p>
+        <?php else: ?>
+            <?php foreach ($rating_rows as $r): ?>
+                <div style="margin-bottom: 12px; padding: 10px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e0e0e0;">
+                    <strong><?php echo htmlspecialchars($r['passenger_name'] ?? 'Passenger'); ?></strong>
+                    <span style="margin-left: 8px;">
+                        Rating: <?php echo (int)$r['rating']; ?>/5
+                    </span>
+                    <div class="text-small">
+                        <?php echo htmlspecialchars($r['comment'] ?? ''); ?>
+                    </div>
+                    <div class="text-small">
+                        <?php echo htmlspecialchars($r['created_at'] ?? ''); ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+
+    <!-- Q & A Chat (Forum) -->
+    <div class="dashboard-section">
+        <div class="section-title">Q & A Forum</div>
+        <div class="section-description">
+            Ask and answer questions related to your transport service.
+        </div>
+
+        <form class="dashboard-form" action="post_forum_message.php" method="post">
+            <input type="hidden" name="driver_id" value="<?php echo (int)$driver_id; ?>">
+            <label>Your Message</label>
+            <textarea name="message" rows="3" required></textarea>
+            <button type="submit">Post Message</button>
+        </form>
+
+        <?php if (count($forum_rows) > 0): ?>
+            <div style="margin-top: 15px;">
+                <?php foreach ($forum_rows as $f): ?>
+                    <div style="margin-bottom: 10px; padding: 8px; border-radius: 6px; background: #f9f9f9; border: 1px solid #e0e0e0;">
+                        <div class="text-small">
+                            <strong><?php echo htmlspecialchars($f['author_name'] ?? 'User'); ?></strong>
+                            <span style="margin-left: 8px;"><?php echo htmlspecialchars($f['created_at'] ?? ''); ?></span>
+                        </div>
+                        <div><?php echo nl2br(htmlspecialchars($f['message'] ?? '')); ?></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Contact Us (Feedback) -->
+    <div class="dashboard-section">
+        <div class="section-title">Contact Us / Feedback</div>
+        <div class="section-description">
+            Send feedback or report issues about the system to the admin.
+        </div>
+
+        <form class="dashboard-form" action="send_feedback.php" method="post">
+            <input type="hidden" name="driver_id" value="<?php echo (int)$driver_id; ?>">
+
+            <label>Subject</label>
+            <input type="text" name="subject" required>
+
+            <label>Message</label>
+            <textarea name="message" rows="4" required></textarea>
+
+            <button type="submit">Submit Feedback</button>
+        </form>
+    </div>
+
 </div>
 
-        <!-- 3. Booking Requests -->
-        <div class="tab-pane fade" id="booking-pane">
-            <div class="card">
-                <div class="card-header">Transport Booking Requests</div>
-                <div class="card-body">
-
-                    <table class="table table-striped">
-                        <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Student Name</th>
-                            <th>Pickup</th>
-                            <th>Drop-off</th>
-                            <th>Date & Time</th>
-                            <th>Price</th>
-                            <th>Action</th>
-                        </tr>
-                        </thead>
-
-                        <tbody>
-                        <tr>
-                            <td>1</td>
-                            <td>Student A</td>
-                            <td>Hostel A</td>
-                            <td>Campus</td>
-                            <td>2025-11-28 08:00</td>
-                            <td>RM10</td>
-                            <td>
-                                <form action="update_booking_status.php" method="post" class="d-inline">
-                                    <input type="hidden" name="booking_id" value="1">
-                                    <button name="status" value="accepted" class="btn btn-sm btn-success">Accept</button>
-                                </form>
-
-                                <form action="update_booking_status.php" method="post" class="d-inline">
-                                    <input type="hidden" name="booking_id" value="1">
-                                    <button name="status" value="rejected" class="btn btn-sm btn-danger">Reject</button>
-                                </form>
-                            </td>
-                        </tr>
-                        </tbody>
-
-                    </table>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. Ratings & Reviews -->
-        <div class="tab-pane fade" id="rating-pane">
-            <div class="card">
-                <div class="card-header">Ratings & Reviews</div>
-
-                <div class="card-body">
-
-                    <div class="list-group">
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between">
-                                <h6>Student A</h6>
-                                <small>★★★★★</small>
-                            </div>
-
-                            <p>Very punctual and friendly driver.</p>
-                            <small class="text-muted">2025-11-25</small>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- 5. Forum -->
-        <div class="tab-pane fade" id="qa-pane">
-            <div class="card">
-                <div class="card-header">Q & A Forum</div>
-
-                <div class="card-body">
-
-                    <form action="post_forum_message.php" method="post">
-                        <label class="form-label">Ask a Question or Share Information</label>
-                        <textarea name="message" class="form-control mb-3" rows="3" required></textarea>
-                        <button class="btn btn-primary">Post Message</button>
-                    </form>
-
-                    <hr>
-
-                    <div class="border p-3 rounded bg-white">
-                        <strong>Student B:</strong> What time is your morning pickup?<br>
-                        <small class="text-muted">2025-11-23 10:30 AM</small>
-
-                        <hr>
-
-                        <strong><?php echo htmlspecialchars($driverName); ?>:</strong> I normally pick up at 7:15 AM.<br>
-                        <small class="text-muted">2025-11-23 11:00 AM</small>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- 6. Contact Us -->
-        <div class="tab-pane fade" id="contact-pane">
-            <div class="card">
-                <div class="card-header">Contact Us / Feedback</div>
-
-                <div class="card-body">
-                    <form action="send_feedback.php" method="post">
-
-                        <div class="mb-3">
-                            <label class="form-label">Subject</label>
-                            <input type="text" name="subject" class="form-control" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Message / Feedback</label>
-                            <textarea name="message" rows="4" class="form-control" required></textarea>
-                        </div>
-
-                        <button class="btn btn-primary">Submit Feedback</button>
-
-                    </form>
-                </div>
-            </div>
-        </div>
-
-    </div><!-- End Tab Content -->
-
-</div><!-- End Container -->
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-</body>
-</html>
+<?php include "footer.php"; ?>
