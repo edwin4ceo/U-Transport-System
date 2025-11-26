@@ -85,7 +85,7 @@ if(isset($_POST['login'])){
 <p>Welcome, Driver! Please login to manage rides.</p>
 
 <form action="" method="POST">
-    <label>MMU Staff Email</label>
+    <label>Email</label>
     <input type="email" name="email" required placeholder="example@mmu.edu.my">
 
     <label>Password</label>
