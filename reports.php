@@ -16,21 +16,21 @@ function getCount($conn, $table, $condition = "") {
 }
 
 // 1. User Stats
-$total_passengers = getCount($connection, "users", "WHERE role='passenger'");
-$total_drivers    = getCount($connection, "users", "WHERE role='driver'");
-$pending_drivers  = getCount($connection, "users", "WHERE role='driver' AND verification_status='pending'");
+$total_passengers = getCount($conn, "users", "WHERE role='passenger'");
+$total_drivers    = getCount($conn, "users", "WHERE role='driver'");
+$pending_drivers  = getCount($conn, "users", "WHERE role='driver' AND verification_status='pending'");
 
 // 2. Listing Stats
-$total_listings   = getCount($connection, "transportlistings");
-$active_listings  = getCount($connection, "transportlistings", "WHERE status='active'");
+$total_listings   = getCount($conn, "transportlistings");
+$active_listings  = getCount($conn, "transportlistings", "WHERE status='active'");
 
 // 3. Booking Stats
-$total_bookings   = getCount($connection, "bookings");
-$confirmed_bookings = getCount($connection, "bookings", "WHERE status='confirmed'");
+$total_bookings   = getCount($conn, "bookings");
+$confirmed_bookings = getCount($conn, "bookings", "WHERE status='confirmed'");
 
 // 4. Most Popular Destination (Advanced Query)
 $pop_sql = "SELECT destination, COUNT(*) as count FROM transportlistings GROUP BY destination ORDER BY count DESC LIMIT 1";
-$pop_res = mysqli_query($connection, $pop_sql);
+$pop_res = mysqli_query($conn, $pop_sql);
 $top_dest = (mysqli_num_rows($pop_res) > 0) ? mysqli_fetch_assoc($pop_res)['destination'] : "No data yet";
 
 ?>

@@ -14,10 +14,10 @@ function getCount($conn, $table, $condition = "") {
     return ($result) ? mysqli_fetch_assoc($result)['count'] : 0;
 }
 
-$pending_drivers = getCount($connection, "users", "WHERE role='driver' AND verification_status='pending'");
-$total_passengers = getCount($connection, "users", "WHERE role='passenger'");
-$total_drivers = getCount($connection, "users", "WHERE role='driver'");
-$feedback_count = getCount($connection, "contact_messages"); // Assuming you will have this table later
+$pending_drivers = getCount($conn, "users", "WHERE role='driver' AND verification_status='pending'");
+$total_passengers = getCount($conn, "users", "WHERE role='passenger'");
+$total_drivers = getCount($conn, "users", "WHERE role='driver'");
+$feedback_count = getCount($conn, "contact_messages"); // Assuming you will have this table later
 ?>
 
 <!DOCTYPE html>

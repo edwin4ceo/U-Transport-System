@@ -39,7 +39,7 @@ elseif(isset($_SESSION['driver_id'])){
                         <li><a href="passanger_request_transport.php">Request Ride</a></li>
                         <li><a href="passanger_booking_history.php">My History</a></li>
                         <li><a href="qa_forum.php">Q&A</a></li>
-                        <li><a href="profile_edit.php">Profile</a></li>
+                        <li><a href="passanger_profile.php">Profile</a></li>
                         <li><a href="logout.php" style="color: #ffcccb;">Logout</a></li>
 
                     <?php elseif(isset($_SESSION['driver_id'])): ?>

@@ -5,11 +5,11 @@ require_once 'db_connect.php';
 $error_msg = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = mysqli_real_escape_string($connection, $_POST['email']);
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = $_POST['password'];
 
     $sql = "SELECT * FROM Users WHERE email = '$email' AND role = 'admin'";
-    $result = mysqli_query($connection, $sql);
+    $result = mysqli_query($conn, $sql);
 
     if (mysqli_num_rows($result) == 1) {
         $user = mysqli_fetch_assoc($result);
