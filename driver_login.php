@@ -1,73 +1,87 @@
 <?php
 session_start();
-include "db_connect.php"; // Ensure variable is $conn
-include "function.php";   // Contains the nice alert() and redirect() functions
+include "db_connect.php"; 
+include "function.php";   // Optional: only needed if you want custom SweetAlert functions
 
-// 1. Redirect if already logged in
-if(isset($_SESSION['driver_id'])){
-    // Redirect to driver dashboard (You need to create this file later)
-    redirect("driver_dashboard.php");
+// 1. If already logged in, redirect to dashboard
+if (isset($_SESSION['driver_id'])) {
+    header("Location: driver_dashboard.php");
+    exit;
 }
 
-// 2. Handle Login Logic
-if(isset($_POST['login'])){
-    $email = $_POST['email'];
+// 2. Login form submitted
+if (isset($_POST['login'])) {
+
+    $email    = $_POST['email'];
     $password = $_POST['password'];
 
-    // Basic Validation
+    // 2A. Basic validation
     if (empty($email) || empty($password)) {
-        alert("Email or password cannot be empty");
+        $_SESSION['swal_title'] = "Missing Fields";
+        $_SESSION['swal_msg']   = "Email and password cannot be empty.";
+        $_SESSION['swal_type']  = "warning";
     } 
-    // Only allow MMU staff email (assuming drivers are staff?)
-    // You can remove this check if drivers use other emails
+
+    // Optional domain restriction (remove this if drivers can use ANY email)
     elseif (!str_contains($email, "@student.mmu.edu.my")) {
-        // Custom Error for invalid domain
         $_SESSION['swal_title'] = "Invalid Email";
-        $_SESSION['swal_msg'] = "You must use an MMU email (@student.mmu.edu.my) to login as a driver.";
-        $_SESSION['swal_type'] = "error";
+        $_SESSION['swal_msg']   = "You must use an MMU email (@student.mmu.edu.my) to login.";
+        $_SESSION['swal_type']  = "error";
     }
+
     else {
-        // Query database (Make sure you have a 'drivers' table)
-        // Note: Using prepared statements is safer, but keeping it consistent with your project style for now
+
+        // 2B. Check if driver exists
         $stmt = $conn->prepare("SELECT * FROM drivers WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
 
-        if ($result->num_rows === 1) {
-            $row = $result->fetch_assoc();
+        if ($row = $result->fetch_assoc()) {
 
-            // Verify password
+            // 2C. Validate password (requires password_hash in registration)
             if (password_verify($password, $row['password'])) {
-                // Login successful
-                $_SESSION['driver_id'] = $row['id'];
-                $_SESSION['driver_name'] = $row['name'];
+
+                // 2D. Store correct session data
+                // IMPORTANT: make sure the column names match your database
+                $_SESSION['driver_id']    = $row['driver_id'];   // or $row['id'] if your column is "id"
+                $_SESSION['driver_name']  = $row['fullname'];    // or $row['name'] depending on your DB
                 $_SESSION['driver_email'] = $row['email'];
 
-                // Success Alert & Redirect
-                alert("Login successful! Welcome Driver.");
-                redirect("driver_dashboard.php");
-            } else {
-                // Wrong Password
+                // Optional success alert
+                $_SESSION['swal_title'] = "Login Successful";
+                $_SESSION['swal_msg']   = "Welcome, " . $_SESSION['driver_name'] . "!";
+                $_SESSION['swal_type']  = "success";
+
+                // Redirect to dashboard
+                header("Location: driver_dashboard.php");
+                exit;
+            } 
+            else {
+                // Password incorrect
                 $_SESSION['swal_title'] = "Incorrect Password";
-                $_SESSION['swal_msg'] = "The password you entered is incorrect.";
-                $_SESSION['swal_type'] = "error";
-                $_SESSION['swal_btn_text'] = "Try Again";
+                $_SESSION['swal_msg']   = "The password you entered is incorrect.";
+                $_SESSION['swal_type']  = "error";
             }
+
         } else {
-            // Email Not Found
+            // Driver email not found
             $_SESSION['swal_title'] = "Account Not Found";
-            $_SESSION['swal_msg'] = "No driver account found with this email.";
-            $_SESSION['swal_type'] = "warning";
+            $_SESSION['swal_msg']   = "No driver account found with this email.";
+            $_SESSION['swal_type']  = "warning";
+
+            // Optional: show "Register" button
             $_SESSION['swal_btn_text'] = "Register as Driver";
-            $_SESSION['swal_btn_link'] = "driver_register.php"; // You need to create this page
+            $_SESSION['swal_btn_link'] = "driver_register.php";
             $_SESSION['swal_show_cancel'] = true;
             $_SESSION['swal_cancel_text'] = "Try Again";
         }
+
         $stmt->close();
     }
 }
 ?>
+
 
 <?php include "header.php"; ?>
 
