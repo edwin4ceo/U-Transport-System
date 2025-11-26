@@ -159,9 +159,6 @@ header .btn-register:hover {
 main {
     padding: 3rem 0;
     flex: 1; /* Pushes footer down */
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .content-area {
@@ -171,7 +168,8 @@ main {
     box-shadow: 0 10px 25px rgba(0,0,0,0.05);
     text-align: center;
     max-width: 800px;
-    width: 100%;
+    width: 100%
+    margin: 0 auto;
 }
 
 .content-area h2 {
