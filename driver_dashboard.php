@@ -133,14 +133,14 @@ $transports_sql = "
 $transports = $conn->query($transports_sql);
 
 // Booking requests (join with transports to show vehicle info)
+// Booking requests (simple version, no driver_id filter)
 $bookings_sql = "
-    SELECT b.*, t.vehicle_type, t.vehicle_model
-    FROM bookings b
-    JOIN transports t ON b.transport_id = t.transport_id
-    WHERE b.driver_id = $driver_id
-    ORDER BY b.created_at DESC
+    SELECT * 
+    FROM bookings
+    ORDER BY 1 DESC
 ";
 $bookings = $conn->query($bookings_sql);
+
 
 // Ratings & reviews
 $ratings_sql = "
