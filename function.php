@@ -16,20 +16,28 @@ function executeQuery($connection, $sql) {
 }
 
 /**
- * JavaScript Alert Wrapper
- * usage: alert("Message here");
+ * Modern Alert Wrapper (Using Session for SweetAlert2)
+ * Instead of echoing a script immediately, we save the message to the session.
+ * The footer.php will handle the display with a nice animation.
  */
 function alert($message){
-    // Escape single quotes to prevent breaking the JS string
-    $safe_message = addslashes($message);
-    echo "<script>alert('$safe_message');</script>";
+    // Save the message into a session variable
+    $_SESSION['swal_msg'] = $message;
+    
+    // Auto-detect type based on keywords for better icons
+    // If message contains "success", it's green. Otherwise, it's red/error.
+    if (stripos($message, 'success') !== false) {
+        $_SESSION['swal_type'] = 'success';
+        $_SESSION['swal_title'] = 'Great!';
+    } else {
+        $_SESSION['swal_type'] = 'error';
+        $_SESSION['swal_title'] = 'Oops...';
+    }
 }
 
 /**
  * JavaScript Redirect Wrapper
  * usage: redirect("login.php");
- * Note: We use JS redirect instead of PHP header() because
- * you are using alert() before redirecting.
  */
 function redirect($url){
     echo "<script>window.location.href='$url';</script>";
