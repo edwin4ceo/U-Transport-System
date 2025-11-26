@@ -2,7 +2,7 @@
 session_start();
 include "db_connect.php";
 
-// If you are not logged in, return to the login page
+// If user is not logged in, redirect to login page
 if (!isset($_SESSION['driver_id'])) {
     header("Location: driver_login.php");
     exit;
@@ -10,7 +10,7 @@ if (!isset($_SESSION['driver_id'])) {
 
 $driver_id = $_SESSION['driver_id'];
 
-/* --------------- Small function: Grab driver information --------------- */
+/* --------------- Helper function: get driver info --------------- */
 function getDriver($conn, $driver_id) {
     $sql = "SELECT * FROM drivers WHERE driver_id = ?";
     $stmt = $conn->prepare($sql);
@@ -21,7 +21,7 @@ function getDriver($conn, $driver_id) {
 
 $alert = "";
 
-/* --------------- 1. Edit profile (Including driver's license) --------------- */
+/* --------------- 1. Edit profile (including driving license) --------------- */
 if (isset($_POST['update_profile'])) {
     $full_name      = $_POST['full_name'];
     $phone          = $_POST['phone'];
@@ -70,7 +70,7 @@ if (isset($_POST['add_transport'])) {
     $alert = $stmt->execute() ? "Transport added." : "Failed to add transport.";
 }
 
-/* --------------- 3. Accept / Reject booking --------------- */
+/* --------------- 3. Accept / reject booking --------------- */
 if (isset($_POST['update_booking_status'])) {
     $booking_id = $_POST['booking_id'];
     $status     = $_POST['status']; // accepted / rejected
@@ -83,7 +83,7 @@ if (isset($_POST['update_booking_status'])) {
     $alert = $stmt->execute() ? "Booking status updated." : "Failed to update booking.";
 }
 
-/* --------------- 4. Forum：ask questions --------------- */
+/* --------------- 4. Forum: add question --------------- */
 if (isset($_POST['add_question'])) {
     $title = $_POST['question_title'];
     $body  = $_POST['question_body'];
@@ -95,7 +95,7 @@ if (isset($_POST['add_question'])) {
     $alert = $stmt->execute() ? "Question posted." : "Failed to post question.";
 }
 
-/* --------------- 5. Forum：reply --------------- */
+/* --------------- 5. Forum: add reply --------------- */
 if (isset($_POST['add_reply'])) {
     $question_id = $_POST['question_id'];
     $reply_text  = $_POST['reply_text'];
@@ -119,37 +119,47 @@ if (isset($_POST['send_feedback'])) {
     $alert = $stmt->execute() ? "Feedback sent. Thank you!" : "Failed to send feedback.";
 }
 
-/* --------------- Load to display --------------- */
-$driver     = getDriver($conn, $driver_id);
+/* --------------- Load data for display --------------- */
 
-$transports = $conn->query(
-    "SELECT * FROM transports 
-     WHERE driver_id = $driver_id 
-     ORDER BY created_at DESC"
-);
+// Driver info
+$driver = getDriver($conn, $driver_id);
 
-$bookings = $conn->query("SELECT * FROM bookings"
-    "SELECT b.*, t.vehicle_type, t.vehicle_model
-     FROM bookings b
-     JOIN transports t ON b.transport_id = t.transport_id
-     WHERE b.driver_id = $driver_id
-     ORDER BY b.created_at DESC"
-);
+// Transport list
+$transports_sql = "
+    SELECT * FROM transports 
+    WHERE driver_id = $driver_id 
+    ORDER BY created_at DESC
+";
+$transports = $conn->query($transports_sql);
 
-$ratings = $conn->query(
-    "SELECT r.*, b.requester_name, b.pickup_location, b.dropoff_location
-     FROM ratings r
-     JOIN bookings b ON r.booking_id = b.booking_id
-     WHERE r.driver_id = $driver_id
-     ORDER BY r.created_at DESC"
-);
+// Booking requests (join with transports to show vehicle info)
+$bookings_sql = "
+    SELECT b.*, t.vehicle_type, t.vehicle_model
+    FROM bookings b
+    JOIN transports t ON b.transport_id = t.transport_id
+    WHERE b.driver_id = $driver_id
+    ORDER BY b.created_at DESC
+";
+$bookings = $conn->query($bookings_sql);
 
-$questions = $conn->query(
-    "SELECT q.*, d.full_name
-     FROM forum_questions q
-     JOIN drivers d ON q.driver_id = d.driver_id
-     ORDER BY q.created_at DESC"
-);
+// Ratings & reviews
+$ratings_sql = "
+    SELECT r.*, b.requester_name, b.pickup_location, b.dropoff_location
+    FROM ratings r
+    JOIN bookings b ON r.booking_id = b.booking_id
+    WHERE r.driver_id = $driver_id
+    ORDER BY r.created_at DESC
+";
+$ratings = $conn->query($ratings_sql);
+
+// Forum questions
+$questions_sql = "
+    SELECT q.*, d.full_name
+    FROM forum_questions q
+    JOIN drivers d ON q.driver_id = d.driver_id
+    ORDER BY q.created_at DESC
+";
+$questions = $conn->query($questions_sql);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -209,7 +219,7 @@ $questions = $conn->query(
 </div>
 
 <div class="container">
-    <!-- left menu -->
+    <!-- Left menu -->
     <div class="sidebar">
         <button id="btn_profile"  onclick="showSection('profile')">Edit Profile</button>
         <button id="btn_transport"onclick="showSection('transport')">Add Transport</button>
@@ -464,20 +474,5 @@ $questions = $conn->query(
         <div id="feedback" class="section">
             <div class="card">
                 <h2>Contact Us (Feedback)</h2>
-                <form method="post">
-                    <label>Subject</label>
-                    <input type="text" name="subject" required>
+           
 
-                    <label>Message</label>
-                    <textarea name="message" rows="4" required></textarea>
-
-                    <button type="submit" name="send_feedback" class="btn btn-primary">Send</button>
-                </form>
-            </div>
-        </div>
-
-    </div>
-</div>
-
-</body>
-</html>
