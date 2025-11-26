@@ -23,11 +23,16 @@ body {
     color: var(--dark-gray);
     line-height: 1.6;
     
-    /* Ensure body takes at least full viewport height */
+    /* --- STICKY FOOTER SETUP --- */
+    /* 1. Use Flexbox to manage vertical layout */
+    display: flex;
+    flex-direction: column;
+    
+    /* 2. Force body to be at least the height of the screen */
     min-height: 100vh;
     
-    /* Padding to prevent content from being hidden behind the fixed footer */
-    padding-bottom: 80px; 
+    /* 3. Remove padding-bottom (Footer is no longer fixed, so no padding needed) */
+    padding-bottom: 0; 
 }
 
 html {
@@ -161,6 +166,11 @@ header .btn-register:hover {
 /* --- Main Content Area --- */
 main {
     padding: 3rem 0;
+    
+    /* --- STICKY FOOTER LOGIC --- */
+    /* This forces the main area to grow and fill empty space */
+    /* It pushes the footer down to the bottom */
+    flex: 1; 
 }
 
 .content-area {
@@ -305,12 +315,11 @@ footer {
     padding: 1.5rem 0;
     font-size: 0.9rem;
     
-    /* Fixed position at bottom */
-    position: fixed; 
-    left: 0;
-    bottom: 0;
+    /* --- RESTORED TO NORMAL FLOW --- */
+    /* No longer fixed position */
+    /* Flexbox on Body + Main will handle the positioning */
     width: 100%;
-    z-index: 999; 
+    margin-top: auto; 
 }
 
 /* --- Responsive Design --- */
