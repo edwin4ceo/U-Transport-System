@@ -40,5 +40,5 @@ if (session_status() === PHP_SESSION_NONE) {
         </div>
     </header>
 
-    <main>
+    <main style="flex: 1;">
         <div class="container content-area">
