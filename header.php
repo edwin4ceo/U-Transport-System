@@ -3,6 +3,18 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// DETERMINE LOGO LINK based on who is logged in
+$logo_link = "index.php"; // Default for guests
+
+if(isset($_SESSION['student_id'])){
+    // If Passenger is logged in
+    $logo_link = "passenger_home.php";
+} 
+elseif(isset($_SESSION['driver_id'])){
+    // If Driver is logged in
+    $logo_link = "driver_dashboard.php";
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -18,7 +30,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <header>
         <div class="container">
             <div class="logo">
-                <h1><a href="index.php"><i class="fa-solid fa-car"></i> U-Transport</a></h1>
+                <h1><a href="<?php echo $logo_link; ?>"><i class="fa-solid fa-car"></i> U-Transport</a></h1>
             </div>
             <nav>
                 <ul>
@@ -30,9 +42,15 @@ if (session_status() === PHP_SESSION_NONE) {
                         <li><a href="profile_edit.php">Profile</a></li>
                         <li><a href="logout.php" style="color: #ffcccb;">Logout</a></li>
 
+                    <?php elseif(isset($_SESSION['driver_id'])): ?>
+                        <li><a href="driver_dashboard.php">Dashboard</a></li>
+                        <li><a href="driver_rides.php">My Rides</a></li>
+                        <li><a href="driver_history.php">History</a></li>
+                        <li><a href="driver_profile.php">Profile</a></li>
+                        <li><a href="logout.php" style="color: #ffcccb;">Logout</a></li>
+
                     <?php else: ?>
-                        <li><a href="passanger_login.php">Login</a></li>
-                        <li><a href="passanger_register.php" class="btn-register">Register</a></li>
+                        <li><a href="index.php">Home</a></li>
                         <li><a href="contact_us.php">Contact Us</a></li>
                     <?php endif; ?>
                 </ul>
@@ -40,5 +58,5 @@ if (session_status() === PHP_SESSION_NONE) {
         </div>
     </header>
 
-    <main style="flex: 1;">
+    <main>
         <div class="container content-area">
