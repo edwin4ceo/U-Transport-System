@@ -22,9 +22,12 @@ body {
     background-color: var(--light-gray);
     color: var(--dark-gray);
     line-height: 1.6;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh; /* Forces footer to bottom */
+    
+    /* Ensure body takes at least full viewport height */
+    min-height: 100vh;
+    
+    /* Padding to prevent content from being hidden behind the fixed footer */
+    padding-bottom: 80px; 
 }
 
 html {
@@ -35,7 +38,7 @@ html {
     width: 90%;
     max-width: 1200px;
     margin: auto;
-    overflow: visible; /* Changed from hidden to allow dropdowns */
+    overflow: visible; /* Allows dropdowns to be visible */
 }
 
 /* --- Header & Navigation --- */
@@ -101,7 +104,7 @@ header .btn-register:hover {
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* --- Dropdown Menu Styles (Updated for Click) --- */
+/* --- Dropdown Menu Styles --- */
 .dropdown {
     position: relative;
     display: inline-block;
@@ -128,7 +131,7 @@ header .btn-register:hover {
     margin-top: 10px;
 }
 
-/* This class is added by JavaScript when you CLICK */
+/* JavaScript toggles this class */
 .show {
     display: block !important;
     animation: fadeIn 0.3s;
@@ -158,7 +161,6 @@ header .btn-register:hover {
 /* --- Main Content Area --- */
 main {
     padding: 3rem 0;
-    flex: 1; /* Pushes footer down */
 }
 
 .content-area {
@@ -168,8 +170,10 @@ main {
     box-shadow: 0 10px 25px rgba(0,0,0,0.05);
     text-align: center;
     max-width: 800px;
-    width: 100%
-    margin: 0 auto;
+    width: 100%;
+    
+    /* Center the container horizontally */
+    margin: 0 auto; 
 }
 
 .content-area h2 {
@@ -184,7 +188,7 @@ main {
     margin-bottom: 2.5rem;
 }
 
-/* --- Forms & Inputs (Ensure consistent styling) --- */
+/* --- Forms & Inputs --- */
 form {
     display: flex;
     flex-direction: column;
@@ -227,14 +231,14 @@ button[type="submit"] {
     font-size: 1rem;
     font-weight: 700;
     transition: background-color 0.3s ease;
-    width: 100%; /* Make buttons full width in forms */
+    width: 100%; /* Full width buttons */
 }
 
 button[type="submit"]:hover {
     background-color: var(--primary-dark);
 }
 
-/* --- Action Buttons (Find/Offer - Homepage) --- */
+/* --- Action Buttons (Homepage) --- */
 .action-btn {
     display: inline-block;
     padding: 15px 35px;
@@ -270,20 +274,20 @@ button[type="submit"]:hover {
 
 /* --- View Password Feature --- */
 .password-wrapper {
-    position: relative; /* Allows the icon to stay inside the box */
+    position: relative; 
     width: 100%;
 }
 
 .password-wrapper input {
     width: 100%;
-    padding-right: 40px; /* Make space for the icon so text doesn't overlap */
+    padding-right: 40px; 
 }
 
 .toggle-password {
     position: absolute;
     right: 15px;
     top: 50%;
-    transform: translateY(-50%); /* Centers the icon vertically */
+    transform: translateY(-50%); 
     cursor: pointer;
     color: #7f8c8d;
     z-index: 2;
@@ -300,8 +304,13 @@ footer {
     text-align: center;
     padding: 1.5rem 0;
     font-size: 0.9rem;
+    
+    /* Fixed position at bottom */
+    position: fixed; 
+    left: 0;
+    bottom: 0;
     width: 100%;
-    margin-top: auto; /* Ensure it stays at bottom if content is short */
+    z-index: 999; 
 }
 
 /* --- Responsive Design --- */
