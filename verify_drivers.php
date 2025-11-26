@@ -24,10 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if ($new_status) {
             $update_sql = "UPDATE users SET verification_status = '$new_status' WHERE user_id = $driver_id";
-            if (mysqli_query($connection, $update_sql)) {
+            if (mysqli_query($conn, $update_sql)) {
                 $success_msg = "Driver status updated to " . ucfirst($new_status) . "!";
             } else {
-                $error_msg = "Error updating record: " . mysqli_error($connection);
+                $error_msg = "Error updating record: " . mysqli_error($conn);
             }
         }
     }
@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 // --- 3. FETCH PENDING DRIVERS ---
 // Select only users who are 'driver' AND have status 'pending'
 $sql = "SELECT * FROM users WHERE role = 'driver' AND verification_status = 'pending'";
-$result = mysqli_query($connection, $sql);
+$result = mysqli_query($conn, $sql);
 ?>
 
 <!DOCTYPE html>

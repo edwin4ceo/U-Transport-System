@@ -18,10 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_user_id'])) {
         $error_msg = "You cannot delete your own account while logged in.";
     } else {
         $delete_sql = "DELETE FROM users WHERE user_id = $user_id_to_delete";
-        if (mysqli_query($connection, $delete_sql)) {
+        if (mysqli_query($conn, $delete_sql)) {
             $success_msg = "User account deleted successfully.";
         } else {
-            $error_msg = "Error deleting user: " . mysqli_error($connection);
+            $error_msg = "Error deleting user: " . mysqli_error($conn);
         }
     }
 }
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_user_id'])) {
 // --- 3. FETCH ALL USERS ---
 // Order by ID descending to see newest users first
 $sql = "SELECT * FROM users ORDER BY user_id DESC";
-$result = mysqli_query($connection, $sql);
+$result = mysqli_query($conn, $sql);
 ?>
 
 <!DOCTYPE html>

@@ -7,10 +7,10 @@ $search = "";
 $sql = "SELECT * FROM users WHERE role='driver'";
 
 if (isset($_GET['search']) && !empty($_GET['search'])) {
-    $search = mysqli_real_escape_string($connection, $_GET['search']);
+    $search = mysqli_real_escape_string($conn, $_GET['search']);
     $sql .= " AND (full_name LIKE '%$search%' OR email LIKE '%$search%' OR driver_license_id LIKE '%$search%')";
 }
-$result = mysqli_query($connection, $sql);
+$result = mysqli_query($conn, $sql);
 ?>
 
 <!DOCTYPE html>

@@ -12,10 +12,10 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_listing_id'])) {
     $listing_id = intval($_POST['delete_listing_id']);
     $delete_sql = "DELETE FROM transportlistings WHERE listing_id = $listing_id";
-    if (mysqli_query($connection, $delete_sql)) {
+    if (mysqli_query($conn, $delete_sql)) {
         $success_msg = "Listing removed successfully.";
     } else {
-        $error_msg = "Error removing listing: " . mysqli_error($connection);
+        $error_msg = "Error removing listing: " . mysqli_error($conne);
     }
 }
 
@@ -25,7 +25,7 @@ $sql = "SELECT t.*, u.full_name
         FROM transportlistings t 
         JOIN users u ON t.driver_id = u.user_id 
         ORDER BY t.created_at DESC";
-$result = mysqli_query($connection, $sql);
+$result = mysqli_query($conn, $sql);
 ?>
 
 <!DOCTYPE html>
