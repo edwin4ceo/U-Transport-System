@@ -128,7 +128,7 @@ $transports = $conn->query(
      ORDER BY created_at DESC"
 );
 
-$bookings = $conn->query("SELECT * FROM bookings");
+$bookings = $conn->query("SELECT * FROM bookings"
     "SELECT b.*, t.vehicle_type, t.vehicle_model
      FROM bookings b
      JOIN transports t ON b.transport_id = t.transport_id
