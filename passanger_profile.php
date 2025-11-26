@@ -199,7 +199,7 @@ include "header.php";
         </div>
     </div>
 
-    <a href="profile_edit.php" class="btn-edit-profile">Edit profile</a>
+    <a href="passanger_profile_edit.php" class="btn-edit-profile">Edit profile</a>
 </div>
 
 <div class="container" style="padding-bottom: 100px;"> <div class="section-title">
