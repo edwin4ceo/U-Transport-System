@@ -3,6 +3,11 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
+// Redirect if already logged in 
+//if(isset($_SESSION['student_id'])){
+//    redirect("passanger_request_transport.php");
+//}
+
 if(isset($_POST['login'])){
     $email = $_POST['email'];
     $password = $_POST['password'];
@@ -16,12 +21,11 @@ if(isset($_POST['login'])){
         // Verify the encrypted password
         if(password_verify($password, $row['password'])){
             // Login successful
-            // Store the Student Matrix ID in session
             $_SESSION['student_id'] = $row['student_id']; 
             $_SESSION['student_name'] = $row['name'];
 
             alert("Login successful!");
-            redirect("passanger_request_transport.php"); // Redirect to the request page
+            redirect("passanger_request_transport.php"); 
         } 
         else {
             alert("Incorrect password.");
@@ -34,6 +38,16 @@ if(isset($_POST['login'])){
 ?>
 
 <?php include "header.php"; ?>
+
+<style>
+    footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+    }
+</style>
 
 <h2>Login</h2>
 <p>Welcome back! Please login to continue.</p>
