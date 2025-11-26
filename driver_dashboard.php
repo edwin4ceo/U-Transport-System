@@ -13,7 +13,7 @@ $driver_id = $_SESSION['driver_id'];
 
 // Fetch driver profile data from "drivers" table
 $driver = null;
-$driver_stmt = $conn->prepare("SELECT * FROM drivers WHERE driver_id = ?");
+$driver_stmt = $conn->prepare("SELECT * FROM drivers WHERE id = ?");
 $driver_stmt->bind_param("i", $driver_id);
 $driver_stmt->execute();
 $driver_result = $driver_stmt->get_result();
