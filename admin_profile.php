@@ -9,8 +9,8 @@ $msg = "";
 
 // Handle Profile Update
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $full_name = mysqli_real_escape_string($connection, $_POST['full_name']);
-    $phone = mysqli_real_escape_string($connection, $_POST['phone']);
+    $full_name = mysqli_real_escape_string($conn, $_POST['full_name']);
+    $phone = mysqli_real_escape_string($conn, $_POST['phone']);
     $new_pass = $_POST['password'];
 
     $sql = "UPDATE users SET full_name='$full_name', phone_number='$phone' WHERE user_id='$user_id'";
@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $sql = "UPDATE users SET full_name='$full_name', phone_number='$phone', password_hash='$new_pass' WHERE user_id='$user_id'";
     }
 
-    if (mysqli_query($connection, $sql)) {
+    if (mysqli_query($conn, $sql)) {
         $_SESSION['full_name'] = $full_name; // Update session name
         $msg = "<div class='alert alert-success'>Profile updated successfully!</div>";
     } else {
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 // Fetch current data
 $query = "SELECT * FROM users WHERE user_id='$user_id'";
-$result = mysqli_query($connection, $query);
+$result = mysqli_query($conn, $query);
 $admin = mysqli_fetch_assoc($result);
 ?>
 
