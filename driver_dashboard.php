@@ -228,78 +228,99 @@ include "header.php";
         text-decoration: underline;
     }
 
-    /* Larger Quick Action Cards */
-/* Wider layout for Quick Actions */
-.quick-actions-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px; /* wider gaps */
-    padding: 10px 4px;
-}
-
-/* Much wider + taller Quick Action cards */
-.quick-card {
-    border-radius: 18px;
-    border: 1px solid #d3d8dd;
-    background: #ffffff;
-
-    padding: 26px 22px 20px;  /* big interior space */
-    min-height: 180px;        /* noticeably taller */
-
-    box-shadow: 0 8px 22px rgba(0,0,0,0.06);
-
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-/* Hover effect */
-.quick-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 14px 30px rgba(0,0,0,0.12);
-}
-
-/* Bigger Title */
-.quick-title {
-    font-size: 16px; /* +1 size */
-    font-weight: 700;
-    color: #004b82;
-}
-
-/* Bigger Description */
-.quick-desc {
-    font-size: 14px; /* +1 size */
-    color: #555;
-    flex: 1;
-    line-height: 1.4;
-}
-
-/* Larger link */
-.quick-link {
-    margin-top: 10px;
-    font-size: 13px;
-    color: #005a9c;
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.quick-link:hover {
-    text-decoration: underline;
-}
-
-/* Mobile responsive */
-@media (max-width: 900px) {
+    /* Square Quick Action cards */
     .quick-actions-grid {
-        grid-template-columns: repeat(2, 1fr);
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
     }
-}
-@media (max-width: 600px) {
-    .quick-actions-grid {
-        grid-template-columns: 1fr;
+
+    .quick-card {
+        border-radius: 18px;
+        border: 1px solid #d3d8dd;
+        background: #ffffff;
+
+        height: 160px; /* square-ish */
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        padding: 18px;
+
+        box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-}
+
+    .quick-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 14px 28px rgba(0,0,0,0.15);
+    }
+
+    .quick-icon {
+        font-size: 28px;
+        color: #005a9c;
+        margin-bottom: 8px;
+    }
+
+    .quick-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #004b82;
+        text-align: center;
+    }
+
+    .quick-link {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #005a9c;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .quick-link:hover {
+        text-decoration: underline;
+    }
+
+    .section-title {
+        margin-top: 24px;
+        margin-bottom: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #444;
+    }
+
+    .muted-text {
+        font-size: 12px;
+        color: #888;
+    }
+
+    @media (max-width: 900px) {
+        .dashboard-wrapper {
+            padding: 20px 14px 28px;
+        }
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+        .quick-actions-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 600px) {
+        .dashboard-header {
+            align-items: flex-start;
+        }
+        .dashboard-actions-top {
+            width: 100%;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+        .quick-actions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <div class="dashboard-wrapper">
@@ -365,7 +386,7 @@ include "header.php";
             </div>
         </div>
 
-        <!-- Right: Quick actions -->
+        <!-- Right: Quick actions (square buttons) -->
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Quick Actions</h3>
@@ -373,60 +394,48 @@ include "header.php";
             </div>
             <div class="card-body">
                 <div class="quick-actions-grid">
+
                     <div class="quick-card">
+                        <div class="quick-icon"><i class="fa-solid fa-car"></i></div>
                         <div class="quick-title">Add / Edit Transport</div>
-                        <div class="quick-desc">
-                            Set your route, availability, price, and payment methods.
-                        </div>
-                            <!-- link to a page you will create -->
-                        <a href="driver_transport_manage.php" class="quick-link">Open transport settings →</a>
+                        <a href="driver_transport_manage.php" class="quick-link">Open →</a>
                     </div>
 
                     <div class="quick-card">
+                        <div class="quick-icon"><i class="fa-solid fa-clipboard-list"></i></div>
                         <div class="quick-title">Booking Requests</div>
-                        <div class="quick-desc">
-                            View and respond to student booking requests.
-                        </div>
-                        <a href="driver_booking_requests.php" class="quick-link">View requests →</a>
+                        <a href="driver_booking_requests.php" class="quick-link">View →</a>
                     </div>
 
                     <div class="quick-card">
-                        <div class="quick-title">Today’s Trips</div>
-                        <div class="quick-desc">
-                            Check your schedule and upcoming pickups for today.
-                        </div>
-                        <a href="driver_trips_today.php" class="quick-link">View today’s trips →</a>
+                        <div class="quick-icon"><i class="fa-solid fa-calendar-day"></i></div>
+                        <div class="quick-title">Today's Trips</div>
+                        <a href="driver_trips_today.php" class="quick-link">Open →</a>
                     </div>
 
                     <div class="quick-card">
+                        <div class="quick-icon"><i class="fa-solid fa-star"></i></div>
                         <div class="quick-title">Ratings & Reviews</div>
-                        <div class="quick-desc">
-                            See feedback from passengers about your service.
-                        </div>
-                        <a href="driver_ratings.php" class="quick-link">Open ratings →</a>
+                        <a href="driver_ratings.php" class="quick-link">View →</a>
                     </div>
 
                     <div class="quick-card">
+                        <div class="quick-icon"><i class="fa-solid fa-comments"></i></div>
                         <div class="quick-title">Q & A / Chat</div>
-                        <div class="quick-desc">
-                            Answer questions or chat with passengers in the forum.
-                        </div>
-                        <a href="driver_forum.php" class="quick-link">Go to Q&A →</a>
+                        <a href="driver_forum.php" class="quick-link">Go →</a>
                     </div>
 
                     <div class="quick-card">
+                        <div class="quick-icon"><i class="fa-solid fa-headset"></i></div>
                         <div class="quick-title">Contact Admin</div>
-                        <div class="quick-desc">
-                            Send feedback or report an issue to the system admin.
-                        </div>
-                        <a href="contact_us.php" class="quick-link">Contact us →</a>
+                        <a href="contact_us.php" class="quick-link">Contact →</a>
                     </div>
+
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- You can later show real data here (without dummy numbers now) -->
     <h2 class="section-title">Dashboard notes</h2>
     <p class="muted-text">
         This dashboard is ready to connect with your booking, rating, and chat modules.
