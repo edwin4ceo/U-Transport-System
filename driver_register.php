@@ -298,7 +298,7 @@ include "header.php";
 
                 <div class="form-group">
                     <label for="email">Driver Email (MMU email)</label>
-                    <input type="email" id="email" name="email" placeholder="e.g. @student.mmu.edu.my" required>
+                    <input type="email" id="email" name="email" placeholder="e.g.xxx@student.mmu.edu.my" required>
                 </div>
 
                 <div class="form-group">
