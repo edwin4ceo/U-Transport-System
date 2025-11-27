@@ -40,6 +40,12 @@ if (isset($_POST['register'])) {
         $_SESSION['swal_msg']   = "Please enter a valid email address.";
         $_SESSION['swal_type']  = "warning";
     }
+    // 2B. Email must be MMU student email
+    elseif (substr($email, -19) !== "@student.mmu.edu.my") {
+        $_SESSION['swal_title'] = "Invalid Email Domain";
+        $_SESSION['swal_msg']   = "You must use your MMU student email (@student.mmu.edu.my) to register.";
+        $_SESSION['swal_type']  = "warning";
+    }
     // 3. Password length validation
     elseif (strlen($password_plain) < 6) {
         $_SESSION['swal_title'] = "Weak Password";
@@ -291,8 +297,8 @@ include "header.php";
                 </div>
 
                 <div class="form-group">
-                    <label for="email">Driver Email</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                    <label for="email">Driver Email (MMU student email)</label>
+                    <input type="email" id="email" name="email" placeholder="e.g. yourname@student.mmu.edu.my" required>
                 </div>
 
                 <div class="form-group">
