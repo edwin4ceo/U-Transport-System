@@ -241,8 +241,8 @@ include "header.php";
 
         <form method="post" action="">
             <div class="form-group">
-                <label for="email">Driver Email (MMU student email)</label>
-                <input type="email" id="email" name="email" placeholder="e.g. yourname@student.mmu.edu.my" required>
+                <label for="email">Driver Email (MMU email)</label>
+                <input type="email" id="email" name="email" placeholder="e.g. xxx@student.mmu.edu.my" required>
             </div>
 
             <div class="form-group">
