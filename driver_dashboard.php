@@ -51,7 +51,7 @@ include "header.php";
     .dashboard-wrapper {
         min-height: calc(100vh - 140px);
         padding: 30px 24px 40px;
-        max-width: 1120px;
+        max-width: 1320px;
         margin: 0 auto;
     }
 
@@ -229,55 +229,57 @@ include "header.php";
     }
 
     /* Larger Quick Action Cards */
+/* Wider layout for Quick Actions */
 .quick-actions-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px; /* bigger spacing */
-    padding: 6px 2px;
+    gap: 24px; /* wider gaps */
+    padding: 10px 4px;
 }
 
-/* Bigger & More Prominent Cards */
+/* Much wider + taller Quick Action cards */
 .quick-card {
     border-radius: 18px;
-    border: 1px solid #d8dde2;
+    border: 1px solid #d3d8dd;
     background: #ffffff;
 
-    padding: 20px 18px 16px;   /* increased padding */
-    min-height: 150px;         /* bigger body */
-    
-    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    padding: 26px 22px 20px;  /* big interior space */
+    min-height: 180px;        /* noticeably taller */
+
+    box-shadow: 0 8px 22px rgba(0,0,0,0.06);
 
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* expand spacing nicely */
+    justify-content: space-between;
+
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Hover effect – more interactive */
+/* Hover effect */
 .quick-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 26px rgba(0,0,0,0.12);
+    transform: translateY(-4px);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.12);
 }
 
-/* Larger title */
+/* Bigger Title */
 .quick-title {
-    font-size: 15px;
+    font-size: 16px; /* +1 size */
     font-weight: 700;
     color: #004b82;
-    margin-bottom: 6px;
 }
 
-/* Larger description */
+/* Bigger Description */
 .quick-desc {
-    font-size: 13px;
+    font-size: 14px; /* +1 size */
     color: #555;
     flex: 1;
+    line-height: 1.4;
 }
 
 /* Larger link */
 .quick-link {
-    margin-top: 8px;
-    font-size: 12.5px;
+    margin-top: 10px;
+    font-size: 13px;
     color: #005a9c;
     text-decoration: none;
     font-weight: 600;
@@ -287,7 +289,7 @@ include "header.php";
     text-decoration: underline;
 }
 
-/* Mobile responsiveness */
+/* Mobile responsive */
 @media (max-width: 900px) {
     .quick-actions-grid {
         grid-template-columns: repeat(2, 1fr);
