@@ -352,36 +352,34 @@ include "header.php";
     cursor: pointer;
 }
 
-/* Password form */
+/* Password form - vertical layout */
 .password-section {
     margin-top: 18px;
     border-top: 1px dashed #e0e0e0;
     padding-top: 14px;
 }
 
-/* Use flex so three inputs stay equal width */
 .password-grid {
     display: flex;
-    gap: 14px;
+    flex-direction: column;  /* vertical layout */
+    gap: 16px;               /* spacing between fields */
 }
 
 .password-grid .form-group {
-    flex: 1;                /* three equal columns */
+    width: 100%;
 }
 
 .password-grid .form-group input {
-    width: 100%;            /* fill each column */
+    width: 100%;
 }
 
+/* Responsive */
 @media (max-width: 900px) {
     .profile-grid {
         grid-template-columns: 1fr;
     }
     .profile-wrapper {
         padding: 24px 10px 30px;
-    }
-    .password-grid {
-        flex-direction: column;  /* stack on small screens */
     }
 }
 
