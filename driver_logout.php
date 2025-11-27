@@ -1,13 +1,11 @@
 <?php
 session_start();
 
+// Remove all session data
 session_unset();
 session_destroy();
 
-// OPTION A: Go back to role-selection page
-// header("Location: index.php");
-
-// OPTION B: Go straight to driver login
+// Redirect to driver login page after logout
 header("Location: driver_login.php");
 exit;
 ?>
