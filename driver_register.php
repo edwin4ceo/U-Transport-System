@@ -6,62 +6,71 @@ include "function.php";
 
 // Process the submitted registration form
 if(isset($_POST['register'])){
-    $name               = $_POST['name'];
-    // Change field: Student ID -> IC/Passport Number or License ID
+
+    // use full_name to match the `drivers` table and dashboard
+    $full_name          = $_POST['full_name'];
     $identification_id  = $_POST['identification_id']; 
     $email              = $_POST['email'];
     $car_model          = $_POST['car_model']; 
     $car_plate_number   = $_POST['car_plate_number']; 
-    $password           = password_hash($_POST['password'], PASSWORD_BCRYPT);
+    $password_plain     = $_POST['password'];
+    $password           = password_hash($password_plain, PASSWORD_BCRYPT);
 
-// 1. **(Removed)** Email Domain Verification
-// Assuming the driver can use any email address, the restriction on @student.mmu.edu.my has been removed.
-// If you require other restrictions, please let me know.
-    
-// 2. Check for duplicate email addresses (operate on the 'drivers' table)
-// Assume the drivers table also needs to store an email field.
-    $check = $conn->query("SELECT * FROM drivers WHERE email='$email'"); 
-    if($check->num_rows > 0){
+    // 1. Check for duplicate email addresses (operate on the 'drivers' table)
+    $check = $conn->prepare("SELECT driver_id FROM drivers WHERE email = ?");
+    $check->bind_param("s", $email);
+    $check->execute();
+    $result = $check->get_result();
+
+    if($result && $result->num_rows > 0){
         // Custom error message
-        $_SESSION['swal_title'] = "Registration Failed";
-        $_SESSION['swal_msg'] = "This email is already registered. Please login instead.";
-        $_SESSION['swal_type'] = "warning";
-        $_SESSION['swal_btn_text'] = "Login Now";
-        $_SESSION['swal_btn_link'] = "driver_login.php"; // Should redirect to driver login page
-        $_SESSION['swal_show_cancel'] = true;
-        $_SESSION['swal_cancel_text'] = "Try Again";
+        $_SESSION['swal_title']      = "Registration Failed";
+        $_SESSION['swal_msg']        = "This email is already registered. Please login instead.";
+        $_SESSION['swal_type']       = "warning";
+        $_SESSION['swal_btn_text']   = "Login Now";
+        $_SESSION['swal_btn_link']   = "driver_login.php"; // redirect to driver login page
+        $_SESSION['swal_show_cancel']= true;
+        $_SESSION['swal_cancel_text']= "Try Again";
         redirect("driver_register.php");
+        exit;
     }
 
-// 3. Insert new driver information (operate on the 'drivers' table)
+    // 2. Insert new driver information into `drivers`
+    // make sure your `drivers` table has these columns:
+    // full_name, identification_id, email, password, car_model, car_plate_number
     $sql = "INSERT INTO drivers (
-                name, 
+                full_name, 
                 identification_id, 
                 email, 
                 password, 
                 car_model, 
                 car_plate_number
             ) 
-            VALUES (
-                '$name',
-                '$identification_id',
-                '$email',
-                '$password',
-                '$car_model',
-                '$car_plate_number'
-            )";
+            VALUES (?,?,?,?,?,?)";
 
-    if($conn->query($sql)){
-     // Success: Set a "Congratulations" message for the login page
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param(
+        "ssssss",
+        $full_name,
+        $identification_id,
+        $email,
+        $password,
+        $car_model,
+        $car_plate_number
+    );
+
+    if($stmt->execute()){
+        // Success: set a "Congratulations" message for the login page
         $_SESSION['swal_title'] = "Congratulations!";
-        $_SESSION['swal_msg'] = "Driver Registration Successful! Please login to continue.";
-        $_SESSION['swal_type'] = "success";
+        $_SESSION['swal_msg']   = "Driver registration successful! Please login to continue.";
+        $_SESSION['swal_type']  = "success";
         
-       // Redirect to driver login page
+        // Redirect to driver login page
         redirect("driver_login.php"); 
+        exit;
     } else {
-     // Ensure your drivers table structure matches these fields
-        alert("Driver Registration failed: " . $conn->error);
+        // Show error message (development only)
+        alert("Driver registration failed: " . $conn->error);
     }
 }
 ?>
@@ -83,7 +92,8 @@ if(isset($_POST['register'])){
 
 <form action="" method="POST">
     <label>Full Name</label>
-    <input type="text" name="name" required placeholder="Enter your full name">
+    <!-- use full_name to match PHP & database -->
+    <input type="text" name="full_name" required placeholder="Enter your full name">
 
     <label>IC / Passport Number</label>
     <input type="text" name="identification_id" required placeholder="e.g. 901020-04-5678 or A12345678">
