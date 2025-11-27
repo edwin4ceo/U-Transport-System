@@ -408,7 +408,7 @@ include "header.php";
                     <div class="quick-card">
                         <div class="quick-icon"><i class="fa-solid fa-car"></i></div>
                         <div class="quick-title">Add / Edit Transport</div>
-                        <a href="driver_transport_manage.php" class="quick-link">Open →</a>
+                        <a href="driver_vehicle.php" class="quick-link">Open →</a>
                     </div>
 
                     <div class="quick-card">
