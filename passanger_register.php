@@ -5,8 +5,14 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
+// Initialize variables to keep form data (Sticky Form)
+$name = "";
+$student_id = "";
+$email = "";
+
 // Process the registration form when submitted
 if(isset($_POST['register'])){
+    // Get values from form
     $name             = $_POST['name'];
     $student_id       = $_POST['student_id'];
     $email            = $_POST['email'];
@@ -20,65 +26,66 @@ if(isset($_POST['register'])){
         $_SESSION['swal_title'] = "Invalid Student ID";
         $_SESSION['swal_msg'] = "Student ID must be exactly 10 digits.";
         $_SESSION['swal_type'] = "error";
-        redirect("passanger_register.php");
+        // No redirect here, we let the page reload so values stick
     }
-
+    
     // Validate Name (Must not contain numbers)
-    if (preg_match('/\d/', $name)) {
+    elseif (preg_match('/\d/', $name)) {
         $_SESSION['swal_title'] = "Invalid Name";
         $_SESSION['swal_msg'] = "Name cannot contain numbers.";
         $_SESSION['swal_type'] = "error";
-        redirect("passanger_register.php");
+        // Clear name only, keep others
+        $name = ""; 
     }
 
     // Validate Password Match
-    if ($password !== $confirm_password) {
+    elseif ($password !== $confirm_password) {
         $_SESSION['swal_title'] = "Password Mismatch";
         $_SESSION['swal_msg'] = "Passwords do not match. Please try again.";
         $_SESSION['swal_type'] = "error";
-        redirect("passanger_register.php");
     }
-
-    // Hash the password after validation
-    $password_hash = password_hash($password, PASSWORD_BCRYPT);
 
     // --- 2. DATABASE CHECKS ---
 
     // Check MMU email domain verification
-    if (!str_contains($email, "@student.mmu.edu.my")) {
+    elseif (!str_contains($email, "@student.mmu.edu.my")) {
         $_SESSION['swal_title'] = "Invalid Email";
         $_SESSION['swal_msg'] = "Only MMU student emails (@student.mmu.edu.my) are allowed!";
         $_SESSION['swal_type'] = "error";
-        redirect("passanger_register.php");
     }
 
-    // Check for duplicate email
-    $check = $conn->query("SELECT * FROM students WHERE email='$email'");
-    if($check->num_rows > 0){
-        $_SESSION['swal_title'] = "Registration Failed";
-        $_SESSION['swal_msg'] = "This email is already registered. Please login instead.";
-        $_SESSION['swal_type'] = "warning";
-        $_SESSION['swal_btn_text'] = "Login Now";
-        $_SESSION['swal_btn_link'] = "passanger_login.php";
-        $_SESSION['swal_show_cancel'] = true;
-        $_SESSION['swal_cancel_text'] = "Try Again";
-        redirect("passanger_register.php");
-    }
+    else {
+        // Check for duplicate email
+        $check = $conn->query("SELECT * FROM students WHERE email='$email'");
+        if($check->num_rows > 0){
+            $_SESSION['swal_title'] = "Registration Failed";
+            $_SESSION['swal_msg'] = "This email is already registered. Please login instead.";
+            $_SESSION['swal_type'] = "warning";
+            $_SESSION['swal_btn_text'] = "Login Now";
+            $_SESSION['swal_btn_link'] = "passanger_login.php";
+            $_SESSION['swal_show_cancel'] = true;
+            $_SESSION['swal_cancel_text'] = "Try Again";
+        } 
+        else {
+            // --- 3. INSERT DATA (All checks passed) ---
+            
+            // Hash the password
+            $password_hash = password_hash($password, PASSWORD_BCRYPT);
 
-    // --- 3. INSERT DATA ---
-    
-    $sql = "INSERT INTO students (name, student_id, email, password) 
-            VALUES ('$name','$student_id','$email','$password_hash')";
+            $sql = "INSERT INTO students (name, student_id, email, password) 
+                    VALUES ('$name','$student_id','$email','$password_hash')";
 
-    if($conn->query($sql)){
-        // SUCCESS
-        $_SESSION['swal_title'] = "Congratulations!";
-        $_SESSION['swal_msg'] = "Registration Successful! Please login to continue.";
-        $_SESSION['swal_type'] = "success";
-        
-        redirect("passanger_login.php");
-    } else {
-        alert("Registration failed: " . $conn->error);
+            if($conn->query($sql)){
+                // SUCCESS
+                $_SESSION['swal_title'] = "Congratulations!";
+                $_SESSION['swal_msg'] = "Registration Successful! Please login to continue.";
+                $_SESSION['swal_type'] = "success";
+                
+                redirect("passanger_login.php");
+            } else {
+                alert("Registration failed: " . $conn->error);
+            }
+        }
     }
 }
 ?>
@@ -86,11 +93,10 @@ if(isset($_POST['register'])){
 <?php include "header.php"; ?>
 
 <style>
+    /* Footer Style */
     footer {
-        bottom: 0;
-        left: 0;
         width: 100%;
-        z-index: 1000;
+        margin-top: auto; 
     }
 
     /* Style for the password wrapper to position the eye icon */
@@ -128,13 +134,13 @@ if(isset($_POST['register'])){
 
 <form action="" method="POST">
     <label>Full Name</label>
-    <input type="text" name="name" id="nameInput" required placeholder="Enter your full name">
+    <input type="text" name="name" id="nameInput" value="<?php echo htmlspecialchars($name); ?>" required placeholder="Enter your full name">
 
     <label>Student ID (10 Digits)</label>
-    <input type="text" name="student_id" id="studentIDInput" maxlength="10" required placeholder="e.g. 1234567890">
+    <input type="text" name="student_id" id="studentIDInput" value="<?php echo htmlspecialchars($student_id); ?>" maxlength="10" required placeholder="e.g. 1234567890">
 
     <label>MMU Email (@student.mmu.edu.my)</label>
-    <input type="email" name="email" id="emailInput" required placeholder="ID@student.mmu.edu.my" readonly style="background-color: #f9f9f9; cursor: not-allowed;">
+    <input type="email" name="email" id="emailInput" value="<?php echo htmlspecialchars($email); ?>" required placeholder="ID@student.mmu.edu.my" readonly style="background-color: #f9f9f9; cursor: not-allowed;">
 
     <label>Password</label>
     <div class="password-wrapper">

@@ -69,7 +69,7 @@ if(isset($_POST['request'])){
         <option value="" disabled selected hidden>Please select a State first</option>
         </select>
 
-    <label>Specific Address</label>
+    <label>Specific Destination Address</label>
     <input type="text" name="address" required placeholder="e.g., No 123, Jalan Universiti, Taman Impian">
 
     <label>Date & Time</label>
