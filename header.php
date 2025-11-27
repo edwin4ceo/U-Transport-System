@@ -47,7 +47,7 @@ elseif(isset($_SESSION['driver_id'])){
                         <li><a href="driver_rides.php">My Rides</a></li>
                         <li><a href="driver_history.php">History</a></li>
                         <li><a href="driver_profile.php">Profile</a></li>
-                        <li><a href="logout.php" style="color: #ffcccb;">Logout</a></li>
+                        <li><a href="driver_logout.php" style="color: #ffcccb;">Logout</a></li>
 
                     <?php else: ?>
                         <li><a href="index.php">Home</a></li>
