@@ -358,10 +358,18 @@ include "header.php";
     padding-top: 14px;
 }
 
+/* 改成 flex，让三格输入框等宽对齐 */
 .password-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0,1fr));
-    gap: 12px 14px;
+    display: flex;
+    gap: 14px;
+}
+
+.password-grid .form-group {
+    flex: 1;          /* 三个平分宽度 */
+}
+
+.password-grid .form-group input {
+    width: 100%;      /* 强制铺满各自的格子 */
 }
 
 @media (max-width: 900px) {
@@ -372,7 +380,7 @@ include "header.php";
         padding: 24px 10px 30px;
     }
     .password-grid {
-        grid-template-columns: 1fr;
+        flex-direction: column;  /* 小萤幕时一格一行 */
     }
 }
 
