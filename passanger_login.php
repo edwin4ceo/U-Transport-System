@@ -76,7 +76,7 @@ if(isset($_POST['login'])){
 
 <div style="margin-top: 15px; display: flex; justify-content: space-between;">
     <a href="passanger_register.php">Create an Account</a>
-    <a href="forgot_password.php">Forgot Password?</a>
+    <a href="passanger_forgot_password.php">Forgot Password?</a>
 </div>
 
 <?php include "footer.php"; ?>
