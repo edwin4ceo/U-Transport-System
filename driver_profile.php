@@ -17,10 +17,10 @@ $driver_id = $_SESSION['driver_id'];
 ----------------------------------------- */
 if (isset($_POST['save_profile'])) {
 
-    $full_name        = trim($_POST['full_name']);
-    $identification_id= trim($_POST['identification_id']);
-    $car_model        = trim($_POST['car_model']);
-    $car_plate_number = trim($_POST['car_plate_number']);
+    $full_name         = trim($_POST['full_name']);
+    $identification_id = trim($_POST['identification_id']);
+    $car_model         = trim($_POST['car_model']);
+    $car_plate_number  = trim($_POST['car_plate_number']);
 
     if (
         $full_name === "" ||
@@ -40,7 +40,8 @@ if (isset($_POST['save_profile'])) {
         ");
 
         if ($stmt) {
-            $stmt->bind_param("ssssi",
+            $stmt->bind_param(
+                "ssssi",
                 $full_name,
                 $identification_id,
                 $car_model,
@@ -101,7 +102,7 @@ if (isset($_POST['change_password'])) {
             $result = $stmt->get_result();
 
             if ($result && $result->num_rows === 1) {
-                $row = $result->fetch_assoc();
+                $row    = $result->fetch_assoc();
                 $hashed = $row['password'];
 
                 if (!password_verify($current_password, $hashed)) {
@@ -152,18 +153,18 @@ if (isset($_POST['change_password'])) {
 /* ----------------------------------------
    Fetch latest driver info for display
 ----------------------------------------- */
-$full_name        = "";
-$email            = "";
-$identification_id= "";
-$car_model        = "";
-$car_plate_number = "";
+$full_name         = "";
+$email             = "";
+$identification_id = "";
+$car_model         = "";
+$car_plate_number  = "";
+$created_at        = "";
 
 $stmt = $conn->prepare("
     SELECT full_name, email, identification_id, car_model, car_plate_number, created_at
     FROM drivers
     WHERE driver_id = ?
 ");
-$created_at = "";
 
 if ($stmt) {
     $stmt->bind_param("i", $driver_id);
@@ -171,13 +172,13 @@ if ($stmt) {
     $result = $stmt->get_result();
 
     if ($result && $result->num_rows === 1) {
-        $row              = $result->fetch_assoc();
-        $full_name        = $row['full_name'];
-        $email            = $row['email'];
-        $identification_id= $row['identification_id'];
-        $car_model        = $row['car_model'];
-        $car_plate_number = $row['car_plate_number'];
-        $created_at       = $row['created_at'];
+        $row               = $result->fetch_assoc();
+        $full_name         = $row['full_name'];
+        $email             = $row['email'];
+        $identification_id = $row['identification_id'];
+        $car_model         = $row['car_model'];
+        $car_plate_number  = $row['car_plate_number'];
+        $created_at        = $row['created_at'];
     }
     $stmt->close();
 }
@@ -358,18 +359,18 @@ include "header.php";
     padding-top: 14px;
 }
 
-/* 改成 flex，让三格输入框等宽对齐 */
+/* Use flex so three inputs stay equal width */
 .password-grid {
     display: flex;
     gap: 14px;
 }
 
 .password-grid .form-group {
-    flex: 1;          /* 三个平分宽度 */
+    flex: 1;                /* three equal columns */
 }
 
 .password-grid .form-group input {
-    width: 100%;      /* 强制铺满各自的格子 */
+    width: 100%;            /* fill each column */
 }
 
 @media (max-width: 900px) {
@@ -380,7 +381,7 @@ include "header.php";
         padding: 24px 10px 30px;
     }
     .password-grid {
-        flex-direction: column;  /* 小萤幕时一格一行 */
+        flex-direction: column;  /* stack on small screens */
     }
 }
 
@@ -428,12 +429,16 @@ include "header.php";
 
             <div class="summary-row">
                 <div class="summary-label">Car Model</div>
-                <div class="summary-value"><?php echo $car_model ? htmlspecialchars($car_model) : "Not set yet"; ?></div>
+                <div class="summary-value">
+                    <?php echo $car_model ? htmlspecialchars($car_model) : "Not set yet"; ?>
+                </div>
             </div>
 
             <div class="summary-row">
                 <div class="summary-label">Car Plate Number</div>
-                <div class="summary-value"><?php echo $car_plate_number ? htmlspecialchars($car_plate_number) : "Not set yet"; ?></div>
+                <div class="summary-value">
+                    <?php echo $car_plate_number ? htmlspecialchars($car_plate_number) : "Not set yet"; ?>
+                </div>
             </div>
 
             <?php if ($created_at): ?>
