@@ -38,25 +38,11 @@ elseif(isset($_SESSION['driver_id'])){
                         <li><a href="search_transport.php">Search Rides</a></li>
                         <li><a href="passanger_request_transport.php">Request Ride</a></li>
                         <li><a href="passanger_booking_history.php">My History</a></li>
-                        <li><a href="qa_forum.php">Q&A</a></li>
+                        <li><a href="qa_forum.php">Q&amp;A</a></li>
                         <li><a href="passanger_profile.php">Profile</a></li>
-                        <li><a href="logout.php" style="color: #ffcccb;">Logout</a></li>
+                        <!-- Passenger logout with confirm -->
+                        <li><a href="#" id="passengerLogoutLink" style="color: #ffcccb;">Logout</a></li>
 
                     <?php elseif(isset($_SESSION['driver_id'])): ?>
                         <li><a href="driver_dashboard.php">Dashboard</a></li>
-                        <li><a href="driver_rides.php">My Rides</a></li>
-                        <li><a href="driver_history.php">History</a></li>
-                        <li><a href="driver_profile.php">Profile</a></li>
-                        <li><a href="driver_logout.php" style="color: #ffcccb;">Logout</a></li>
-
-                    <?php else: ?>
-                        <li><a href="index.php">Home</a></li>
-                        <li><a href="contact_us.php">Contact Us</a></li>
-                    <?php endif; ?>
-                </ul>
-            </nav>
-        </div>
-    </header>
-
-    <main>
-        <div class="container content-area">
+                        <li><a href="driver_rides.php">My Rides</a></l_
