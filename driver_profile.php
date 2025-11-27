@@ -13,35 +13,19 @@ if (!isset($_SESSION['driver_id'])) {
 $driver_id = $_SESSION['driver_id'];
 
 /* ----------------------------------------
-   Handle profile update (driver + vehicle)
+   Handle profile update (name, ID only)
 ----------------------------------------- */
 if (isset($_POST['save_profile'])) {
 
-    // Driver fields
     $full_name         = trim($_POST['full_name']);
     $identification_id = trim($_POST['identification_id']);
 
-    // Vehicle fields
-    $vehicle_model  = trim($_POST['vehicle_model']);
-    $plate_number   = trim($_POST['plate_number']);
-    $vehicle_type   = trim($_POST['vehicle_type']);
-    $vehicle_color  = trim($_POST['vehicle_color']);
-    $seat_count_raw = trim($_POST['seat_count']);
-
-    $seat_count = $seat_count_raw === "" ? null : (int)$seat_count_raw;
-
-    if (
-        $full_name === "" ||
-        $identification_id === "" ||
-        $vehicle_model === "" ||
-        $plate_number === ""
-    ) {
+    if ($full_name === "" || $identification_id === "") {
         $_SESSION['swal_title'] = "Missing Fields";
-        $_SESSION['swal_msg']   = "Please fill in all required profile and vehicle fields.";
+        $_SESSION['swal_msg']   = "Please fill in all profile fields.";
         $_SESSION['swal_type']  = "warning";
     } else {
 
-        // 1) Update driver basic info
         $stmt = $conn->prepare("
             UPDATE drivers
             SET full_name = ?, identification_id = ?
@@ -56,115 +40,24 @@ if (isset($_POST['save_profile'])) {
                 $driver_id
             );
 
-            $ok_driver = $stmt->execute();
+            if ($stmt->execute()) {
+                $_SESSION['swal_title'] = "Profile Updated";
+                $_SESSION['swal_msg']   = "Your personal information has been updated.";
+                $_SESSION['swal_type']  = "success";
+            } else {
+                $_SESSION['swal_title'] = "Error";
+                $_SESSION['swal_msg']   = "Failed to update profile. Please try again.";
+                $_SESSION['swal_type']  = "error";
+            }
+
             $stmt->close();
         } else {
-            $ok_driver = false;
-        }
-
-        // 2) Insert or update vehicle info (1 vehicle per driver)
-        $ok_vehicle = false;
-
-        if ($ok_driver) {
-            // Check if this driver already has a vehicle
-            $check = $conn->prepare("
-                SELECT vehicle_id 
-                FROM vehicles 
-                WHERE driver_id = ? 
-                LIMIT 1
-            ");
-            if ($check) {
-                $check->bind_param("i", $driver_id);
-                $check->execute();
-                $result = $check->get_result();
-
-                if ($result && $result->num_rows === 1) {
-                    // Update existing vehicle
-                    $row        = $result->fetch_assoc();
-                    $vehicle_id = $row['vehicle_id'];
-
-                    $update = $conn->prepare("
-                        UPDATE vehicles
-                        SET vehicle_model = ?, 
-                            plate_number  = ?, 
-                            vehicle_type  = ?, 
-                            vehicle_color = ?, 
-                            seat_count    = ?
-                        WHERE vehicle_id = ?
-                    ");
-
-                    if ($update) {
-                        // seat_count can be null
-                        if ($seat_count === null) {
-                            $seat_param = null;
-                        } else {
-                            $seat_param = $seat_count;
-                        }
-
-                        $update->bind_param(
-                            "ssssii",
-                            $vehicle_model,
-                            $plate_number,
-                            $vehicle_type,
-                            $vehicle_color,
-                            $seat_param,
-                            $vehicle_id
-                        );
-
-                        $ok_vehicle = $update->execute();
-                        $update->close();
-                    }
-
-                } else {
-                    // No vehicle yet: insert one
-                    $insert = $conn->prepare("
-                        INSERT INTO vehicles
-                        (driver_id, vehicle_model, plate_number, vehicle_type, vehicle_color, seat_count)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ");
-
-                    if ($insert) {
-                        if ($seat_count === null) {
-                            $seat_param = null;
-                        } else {
-                            $seat_param = $seat_count;
-                        }
-
-                        $insert->bind_param(
-                            "issssi",
-                            $driver_id,
-                            $vehicle_model,
-                            $plate_number,
-                            $vehicle_type,
-                            $vehicle_color,
-                            $seat_param
-                        );
-
-                        $ok_vehicle = $insert->execute();
-                        $insert->close();
-                    }
-                }
-
-                $check->close();
-            }
-        }
-
-        if ($ok_driver && $ok_vehicle) {
-            $_SESSION['swal_title'] = "Profile Updated";
-            $_SESSION['swal_msg']   = "Your profile and vehicle information have been updated.";
-            $_SESSION['swal_type']  = "success";
-        } elseif ($ok_driver && !$ok_vehicle) {
-            $_SESSION['swal_title'] = "Partial Update";
-            $_SESSION['swal_msg']   = "Driver info updated, but vehicle info failed. Please try again.";
-            $_SESSION['swal_type']  = "warning";
-        } else {
             $_SESSION['swal_title'] = "Error";
-            $_SESSION['swal_msg']   = "Failed to update profile. Please try again.";
+            $_SESSION['swal_msg']   = "Database error (update profile).";
             $_SESSION['swal_type']  = "error";
         }
     }
 
-    // Avoid resubmission on refresh
     redirect("driver_profile.php");
     exit;
 }
@@ -248,33 +141,17 @@ if (isset($_POST['change_password'])) {
 }
 
 /* ----------------------------------------
-   Fetch latest driver + vehicle info
+   Fetch latest driver info for display
 ----------------------------------------- */
 $full_name         = "";
 $email             = "";
 $identification_id = "";
 $created_at        = "";
 
-$vehicle_model  = "";
-$plate_number   = "";
-$vehicle_type   = "";
-$vehicle_color  = "";
-$seat_count     = null;
-
 $stmt = $conn->prepare("
-    SELECT 
-        d.full_name,
-        d.email,
-        d.identification_id,
-        d.created_at,
-        v.vehicle_model,
-        v.plate_number,
-        v.vehicle_type,
-        v.vehicle_color,
-        v.seat_count
-    FROM drivers d
-    LEFT JOIN vehicles v ON d.driver_id = v.driver_id
-    WHERE d.driver_id = ?
+    SELECT full_name, email, identification_id, created_at
+    FROM drivers
+    WHERE driver_id = ?
 ");
 
 if ($stmt) {
@@ -288,12 +165,6 @@ if ($stmt) {
         $email             = $row['email'];
         $identification_id = $row['identification_id'];
         $created_at        = $row['created_at'];
-
-        $vehicle_model  = $row['vehicle_model'];
-        $plate_number   = $row['plate_number'];
-        $vehicle_type   = $row['vehicle_type'];
-        $vehicle_color  = $row['vehicle_color'];
-        $seat_count     = $row['seat_count'];
     }
     $stmt->close();
 }
@@ -305,22 +176,8 @@ include "header.php";
 .profile-wrapper {
     min-height: calc(100vh - 160px);
     padding: 30px 10px 40px;
-    max-width: 1100px;
+    max-width: 900px;
     margin: 0 auto;
-}
-
-.profile-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 18px;
-    gap: 10px;
-}
-
-.profile-header-title {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
 }
 
 .profile-header-title h1 {
@@ -329,7 +186,6 @@ include "header.php";
     font-weight: 700;
     color: #004b82;
 }
-
 .profile-header-title p {
     margin: 0;
     font-size: 13px;
@@ -338,12 +194,11 @@ include "header.php";
 
 .profile-grid {
     display: grid;
-    grid-template-columns: 2fr 3fr;
+    grid-template-columns: 1.5fr 2fr;
     gap: 18px;
 }
 
-/* Summary card */
-.profile-summary-card {
+.profile-card, .form-card {
     background: #ffffff;
     border-radius: 16px;
     border: 1px solid #e3e6ea;
@@ -351,26 +206,11 @@ include "header.php";
     padding: 18px 18px 16px;
 }
 
-.profile-summary-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.profile-summary-title {
+.profile-card-title {
     font-size: 15px;
     font-weight: 600;
     color: #004b82;
-}
-
-.profile-summary-tag {
-    font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: #eaf7ff;
-    color: #0077c2;
-    font-weight: 500;
+    margin-bottom: 10px;
 }
 
 .summary-row {
@@ -386,15 +226,6 @@ include "header.php";
     font-size: 13px;
     font-weight: 500;
     color: #333;
-}
-
-/* Form card */
-.profile-form-card {
-    background: #ffffff;
-    border-radius: 16px;
-    border: 1px solid #e3e6ea;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-    padding: 18px 18px 16px;
 }
 
 .form-section-title {
@@ -450,7 +281,6 @@ include "header.php";
     box-shadow: 0 8px 18px rgba(0,0,0,0.16);
     transition: 0.15s;
 }
-
 .btn-primary-pill:hover {
     transform: translateY(-1px);
     box-shadow: 0 10px 22px rgba(0,0,0,0.2);
@@ -473,19 +303,10 @@ include "header.php";
     border-top: 1px dashed #e0e0e0;
     padding-top: 14px;
 }
-
-/* Use flex so 3 inputs align nicely */
 .password-grid {
     display: flex;
-    gap: 14px;
-}
-
-.password-grid .form-group {
-    flex: 1;
-}
-
-.password-grid .form-group input {
-    width: 100%;
+    flex-direction: column;
+    gap: 10px;
 }
 
 @media (max-width: 900px) {
@@ -495,12 +316,6 @@ include "header.php";
     .profile-wrapper {
         padding: 24px 10px 30px;
     }
-    .password-grid {
-        flex-direction: column;
-    }
-}
-
-@media (max-width: 600px) {
     .form-grid {
         grid-template-columns: 1fr;
     }
@@ -511,21 +326,15 @@ include "header.php";
 </style>
 
 <div class="profile-wrapper">
-
-    <div class="profile-header">
-        <div class="profile-header-title">
-            <h1>Driver Profile</h1>
-            <p>View and update your personal details, vehicle information, and password.</p>
-        </div>
+    <div class="profile-header-title" style="margin-bottom:16px;">
+        <h1>Driver Profile</h1>
+        <p>View and update your personal details and account password.</p>
     </div>
 
     <div class="profile-grid">
         <!-- Left: Summary -->
-        <div class="profile-summary-card">
-            <div class="profile-summary-header">
-                <div class="profile-summary-title">Profile Summary</div>
-                <span class="profile-summary-tag">Driver</span>
-            </div>
+        <div class="profile-card">
+            <div class="profile-card-title">Profile Summary</div>
 
             <div class="summary-row">
                 <div class="summary-label">Full Name</div>
@@ -542,41 +351,6 @@ include "header.php";
                 <div class="summary-value"><?php echo htmlspecialchars($identification_id); ?></div>
             </div>
 
-            <div class="summary-row">
-                <div class="summary-label">Vehicle Model</div>
-                <div class="summary-value">
-                    <?php echo $vehicle_model ? htmlspecialchars($vehicle_model) : "Not set yet"; ?>
-                </div>
-            </div>
-
-            <div class="summary-row">
-                <div class="summary-label">Plate Number</div>
-                <div class="summary-value">
-                    <?php echo $plate_number ? htmlspecialchars($plate_number) : "Not set yet"; ?>
-                </div>
-            </div>
-
-            <div class="summary-row">
-                <div class="summary-label">Vehicle Type</div>
-                <div class="summary-value">
-                    <?php echo $vehicle_type ? htmlspecialchars($vehicle_type) : "Not set yet"; ?>
-                </div>
-            </div>
-
-            <div class="summary-row">
-                <div class="summary-label">Vehicle Color</div>
-                <div class="summary-value">
-                    <?php echo $vehicle_color ? htmlspecialchars($vehicle_color) : "Not set yet"; ?>
-                </div>
-            </div>
-
-            <div class="summary-row">
-                <div class="summary-label">Seat Count</div>
-                <div class="summary-value">
-                    <?php echo $seat_count !== null ? htmlspecialchars($seat_count) : "Not set yet"; ?>
-                </div>
-            </div>
-
             <?php if ($created_at): ?>
             <div class="summary-row">
                 <div class="summary-label">Driver Since</div>
@@ -588,10 +362,9 @@ include "header.php";
         </div>
 
         <!-- Right: Forms -->
-        <div class="profile-form-card">
-
-            <!-- Profile & vehicle form -->
-            <div class="form-section-title">Profile & Vehicle Information</div>
+        <div class="form-card">
+            <!-- Profile form -->
+            <div class="form-section-title">Personal Information</div>
             <form method="post" action="">
                 <div class="form-grid">
                     <div class="form-group form-group-full">
@@ -611,39 +384,9 @@ include "header.php";
                         <input type="email" id="email" name="email"
                                value="<?php echo htmlspecialchars($email); ?>" readonly>
                     </div>
-
-                    <div class="form-group">
-                        <label for="vehicle_model">Vehicle Model</label>
-                        <input type="text" id="vehicle_model" name="vehicle_model"
-                               value="<?php echo htmlspecialchars($vehicle_model); ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="plate_number">Plate Number</label>
-                        <input type="text" id="plate_number" name="plate_number"
-                               value="<?php echo htmlspecialchars($plate_number); ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="vehicle_type">Vehicle Type (optional)</label>
-                        <input type="text" id="vehicle_type" name="vehicle_type"
-                               value="<?php echo htmlspecialchars($vehicle_type); ?>">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="vehicle_color">Vehicle Color (optional)</label>
-                        <input type="text" id="vehicle_color" name="vehicle_color"
-                               value="<?php echo htmlspecialchars($vehicle_color); ?>">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="seat_count">Seat Count (optional)</label>
-                        <input type="number" id="seat_count" name="seat_count" min="1" max="20"
-                               value="<?php echo $seat_count !== null ? htmlspecialchars($seat_count) : ""; ?>">
-                    </div>
                 </div>
 
-                <div style="margin-top: 14px; display:flex; gap:10px;">
+                <div style="margin-top: 14px;">
                     <button type="submit" name="save_profile" class="btn-primary-pill">
                         Save Profile
                     </button>
