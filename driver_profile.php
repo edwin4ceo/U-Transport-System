@@ -13,77 +13,154 @@ if (!isset($_SESSION['driver_id'])) {
 $driver_id = $_SESSION['driver_id'];
 
 /* ----------------------------------------
-   Handle profile update (name, ID, vehicle, license)
+   Handle profile update (driver + vehicle)
 ----------------------------------------- */
 if (isset($_POST['save_profile'])) {
 
-    $full_name          = trim($_POST['full_name']);
-    $identification_id  = trim($_POST['identification_id']);
-    $car_model          = trim($_POST['car_model']);
-    $car_plate_number   = trim($_POST['car_plate_number']);
-    $driving_license_no = trim($_POST['driving_license_no']);
-    $license_expiry     = trim($_POST['license_expiry']); // expected format: YYYY-MM-DD
+    // Driver fields
+    $full_name         = trim($_POST['full_name']);
+    $identification_id = trim($_POST['identification_id']);
+
+    // Vehicle fields
+    $vehicle_model  = trim($_POST['vehicle_model']);
+    $plate_number   = trim($_POST['plate_number']);
+    $vehicle_type   = trim($_POST['vehicle_type']);
+    $vehicle_color  = trim($_POST['vehicle_color']);
+    $seat_count_raw = trim($_POST['seat_count']);
+
+    $seat_count = $seat_count_raw === "" ? null : (int)$seat_count_raw;
 
     if (
         $full_name === "" ||
         $identification_id === "" ||
-        $car_model === "" ||
-        $car_plate_number === "" ||
-        $driving_license_no === "" ||
-        $license_expiry === ""
+        $vehicle_model === "" ||
+        $plate_number === ""
     ) {
         $_SESSION['swal_title'] = "Missing Fields";
-        $_SESSION['swal_msg']   = "Please fill in all profile, vehicle and license fields.";
+        $_SESSION['swal_msg']   = "Please fill in all required profile and vehicle fields.";
         $_SESSION['swal_type']  = "warning";
     } else {
 
-        // (Optional) basic date format check for license expiry
-        $d = DateTime::createFromFormat('Y-m-d', $license_expiry);
-        if (!($d && $d->format('Y-m-d') === $license_expiry)) {
-            $_SESSION['swal_title'] = "Invalid Date";
-            $_SESSION['swal_msg']   = "Please enter a valid license expiry date (YYYY-MM-DD).";
-            $_SESSION['swal_type']  = "warning";
+        // 1) Update driver basic info
+        $stmt = $conn->prepare("
+            UPDATE drivers
+            SET full_name = ?, identification_id = ?
+            WHERE driver_id = ?
+        ");
+
+        if ($stmt) {
+            $stmt->bind_param(
+                "ssi",
+                $full_name,
+                $identification_id,
+                $driver_id
+            );
+
+            $ok_driver = $stmt->execute();
+            $stmt->close();
         } else {
+            $ok_driver = false;
+        }
 
-            $stmt = $conn->prepare("
-                UPDATE drivers
-                SET full_name = ?, 
-                    identification_id = ?, 
-                    car_model = ?, 
-                    car_plate_number = ?,
-                    driving_license_no = ?,
-                    license_expiry = ?
-                WHERE driver_id = ?
+        // 2) Insert or update vehicle info (1 vehicle per driver)
+        $ok_vehicle = false;
+
+        if ($ok_driver) {
+            // Check if this driver already has a vehicle
+            $check = $conn->prepare("
+                SELECT vehicle_id 
+                FROM vehicles 
+                WHERE driver_id = ? 
+                LIMIT 1
             ");
+            if ($check) {
+                $check->bind_param("i", $driver_id);
+                $check->execute();
+                $result = $check->get_result();
 
-            if ($stmt) {
-                $stmt->bind_param(
-                    "ssssssi",
-                    $full_name,
-                    $identification_id,
-                    $car_model,
-                    $car_plate_number,
-                    $driving_license_no,
-                    $license_expiry,
-                    $driver_id
-                );
+                if ($result && $result->num_rows === 1) {
+                    // Update existing vehicle
+                    $row        = $result->fetch_assoc();
+                    $vehicle_id = $row['vehicle_id'];
 
-                if ($stmt->execute()) {
-                    $_SESSION['swal_title'] = "Profile Updated";
-                    $_SESSION['swal_msg']   = "Your profile, vehicle and license information have been updated.";
-                    $_SESSION['swal_type']  = "success";
+                    $update = $conn->prepare("
+                        UPDATE vehicles
+                        SET vehicle_model = ?, 
+                            plate_number  = ?, 
+                            vehicle_type  = ?, 
+                            vehicle_color = ?, 
+                            seat_count    = ?
+                        WHERE vehicle_id = ?
+                    ");
+
+                    if ($update) {
+                        // seat_count can be null
+                        if ($seat_count === null) {
+                            $seat_param = null;
+                        } else {
+                            $seat_param = $seat_count;
+                        }
+
+                        $update->bind_param(
+                            "ssssii",
+                            $vehicle_model,
+                            $plate_number,
+                            $vehicle_type,
+                            $vehicle_color,
+                            $seat_param,
+                            $vehicle_id
+                        );
+
+                        $ok_vehicle = $update->execute();
+                        $update->close();
+                    }
+
                 } else {
-                    $_SESSION['swal_title'] = "Error";
-                    $_SESSION['swal_msg']   = "Failed to update profile. Please try again.";
-                    $_SESSION['swal_type']  = "error";
+                    // No vehicle yet: insert one
+                    $insert = $conn->prepare("
+                        INSERT INTO vehicles
+                        (driver_id, vehicle_model, plate_number, vehicle_type, vehicle_color, seat_count)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+
+                    if ($insert) {
+                        if ($seat_count === null) {
+                            $seat_param = null;
+                        } else {
+                            $seat_param = $seat_count;
+                        }
+
+                        $insert->bind_param(
+                            "issssi",
+                            $driver_id,
+                            $vehicle_model,
+                            $plate_number,
+                            $vehicle_type,
+                            $vehicle_color,
+                            $seat_param
+                        );
+
+                        $ok_vehicle = $insert->execute();
+                        $insert->close();
+                    }
                 }
 
-                $stmt->close();
-            } else {
-                $_SESSION['swal_title'] = "Error";
-                $_SESSION['swal_msg']   = "Database error (update profile).";
-                $_SESSION['swal_type']  = "error";
+                $check->close();
             }
+        }
+
+        if ($ok_driver && $ok_vehicle) {
+            $_SESSION['swal_title'] = "Profile Updated";
+            $_SESSION['swal_msg']   = "Your profile and vehicle information have been updated.";
+            $_SESSION['swal_type']  = "success";
+        } elseif ($ok_driver && !$ok_vehicle) {
+            $_SESSION['swal_title'] = "Partial Update";
+            $_SESSION['swal_msg']   = "Driver info updated, but vehicle info failed. Please try again.";
+            $_SESSION['swal_type']  = "warning";
+        } else {
+            $_SESSION['swal_title'] = "Error";
+            $_SESSION['swal_msg']   = "Failed to update profile. Please try again.";
+            $_SESSION['swal_type']  = "error";
         }
     }
 
@@ -171,22 +248,33 @@ if (isset($_POST['change_password'])) {
 }
 
 /* ----------------------------------------
-   Fetch latest driver info for display
+   Fetch latest driver + vehicle info
 ----------------------------------------- */
-$full_name          = "";
-$email              = "";
-$identification_id  = "";
-$car_model          = "";
-$car_plate_number   = "";
-$driving_license_no = "";
-$license_expiry     = "";
-$created_at         = "";
+$full_name         = "";
+$email             = "";
+$identification_id = "";
+$created_at        = "";
+
+$vehicle_model  = "";
+$plate_number   = "";
+$vehicle_type   = "";
+$vehicle_color  = "";
+$seat_count     = null;
 
 $stmt = $conn->prepare("
-    SELECT full_name, email, identification_id, car_model, car_plate_number,
-           driving_license_no, license_expiry, created_at
-    FROM drivers
-    WHERE driver_id = ?
+    SELECT 
+        d.full_name,
+        d.email,
+        d.identification_id,
+        d.created_at,
+        v.vehicle_model,
+        v.plate_number,
+        v.vehicle_type,
+        v.vehicle_color,
+        v.seat_count
+    FROM drivers d
+    LEFT JOIN vehicles v ON d.driver_id = v.driver_id
+    WHERE d.driver_id = ?
 ");
 
 if ($stmt) {
@@ -199,11 +287,13 @@ if ($stmt) {
         $full_name         = $row['full_name'];
         $email             = $row['email'];
         $identification_id = $row['identification_id'];
-        $car_model         = $row['car_model'];
-        $car_plate_number  = $row['car_plate_number'];
-        $driving_license_no= $row['driving_license_no'];
-        $license_expiry    = $row['license_expiry'];
         $created_at        = $row['created_at'];
+
+        $vehicle_model  = $row['vehicle_model'];
+        $plate_number   = $row['plate_number'];
+        $vehicle_type   = $row['vehicle_type'];
+        $vehicle_color  = $row['vehicle_color'];
+        $seat_count     = $row['seat_count'];
     }
     $stmt->close();
 }
@@ -377,34 +467,36 @@ include "header.php";
     cursor: pointer;
 }
 
-/* Password form - vertical layout */
+/* Password form */
 .password-section {
     margin-top: 18px;
     border-top: 1px dashed #e0e0e0;
     padding-top: 14px;
 }
 
+/* Use flex so 3 inputs align nicely */
 .password-grid {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
+    gap: 14px;
 }
 
 .password-grid .form-group {
-    width: 100%;
+    flex: 1;
 }
 
 .password-grid .form-group input {
     width: 100%;
 }
 
-/* Responsive */
 @media (max-width: 900px) {
     .profile-grid {
         grid-template-columns: 1fr;
     }
     .profile-wrapper {
         padding: 24px 10px 30px;
+    }
+    .password-grid {
+        flex-direction: column;
     }
 }
 
@@ -423,7 +515,7 @@ include "header.php";
     <div class="profile-header">
         <div class="profile-header-title">
             <h1>Driver Profile</h1>
-            <p>View and update your personal details, vehicle information, license and password.</p>
+            <p>View and update your personal details, vehicle information, and password.</p>
         </div>
     </div>
 
@@ -451,36 +543,37 @@ include "header.php";
             </div>
 
             <div class="summary-row">
-                <div class="summary-label">Car Model</div>
+                <div class="summary-label">Vehicle Model</div>
                 <div class="summary-value">
-                    <?php echo $car_model ? htmlspecialchars($car_model) : "Not set yet"; ?>
+                    <?php echo $vehicle_model ? htmlspecialchars($vehicle_model) : "Not set yet"; ?>
                 </div>
             </div>
 
             <div class="summary-row">
-                <div class="summary-label">Car Plate Number</div>
+                <div class="summary-label">Plate Number</div>
                 <div class="summary-value">
-                    <?php echo $car_plate_number ? htmlspecialchars($car_plate_number) : "Not set yet"; ?>
+                    <?php echo $plate_number ? htmlspecialchars($plate_number) : "Not set yet"; ?>
                 </div>
             </div>
 
             <div class="summary-row">
-                <div class="summary-label">Driving License No.</div>
+                <div class="summary-label">Vehicle Type</div>
                 <div class="summary-value">
-                    <?php echo $driving_license_no ? htmlspecialchars($driving_license_no) : "Not set yet"; ?>
+                    <?php echo $vehicle_type ? htmlspecialchars($vehicle_type) : "Not set yet"; ?>
                 </div>
             </div>
 
             <div class="summary-row">
-                <div class="summary-label">License Expiry Date</div>
+                <div class="summary-label">Vehicle Color</div>
                 <div class="summary-value">
-                    <?php
-                    if ($license_expiry) {
-                        echo htmlspecialchars(date("d M Y", strtotime($license_expiry)));
-                    } else {
-                        echo "Not set yet";
-                    }
-                    ?>
+                    <?php echo $vehicle_color ? htmlspecialchars($vehicle_color) : "Not set yet"; ?>
+                </div>
+            </div>
+
+            <div class="summary-row">
+                <div class="summary-label">Seat Count</div>
+                <div class="summary-value">
+                    <?php echo $seat_count !== null ? htmlspecialchars($seat_count) : "Not set yet"; ?>
                 </div>
             </div>
 
@@ -497,8 +590,8 @@ include "header.php";
         <!-- Right: Forms -->
         <div class="profile-form-card">
 
-            <!-- Profile, vehicle & license form -->
-            <div class="form-section-title">Profile, Vehicle & License Information</div>
+            <!-- Profile & vehicle form -->
+            <div class="form-section-title">Profile & Vehicle Information</div>
             <form method="post" action="">
                 <div class="form-grid">
                     <div class="form-group form-group-full">
@@ -520,27 +613,33 @@ include "header.php";
                     </div>
 
                     <div class="form-group">
-                        <label for="car_model">Car Model</label>
-                        <input type="text" id="car_model" name="car_model"
-                               value="<?php echo htmlspecialchars($car_model); ?>" required>
+                        <label for="vehicle_model">Vehicle Model</label>
+                        <input type="text" id="vehicle_model" name="vehicle_model"
+                               value="<?php echo htmlspecialchars($vehicle_model); ?>" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="car_plate_number">Car Plate Number</label>
-                        <input type="text" id="car_plate_number" name="car_plate_number"
-                               value="<?php echo htmlspecialchars($car_plate_number); ?>" required>
+                        <label for="plate_number">Plate Number</label>
+                        <input type="text" id="plate_number" name="plate_number"
+                               value="<?php echo htmlspecialchars($plate_number); ?>" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="driving_license_no">Driving License Number</label>
-                        <input type="text" id="driving_license_no" name="driving_license_no"
-                               value="<?php echo htmlspecialchars($driving_license_no); ?>" required>
+                        <label for="vehicle_type">Vehicle Type (optional)</label>
+                        <input type="text" id="vehicle_type" name="vehicle_type"
+                               value="<?php echo htmlspecialchars($vehicle_type); ?>">
                     </div>
 
                     <div class="form-group">
-                        <label for="license_expiry">License Expiry Date</label>
-                        <input type="date" id="license_expiry" name="license_expiry"
-                               value="<?php echo htmlspecialchars($license_expiry); ?>" required>
+                        <label for="vehicle_color">Vehicle Color (optional)</label>
+                        <input type="text" id="vehicle_color" name="vehicle_color"
+                               value="<?php echo htmlspecialchars($vehicle_color); ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="seat_count">Seat Count (optional)</label>
+                        <input type="number" id="seat_count" name="seat_count" min="1" max="20"
+                               value="<?php echo $seat_count !== null ? htmlspecialchars($seat_count) : ""; ?>">
                     </div>
                 </div>
 
