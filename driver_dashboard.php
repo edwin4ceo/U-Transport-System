@@ -129,8 +129,6 @@ body { background: #f5f7fb; }
     color: #fff;
 }
 
-/* Removed logout button completely */
-
 /* Layout grid */
 .dashboard-grid {
     display: grid;
@@ -237,8 +235,8 @@ body { background: #f5f7fb; }
         </div>
 
         <div class="dashboard-actions-top">
-            <a href="driver_profile_edit.php" class="btn-outline">
-                <i class="fa-regular fa-user"></i>Edit profile
+            <a href="driver_profile.php" class="btn-outline">
+                <i class="fa-regular fa-user"></i> Edit profile
             </a>
         </div>
     </div>
@@ -256,28 +254,32 @@ body { background: #f5f7fb; }
 
                 <div class="profile-row">
                     <span class="profile-label">Name</span>
-                    <span class="profile-value"><?php echo $full_name; ?></span>
+                    <span class="profile-value"><?php echo htmlspecialchars($full_name); ?></span>
                 </div>
 
                 <div class="profile-row">
                     <span class="profile-label">Email</span>
-                    <span class="profile-value"><?php echo $email; ?></span>
+                    <span class="profile-value"><?php echo htmlspecialchars($email); ?></span>
                 </div>
 
                 <div class="profile-row">
                     <span class="profile-label">Car Model</span>
-                    <span class="profile-value"><?php echo $car_model ?: "Not set yet"; ?></span>
+                    <span class="profile-value">
+                        <?php echo $car_model ? htmlspecialchars($car_model) : "Not set yet"; ?>
+                    </span>
                 </div>
 
                 <div class="profile-row">
                     <span class="profile-label">Car Plate Number</span>
-                    <span class="profile-value"><?php echo $car_plate_number ?: "Not set yet"; ?></span>
+                    <span class="profile-value">
+                        <?php echo $car_plate_number ? htmlspecialchars($car_plate_number) : "Not set yet"; ?>
+                    </span>
                 </div>
 
             </div>
 
             <div class="card-footer">
-                <a href="driver_profile_edit.php" class="card-link">Update profile & vehicle</a>
+                <a href="driver_profile.php" class="card-link">Update profile & vehicle</a>
             </div>
         </div>
 
