@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 showCancelButton: true,
                 confirmButtonColor: "#e74c3c",
                 cancelButtonColor: "#3085d6",
-                confirmButtonText: "Yes, logout",
+                confirmButtonText: "Yes",
                 cancelButtonText: "Cancel"
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 showCancelButton: true,
                 confirmButtonColor: "#e74c3c",
                 cancelButtonColor: "#3085d6",
-                confirmButtonText: "Yes, logout",
+                confirmButtonText: "Yes",
                 cancelButtonText: "Cancel"
             }).then((result) => {
                 if (result.isConfirmed) {
