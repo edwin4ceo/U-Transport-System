@@ -7,14 +7,13 @@ include "function.php";
 // Process the submitted registration form
 if(isset($_POST['register'])){
 
-    // use full_name to match the `drivers` table and dashboard
-    $full_name          = $_POST['full_name'];
-    $identification_id  = $_POST['identification_id']; 
-    $email              = $_POST['email'];
-    $car_model          = $_POST['car_model']; 
-    $car_plate_number   = $_POST['car_plate_number']; 
-    $password_plain     = $_POST['password'];
-    $password           = password_hash($password_plain, PASSWORD_BCRYPT);
+    $full_name       = $_POST['full_name'];
+    $email           = $_POST['email'];
+    $phone           = $_POST['phone'];
+    $license_number  = $_POST['license_number'];
+    $license_expiry  = $_POST['license_expiry'];   // date
+    $password_plain  = $_POST['password'];
+    $password_hash   = password_hash($password_plain, PASSWORD_BCRYPT);
 
     // 1. Check for duplicate email addresses (operate on the 'drivers' table)
     $check = $conn->prepare("SELECT driver_id FROM drivers WHERE email = ?");
@@ -24,39 +23,37 @@ if(isset($_POST['register'])){
 
     if($result && $result->num_rows > 0){
         // Custom error message
-        $_SESSION['swal_title']      = "Registration Failed";
-        $_SESSION['swal_msg']        = "This email is already registered. Please login instead.";
-        $_SESSION['swal_type']       = "warning";
-        $_SESSION['swal_btn_text']   = "Login Now";
-        $_SESSION['swal_btn_link']   = "driver_login.php"; // redirect to driver login page
-        $_SESSION['swal_show_cancel']= true;
-        $_SESSION['swal_cancel_text']= "Try Again";
+        $_SESSION['swal_title']       = "Registration Failed";
+        $_SESSION['swal_msg']         = "This email is already registered. Please login instead.";
+        $_SESSION['swal_type']        = "warning";
+        $_SESSION['swal_btn_text']    = "Login Now";
+        $_SESSION['swal_btn_link']    = "driver_login.php"; // redirect to driver login page
+        $_SESSION['swal_show_cancel'] = true;
+        $_SESSION['swal_cancel_text'] = "Try Again";
         redirect("driver_register.php");
         exit;
     }
 
     // 2. Insert new driver information into `drivers`
-    // make sure your `drivers` table has these columns:
-    // full_name, identification_id, email, password, car_model, car_plate_number
+    // 现在完全配合你资料表的栏位
     $sql = "INSERT INTO drivers (
-                full_name, 
-                identification_id, 
-                email, 
-                password, 
-                car_model, 
-                car_plate_number
-            ) 
-            VALUES (?,?,?,?,?,?)";
+                full_name,
+                email,
+                password_hash,
+                phone,
+                license_number,
+                license_expiry
+            ) VALUES (?,?,?,?,?,?)";
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
         "ssssss",
         $full_name,
-        $identification_id,
         $email,
-        $password,
-        $car_model,
-        $car_plate_number
+        $password_hash,
+        $phone,
+        $license_number,
+        $license_expiry
     );
 
     if($stmt->execute()){
@@ -92,20 +89,19 @@ if(isset($_POST['register'])){
 
 <form action="" method="POST">
     <label>Full Name</label>
-    <!-- use full_name to match PHP & database -->
     <input type="text" name="full_name" required placeholder="Enter your full name">
-
-    <label>IC / Passport Number</label>
-    <input type="text" name="identification_id" required placeholder="e.g. 901020-04-5678 or A12345678">
 
     <label>Email Address</label>
     <input type="email" name="email" required placeholder="your.email@example.com">
 
-    <label>Car Model</label>
-    <input type="text" name="car_model" required placeholder="e.g. Perodua Myvi">
-    
-    <label>Car Plate Number</label>
-    <input type="text" name="car_plate_number" required placeholder="e.g. WAA 1234 X">
+    <label>Phone Number</label>
+    <input type="text" name="phone" required placeholder="e.g. 012-3456789">
+
+    <label>Driving License Number</label>
+    <input type="text" name="license_number" required placeholder="e.g. B1234567">
+
+    <label>Driving License Expiry Date</label>
+    <input type="date" name="license_expiry" required>
 
     <label>Password</label>
     <input type="password" name="password" required placeholder="Create a password">
