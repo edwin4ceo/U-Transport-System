@@ -228,78 +228,76 @@ include "header.php";
         text-decoration: underline;
     }
 
+    /* Larger Quick Action Cards */
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px; /* bigger spacing */
+    padding: 6px 2px;
+}
+
+/* Bigger & More Prominent Cards */
+.quick-card {
+    border-radius: 18px;
+    border: 1px solid #d8dde2;
+    background: #ffffff;
+
+    padding: 20px 18px 16px;   /* increased padding */
+    min-height: 150px;         /* bigger body */
+    
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* expand spacing nicely */
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Hover effect – more interactive */
+.quick-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.12);
+}
+
+/* Larger title */
+.quick-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #004b82;
+    margin-bottom: 6px;
+}
+
+/* Larger description */
+.quick-desc {
+    font-size: 13px;
+    color: #555;
+    flex: 1;
+}
+
+/* Larger link */
+.quick-link {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: #005a9c;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.quick-link:hover {
+    text-decoration: underline;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 900px) {
     .quick-actions-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(2, 1fr);
     }
-
-    .quick-card {
-        border-radius: 14px;
-        border: 1px solid #e3e6ea;
-        background: #fdfdff;
-        padding: 12px 12px 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+}
+@media (max-width: 600px) {
+    .quick-actions-grid {
+        grid-template-columns: 1fr;
     }
-
-    .quick-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: #004b82;
-    }
-
-    .quick-desc {
-        font-size: 12px;
-        color: #666;
-        flex: 1;
-    }
-
-    .quick-link {
-        margin-top: 4px;
-        font-size: 11px;
-        color: #005a9c;
-        text-decoration: none;
-        font-weight: 500;
-    }
-
-    .quick-link:hover {
-        text-decoration: underline;
-    }
-
-    .section-title {
-        margin-top: 24px;
-        margin-bottom: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #444;
-    }
-
-    .muted-text {
-        font-size: 12px;
-        color: #888;
-    }
-
-    @media (max-width: 900px) {
-        .dashboard-wrapper {
-            padding: 20px 14px 28px;
-        }
-        .dashboard-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    @media (max-width: 600px) {
-        .dashboard-header {
-            align-items: flex-start;
-        }
-        .dashboard-actions-top {
-            width: 100%;
-            justify-content: flex-start;
-            flex-wrap: wrap;
-        }
-    }
+}
 </style>
 
 <div class="dashboard-wrapper">
