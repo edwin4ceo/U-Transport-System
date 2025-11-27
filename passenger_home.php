@@ -12,13 +12,22 @@ if(!isset($_SESSION['student_id'])){
 include "header.php"; 
 ?>
 
+<style>
+    footer {
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+    }
+</style>
+
 <h2>Welcome back, <?php echo $_SESSION['student_name']; ?>!</h2>
 <p>Your convenient and safe solution for campus transportation. Find a ride or offer one today.</p>
 
 <h3>Quick Search</h3>
 <form action="search_transport.php" method="GET">
     
-    <label>State</label>
+    <label>Destination State</label>
     <select name="state" id="searchStateSelect" style="color: #333; width: 100%; padding: 10px; margin-bottom: 15px;">
         <option value="" selected>All States</option>
         <option value="Johor">Johor</option>
@@ -26,7 +35,7 @@ include "header.php";
         <option value="Kuala Lumpur/Selangor">Kuala Lumpur/Selangor</option>
     </select>
 
-    <label>Region / City</label>
+    <label>Destination Region / City</label>
     <select name="region" id="searchRegionSelect" style="color: #333; width: 100%; padding: 10px; margin-bottom: 15px;" disabled>
         <option value="" selected>All Regions</option>
     </select>
@@ -34,6 +43,26 @@ include "header.php";
     <label for="destination">Where to?</label>
     <input type="text" id="destination" name="destination" placeholder="e.g., University Library, Mall" style="width: 100%; padding: 10px; margin-bottom: 15px;">
     
+    <label>Number of Passengers</label>
+    <select name="passengers" id="searchPassengerSelect" style="color: #333; width: 100%; padding: 10px; margin-bottom: 15px;">
+        <option value="" disabled selected hidden>Select Pax</option>
+        <option value="1">1 Passenger</option>
+        <option value="2">2 Passengers</option>
+        <option value="3">3 Passengers</option>
+        <option value="4">4 Passengers</option>
+        <option value="5">5 Passengers</option>
+        <option value="6">6 Passengers</option>
+    </select>
+
+    <label>Vehicle Category</label>
+    <select name="vehicle_type" id="searchVehicleSelect" style="color: #333; width: 100%; padding: 10px; margin-bottom: 15px;">
+        <option value="" selected>Any Type</option>
+        <option value="Hatchback" class="small-car">Hatchback (Max 4)</option>
+        <option value="Sedan" class="small-car">Sedan (Max 4)</option>
+        <option value="SUV" class="small-car">SUV (Max 4)</option>
+        <option value="MPV">MPV (Max 6)</option>
+    </select>
+
     <button type="submit" style="width: 100%;">Search Rides</button>
 </form>
 
@@ -44,6 +73,7 @@ include "header.php";
 </div>
 
 <script>
+    // --- Logic 1: State & Region Dependency ---
     const stateSelect = document.getElementById('searchStateSelect');
     const regionSelect = document.getElementById('searchRegionSelect');
 
@@ -63,13 +93,10 @@ include "header.php";
 
     stateSelect.addEventListener('change', function() {
         const selectedState = this.value;
-        
-        // Reset region dropdown
         regionSelect.innerHTML = '<option value="" selected>All Regions</option>';
         
         if (selectedState && regions[selectedState]) {
             regionSelect.disabled = false;
-            
             regions[selectedState].forEach(function(city) {
                 const option = document.createElement('option');
                 option.value = city;
@@ -77,8 +104,36 @@ include "header.php";
                 regionSelect.appendChild(option);
             });
         } else {
-            // If "All States" or invalid selection, disable region
             regionSelect.disabled = true;
+        }
+    });
+
+    // --- Logic 2: Passenger & Vehicle Constraint ---
+    const passengerSelect = document.getElementById('searchPassengerSelect');
+    const vehicleSelect = document.getElementById('searchVehicleSelect');
+    // Get all options that correspond to small cars (Hatchback, Sedan, SUV)
+    const smallCarOptions = document.querySelectorAll('.small-car');
+
+    passengerSelect.addEventListener('change', function() {
+        const pax = parseInt(this.value);
+
+        if (pax > 4) {
+            // Logic: If more than 4 people, disable small cars
+            smallCarOptions.forEach(option => {
+                option.disabled = true; // Make unclickable
+                option.style.color = "#ccc"; // Visual cue (greyed out)
+            });
+
+            // If user previously selected a small car, force reset to "Any" or "MPV"
+            if (vehicleSelect.value === "Hatchback" || vehicleSelect.value === "Sedan" || vehicleSelect.value === "SUV") {
+                vehicleSelect.value = "MPV"; 
+            }
+        } else {
+            // Logic: If 4 or less, enable everything
+            smallCarOptions.forEach(option => {
+                option.disabled = false;
+                option.style.color = "#333";
+            });
         }
     });
 </script>
