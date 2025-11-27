@@ -1,532 +1,522 @@
 <?php
 session_start();
 include "db_connect.php";
-include "function.php";
 
-// Check if the driver is logged in
+// If user is not logged in, redirect to login page
 if (!isset($_SESSION['driver_id'])) {
-    redirect("driver_login.php");
+    header("Location: driver_login.php");
     exit;
 }
 
 $driver_id = $_SESSION['driver_id'];
 
-// Fetch driver profile data from "drivers" table
-$driver = null;
-$driver_stmt = $conn->prepare("SELECT * FROM drivers WHERE id = ?");
-$driver_stmt->bind_param("i", $driver_id);
-$driver_stmt->execute();
-$driver_result = $driver_stmt->get_result();
-if ($driver_result->num_rows === 1) {
-    $driver = $driver_result->fetch_assoc();
-}
-$driver_stmt->close();
-
-// Fetch existing transport data (if any) from "transports" table
-$transport = null;
-$transport_stmt = $conn->prepare("SELECT * FROM transports WHERE driver_id = ? LIMIT 1");
-$transport_stmt->bind_param("i", $driver_id);
-$transport_stmt->execute();
-$transport_result = $transport_stmt->get_result();
-if ($transport_result->num_rows === 1) {
-    $transport = $transport_result->fetch_assoc();
-}
-$transport_stmt->close();
-
-// Fetch booking requests (example table name: bookings)
-$booking_rows = [];
-if ($conn->query("SHOW TABLES LIKE 'bookings'")->num_rows === 1) {
-    $booking_stmt = $conn->prepare("
-        SELECT b.*
-        FROM bookings b
-        WHERE b.driver_id = ?
-        ORDER BY b.request_time DESC
-    ");
-    $booking_stmt->bind_param("i", $driver_id);
-    $booking_stmt->execute();
-    $booking_result = $booking_stmt->get_result();
-    while ($row = $booking_result->fetch_assoc()) {
-        $booking_rows[] = $row;
-    }
-    $booking_stmt->close();
+/* --------------- Helper function: get driver info --------------- */
+function getDriver($conn, $driver_id) {
+    $sql = "SELECT * FROM drivers WHERE driver_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $driver_id);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc();
 }
 
-// Fetch ratings (example table name: ratings)
-$rating_rows = [];
-$average_rating = null;
-if ($conn->query("SHOW TABLES LIKE 'ratings'")->num_rows === 1) {
-    $rating_stmt = $conn->prepare("
-        SELECT r.*
-        FROM ratings r
-        WHERE r.driver_id = ?
-        ORDER BY r.created_at DESC
-    ");
-    $rating_stmt->bind_param("i", $driver_id);
-    $rating_stmt->execute();
-    $rating_result = $rating_stmt->get_result();
-    while ($row = $rating_result->fetch_assoc()) {
-        $rating_rows[] = $row;
-    }
-    $rating_stmt->close();
-
-    // Calculate average rating
-    $avg_result = $conn->query("SELECT AVG(rating) AS avg_rating FROM ratings WHERE driver_id = " . (int)$driver_id);
-    if ($avg_row = $avg_result->fetch_assoc()) {
-        $average_rating = $avg_row['avg_rating'];
-    }
+/* --------------- Helper function: check if a table exists --------------- */
+function tableExists($conn, $tableName) {
+    $tableName = $conn->real_escape_string($tableName);
+    $sql = "SHOW TABLES LIKE '$tableName'";
+    $result = $conn->query($sql);
+    return ($result && $result->num_rows > 0);
 }
 
-// Fetch Q&A messages (example table: forum_messages)
-$forum_rows = [];
-if ($conn->query("SHOW TABLES LIKE 'forum_messages'")->num_rows === 1) {
-    $forum_stmt = $conn->prepare("
-        SELECT f.*
-        FROM forum_messages f
-        WHERE f.driver_id = ?
-        ORDER BY f.created_at DESC
-        LIMIT 20
-    ");
-    $forum_stmt->bind_param("i", $driver_id);
-    $forum_stmt->execute();
-    $forum_result = $forum_stmt->get_result();
-    while ($row = $forum_result->fetch_assoc()) {
-        $forum_rows[] = $row;
-    }
-    $forum_stmt->close();
+$alert = "";
+
+/* --------------- 1. Edit profile (including driving license) --------------- */
+if (isset($_POST['update_profile'])) {
+    $full_name      = $_POST['full_name'];
+    $phone          = $_POST['phone'];
+    $license_number = $_POST['license_number'];
+    $license_expiry = $_POST['license_expiry'];
+
+    $sql = "UPDATE drivers 
+            SET full_name = ?, phone = ?, license_number = ?, license_expiry = ?
+            WHERE driver_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssssi", $full_name, $phone, $license_number, $license_expiry, $driver_id);
+
+    $alert = $stmt->execute() ? "Profile updated." : "Failed to update profile.";
 }
 
+/* --------------- 2. Add transport --------------- */
+if (isset($_POST['add_transport'])) {
+    $vehicle_type    = $_POST['vehicle_type'];
+    $vehicle_model   = $_POST['vehicle_model'];
+    $destination     = $_POST['destination_area'];
+    $available_days  = $_POST['available_days'];
+    $time_from       = $_POST['time_from'];
+    $time_to         = $_POST['time_to'];
+    $price_per_trip  = $_POST['price_per_trip'];
+    $payment_method  = $_POST['payment_method'];
+
+    $sql = "INSERT INTO transports
+            (driver_id, vehicle_type, vehicle_model, destination_area, 
+             available_days, time_from, time_to, price_per_trip, payment_method)
+            VALUES (?,?,?,?,?,?,?,?,?)";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param(
+        "issssssds",
+        $driver_id,
+        $vehicle_type,
+        $vehicle_model,
+        $destination,
+        $available_days,
+        $time_from,
+        $time_to,
+        $price_per_trip,
+        $payment_method
+    );
+
+    $alert = $stmt->execute() ? "Transport added." : "Failed to add transport.";
+}
+
+/* --------------- 3. Accept / reject booking --------------- */
+if (isset($_POST['update_booking_status'])) {
+    $booking_id = $_POST['booking_id'];
+    $status     = $_POST['status']; // accepted / rejected
+
+    $sql = "UPDATE bookings SET status = ? 
+            WHERE booking_id = ? AND driver_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("sii", $status, $booking_id, $driver_id);
+
+    $alert = $stmt->execute() ? "Booking status updated." : "Failed to update booking.";
+}
+
+/* --------------- 4. Forum: add question --------------- */
+if (isset($_POST['add_question'])) {
+    $title = $_POST['question_title'];
+    $body  = $_POST['question_body'];
+
+    $sql = "INSERT INTO forum_questions (driver_id, title, body) VALUES (?,?,?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iss", $driver_id, $title, $body);
+
+    $alert = $stmt->execute() ? "Question posted." : "Failed to post question.";
+}
+
+/* --------------- 5. Forum: add reply --------------- */
+if (isset($_POST['add_reply'])) {
+    $question_id = $_POST['question_id'];
+    $reply_text  = $_POST['reply_text'];
+
+    $sql = "INSERT INTO forum_replies (question_id, driver_id, reply_text) VALUES (?,?,?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iis", $question_id, $driver_id, $reply_text);
+
+    $alert = $stmt->execute() ? "Reply posted." : "Failed to post reply.";
+}
+
+/* --------------- 6. Contact Us / Feedback --------------- */
+if (isset($_POST['send_feedback'])) {
+    $subject = $_POST['subject'];
+    $message = $_POST['message'];
+
+    $sql = "INSERT INTO feedbacks (driver_id, subject, message) VALUES (?,?,?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iss", $driver_id, $subject, $message);
+
+    $alert = $stmt->execute() ? "Feedback sent. Thank you!" : "Failed to send feedback.";
+}
+
+/* --------------- Load data for display --------------- */
+
+// Driver info
+$driver = getDriver($conn, $driver_id);
+
+// If no driver row is found, use empty defaults to avoid warnings
+if (!$driver) {
+    $driver = [
+        'full_name'      => '',
+        'email'          => '',
+        'phone'          => '',
+        'license_number' => '',
+        'license_expiry' => ''
+    ];
+}
+
+// Transport list
+if (tableExists($conn, 'transports')) {
+    $transports_sql = "
+        SELECT * FROM transports 
+        WHERE driver_id = $driver_id 
+        ORDER BY created_at DESC
+    ";
+    $transports = $conn->query($transports_sql);
+} else {
+    $transports = false;
+}
+
+// Booking requests (simple version, no driver filter yet)
+if (tableExists($conn, 'bookings')) {
+    $bookings_sql = "
+        SELECT * 
+        FROM bookings
+        ORDER BY 1 DESC
+    ";
+    $bookings = $conn->query($bookings_sql);
+} else {
+    $bookings = false;
+}
+
+// Ratings & reviews (use your existing `reviews` table)
+if (tableExists($conn, 'reviews')) {
+    $reviews_sql = "
+        SELECT * 
+        FROM reviews
+        ORDER BY 1 DESC
+    ";
+    $reviews = $conn->query($reviews_sql);
+} else {
+    $reviews = false;
+}
+
+// Forum questions
+if (tableExists($conn, 'forum_questions') && tableExists($conn, 'drivers')) {
+    $questions_sql = "
+        SELECT q.*, d.full_name
+        FROM forum_questions q
+        JOIN drivers d ON q.driver_id = d.driver_id
+        ORDER BY q.created_at DESC
+    ";
+    $questions = $conn->query($questions_sql);
+} else {
+    $questions = false;
+}
 ?>
-<?php include "header.php"; ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Driver Dashboard</title>
+    <style>
+        body{font-family:Arial,sans-serif;margin:0;background:#f5f5f5;}
+        .header{background:#007bff;color:#fff;padding:12px 18px;
+                display:flex;justify-content:space-between;align-items:center;}
+        .header a{color:#fff;text-decoration:none;margin-left:8px;}
+        .container{display:flex;}
+        .sidebar{width:220px;background:#fff;border-right:1px solid #ddd;min-height:100vh;}
+        .sidebar button{width:100%;padding:10px 14px;border:none;background:none;
+                        text-align:left;cursor:pointer;border-bottom:1px solid #eee;}
+        .sidebar button:hover,.sidebar button.active{background:#f0f0f0;}
+        .content{flex:1;padding:18px;}
+        .card{background:#fff;border:1px solid #ddd;border-radius:4px;
+              padding:14px;margin-bottom:18px;}
+        .card h2{margin:0 0 10px;font-size:18px;}
+        label{display:block;margin-top:8px;font-size:14px;}
+        input,textarea,select{width:100%;padding:7px;margin-top:3px;
+              box-sizing:border-box;border:1px solid:#ccc;border-radius:3px;font-size:14px;}
+        textarea{resize:vertical;}
+        .btn{margin-top:10px;padding:7px 14px;border:none;border-radius:3px;
+             font-size:14px;cursor:pointer;}
+        .btn-primary{background:#007bff;color:#fff;}
+        .btn-danger{background:#dc3545;color:#fff;}
+        .btn-secondary{background:#6c757d;color:#fff;}
+        .alert{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32;
+               padding:8px 12px;border-radius:3px;margin-bottom:12px;}
+        table{width:100%;border-collapse:collapse;font-size:14px;}
+        th,td{border:1px solid #ddd;padding:6px 8px;}
+        th{background:#f1f1f1;}
+        .section{display:none;}
+        .section.active{display:block;}
+    </style>
+    <script>
+        function showSection(id){
+            document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
 
-<style>
-    .dashboard-container {
-        max-width: 900px;
-        margin: 20px auto 80px auto;
-        background: #ffffff;
-        padding: 20px 25px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
+            document.querySelectorAll('.sidebar button').forEach(b=>b.classList.remove('active'));
+            document.getElementById('btn_'+id).classList.add('active');
+        }
+        window.onload=function(){showSection('profile');};
+    </script>
+</head>
+<body>
 
-    .dashboard-section {
-        margin-bottom: 30px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 20px;
-    }
-
-    .dashboard-section:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .section-title {
-        font-size: 1.2rem;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-
-    .section-description {
-        font-size: 0.95rem;
-        margin-bottom: 15px;
-        color: #555;
-    }
-
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 15px;
-        margin-bottom: 20px;
-    }
-
-    .stat-box {
-        background: #f8f9fa;
-        border-radius: 6px;
-        padding: 12px 15px;
-        text-align: left;
-        border: 1px solid #e0e0e0;
-    }
-
-    .stat-label {
-        font-size: 0.85rem;
-        color: #666;
-    }
-
-    .stat-value {
-        font-size: 1.4rem;
-        font-weight: bold;
-        margin-top: 5px;
-    }
-
-    .dashboard-form label {
-        display: block;
-        margin-top: 10px;
-        font-weight: 500;
-    }
-
-    .dashboard-form input,
-    .dashboard-form select,
-    .dashboard-form textarea {
-        width: 100%;
-        padding: 8px;
-        margin-top: 4px;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        font-size: 0.95rem;
-    }
-
-    .dashboard-form textarea {
-        resize: vertical;
-    }
-
-    .dashboard-form button {
-        margin-top: 15px;
-        padding: 8px 16px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.95rem;
-    }
-
-    .dashboard-form button.btn-secondary {
-        background-color: #6c757d;
-    }
-
-    .dashboard-form button.btn-danger {
-        background-color: #dc3545;
-    }
-
-    .dashboard-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.9rem;
-    }
-
-    .dashboard-table th,
-    .dashboard-table td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        vertical-align: top;
-    }
-
-    .dashboard-table th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-    }
-
-    .text-small {
-        font-size: 0.85rem;
-        color: #666;
-    }
-
-    .badge {
-        display: inline-block;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-    }
-
-    .badge-pending {
-        background-color: #ffc107;
-        color: #000;
-    }
-
-    .badge-accepted {
-        background-color: #28a745;
-        color: #fff;
-    }
-
-    .badge-rejected {
-        background-color: #dc3545;
-        color: #fff;
-    }
-</style>
-
-<h2>Driver Dashboard</h2>
-<p>Welcome, <?php echo htmlspecialchars($driver['name'] ?? 'Driver'); ?>. Manage your profile, transport, and bookings here.</p>
-
-<div class="dashboard-container">
-
-    <!-- Quick stats -->
-    <div class="dashboard-section">
-        <div class="section-title">Overview</div>
-        <div class="section-description">
-            A quick summary of your activity as a driver.
-        </div>
-
-        <div class="dashboard-grid">
-            <div class="stat-box">
-                <div class="stat-label">Pending Booking Requests</div>
-                <div class="stat-value">
-                    <?php
-                    $pendingCount = 0;
-                    foreach ($booking_rows as $b) {
-                        if (isset($b['status']) && $b['status'] === 'pending') {
-                            $pendingCount++;
-                        }
-                    }
-                    echo (int)$pendingCount;
-                    ?>
-                </div>
-            </div>
-
-            <div class="stat-box">
-                <div class="stat-label">Average Rating</div>
-                <div class="stat-value">
-                    <?php
-                    if ($average_rating !== null) {
-                        echo number_format($average_rating, 1);
-                    } else {
-                        echo "N/A";
-                    }
-                    ?>
-                </div>
-            </div>
-
-            <div class="stat-box">
-                <div class="stat-label">Total Completed Trips</div>
-                <div class="stat-value">
-                    <?php
-                    $completedCount = 0;
-                    foreach ($booking_rows as $b) {
-                        if (isset($b['status']) && $b['status'] === 'completed') {
-                            $completedCount++;
-                        }
-                    }
-                    echo (int)$completedCount;
-                    ?>
-                </div>
-            </div>
-        </div>
+<div class="header">
+    <div>Driver Dashboard</div>
+    <div>
+        Welcome, <?php echo htmlspecialchars($driver['full_name'] ?: 'Driver'); ?>
+        <a href="driver_logout.php">Logout</a>
     </div>
-
-    <!-- Edit Profile -->
-    <div class="dashboard-section">
-        <div class="section-title">Edit Profile</div>
-        <div class="section-description">
-            Update your basic driver information.
-        </div>
-
-        <form class="dashboard-form" action="update_profile.php" method="post">
-            <input type="hidden" name="driver_id" value="<?php echo (int)$driver_id; ?>">
-
-            <label>Full Name</label>
-            <input type="text" name="name" value="<?php echo htmlspecialchars($driver['name'] ?? ''); ?>" required>
-
-            <label>Identification ID (IC/Passport/License)</label>
-            <input type="text" name="identification_id" value="<?php echo htmlspecialchars($driver['identification_id'] ?? ''); ?>" required>
-
-            <label>Email</label>
-            <input type="email" name="email" value="<?php echo htmlspecialchars($driver['email'] ?? ''); ?>" readonly>
-
-            <label>Car Model</label>
-            <input type="text" name="car_model" value="<?php echo htmlspecialchars($driver['car_model'] ?? ''); ?>" required>
-
-            <label>Car Plate Number</label>
-            <input type="text" name="car_plate_number" value="<?php echo htmlspecialchars($driver['car_plate_number'] ?? ''); ?>" required>
-
-            <button type="submit">Save Profile</button>
-        </form>
-    </div>
-
-    <!-- Add / Update Transport -->
-    <div class="dashboard-section">
-        <div class="section-title">Transport Settings</div>
-        <div class="section-description">
-            Define your vehicle category, areas covered, availability, and pricing.
-        </div>
-
-        <form class="dashboard-form" action="save_transport.php" method="post">
-            <input type="hidden" name="driver_id" value="<?php echo (int)$driver_id; ?>">
-            <?php if ($transport): ?>
-                <input type="hidden" name="transport_id" value="<?php echo (int)$transport['transport_id']; ?>">
-            <?php endif; ?>
-
-            <label>Vehicle Category</label>
-            <select name="vehicle_category" required>
-                <option value="">-- Select --</option>
-                <option value="MPV"   <?php echo ($transport && $transport['vehicle_category'] === 'MPV')   ? 'selected' : ''; ?>>MPV</option>
-                <option value="Sedan" <?php echo ($transport && $transport['vehicle_category'] === 'Sedan') ? 'selected' : ''; ?>>Sedan</option>
-                <option value="SUV"   <?php echo ($transport && $transport['vehicle_category'] === 'SUV')   ? 'selected' : ''; ?>>SUV</option>
-            </select>
-
-            <label>Vehicle Model</label>
-            <input type="text" name="vehicle_model" required
-                   value="<?php echo htmlspecialchars($transport['vehicle_model'] ?? $driver['car_model'] ?? ''); ?>">
-
-            <label>Vehicle Plate Number</label>
-            <input type="text" name="vehicle_plate" required
-                   value="<?php echo htmlspecialchars($transport['vehicle_plate'] ?? $driver['car_plate_number'] ?? ''); ?>">
-
-            <label>Destination / Area Covered</label>
-            <input type="text" name="destination" required
-                   placeholder="Example: Penang Island, USM Area"
-                   value="<?php echo htmlspecialchars($transport['destination'] ?? ''); ?>">
-
-            <label>Day Availability</label>
-            <input type="text" name="day_available" required
-                   placeholder="Example: Mon–Fri, Weekends Only"
-                   value="<?php echo htmlspecialchars($transport['day_available'] ?? ''); ?>">
-
-            <label>Time Availability</label>
-            <input type="text" name="time_available" required
-                   placeholder="Example: 7AM–10AM / 5PM–9PM"
-                   value="<?php echo htmlspecialchars($transport['time_available'] ?? ''); ?>">
-
-            <label>Price</label>
-            <input type="text" name="price" required
-                   value="<?php echo htmlspecialchars($transport['price'] ?? ''); ?>">
-
-            <label>Payment Method</label>
-            <select name="payment_method" required>
-                <option value="">-- Select --</option>
-                <option value="Cash" 
-                    <?php echo ($transport && $transport['payment_method'] === 'Cash') ? 'selected' : ''; ?>>Cash</option>
-                <option value="Online Banking" 
-                    <?php echo ($transport && $transport['payment_method'] === 'Online Banking') ? 'selected' : ''; ?>>Online Banking</option>
-                <option value="E-Wallet" 
-                    <?php echo ($transport && $transport['payment_method'] === 'E-Wallet') ? 'selected' : ''; ?>>E-Wallet</option>
-            </select>
-
-            <button type="submit">Save Transport Settings</button>
-        </form>
-    </div>
-
-    <!-- Booking Requests -->
-    <div class="dashboard-section">
-        <div class="section-title">Booking Requests</div>
-        <div class="section-description">
-            View and manage booking requests from passengers.
-        </div>
-
-        <?php if (count($booking_rows) === 0): ?>
-            <p class="text-small">No booking requests found.</p>
-        <?php else: ?>
-            <table class="dashboard-table">
-                <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Passenger</th>
-                    <th>Pickup / Drop-off</th>
-                    <th>Date & Time</th>
-                    <th>Price</th>
-                    <th>Status / Action</th>
-                </tr>
-                </thead>
-                <tbody>
-                <?php $i = 1; foreach ($booking_rows as $b): ?>
-                    <tr>
-                        <td><?php echo $i++; ?></td>
-                        <td><?php echo htmlspecialchars($b['passenger_name'] ?? 'Passenger'); ?></td>
-                        <td>
-                            <strong>From:</strong> <?php echo htmlspecialchars($b['pickup_location'] ?? '-'); ?><br>
-                            <strong>To:</strong> <?php echo htmlspecialchars($b['dropoff_location'] ?? '-'); ?>
-                        </td>
-                        <td><?php echo htmlspecialchars($b['request_time'] ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($b['price'] ?? ''); ?></td>
-                        <td>
-                            <?php
-                            $status = $b['status'] ?? 'pending';
-                            $badgeClass = 'badge-pending';
-                            if ($status === 'accepted') $badgeClass = 'badge-accepted';
-                            if ($status === 'rejected') $badgeClass = 'badge-rejected';
-                            ?>
-                            <span class="badge <?php echo $badgeClass; ?>">
-                                <?php echo ucfirst($status); ?>
-                            </span>
-
-                            <?php if ($status === 'pending'): ?>
-                                <form action="update_booking_status.php" method="post" style="margin-top: 6px;">
-                                    <input type="hidden" name="booking_id" value="<?php echo (int)$b['booking_id']; ?>">
-                                    <button type="submit" name="status" value="accepted">Accept</button>
-                                    <button type="submit" name="status" value="rejected" class="btn-danger">Reject</button>
-                                </form>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php endif; ?>
-    </div>
-
-    <!-- Ratings & Reviews -->
-    <div class="dashboard-section">
-        <div class="section-title">Ratings & Reviews</div>
-        <div class="section-description">
-            Feedback from passengers about your service.
-        </div>
-
-        <?php if (count($rating_rows) === 0): ?>
-            <p class="text-small">No ratings or reviews yet.</p>
-        <?php else: ?>
-            <?php foreach ($rating_rows as $r): ?>
-                <div style="margin-bottom: 12px; padding: 10px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e0e0e0;">
-                    <strong><?php echo htmlspecialchars($r['passenger_name'] ?? 'Passenger'); ?></strong>
-                    <span style="margin-left: 8px;">
-                        Rating: <?php echo (int)$r['rating']; ?>/5
-                    </span>
-                    <div class="text-small">
-                        <?php echo htmlspecialchars($r['comment'] ?? ''); ?>
-                    </div>
-                    <div class="text-small">
-                        <?php echo htmlspecialchars($r['created_at'] ?? ''); ?>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-
-    <!-- Q & A Chat (Forum) -->
-    <div class="dashboard-section">
-        <div class="section-title">Q & A Forum</div>
-        <div class="section-description">
-            Ask and answer questions related to your transport service.
-        </div>
-
-        <form class="dashboard-form" action="post_forum_message.php" method="post">
-            <input type="hidden" name="driver_id" value="<?php echo (int)$driver_id; ?>">
-            <label>Your Message</label>
-            <textarea name="message" rows="3" required></textarea>
-            <button type="submit">Post Message</button>
-        </form>
-
-        <?php if (count($forum_rows) > 0): ?>
-            <div style="margin-top: 15px;">
-                <?php foreach ($forum_rows as $f): ?>
-                    <div style="margin-bottom: 10px; padding: 8px; border-radius: 6px; background: #f9f9f9; border: 1px solid #e0e0e0;">
-                        <div class="text-small">
-                            <strong><?php echo htmlspecialchars($f['author_name'] ?? 'User'); ?></strong>
-                            <span style="margin-left: 8px;"><?php echo htmlspecialchars($f['created_at'] ?? ''); ?></span>
-                        </div>
-                        <div><?php echo nl2br(htmlspecialchars($f['message'] ?? '')); ?></div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
-
-    <!-- Contact Us (Feedback) -->
-    <div class="dashboard-section">
-        <div class="section-title">Contact Us / Feedback</div>
-        <div class="section-description">
-            Send feedback or report issues about the system to the admin.
-        </div>
-
-        <form class="dashboard-form" action="send_feedback.php" method="post">
-            <input type="hidden" name="driver_id" value="<?php echo (int)$driver_id; ?>">
-
-            <label>Subject</label>
-            <input type="text" name="subject" required>
-
-            <label>Message</label>
-            <textarea name="message" rows="4" required></textarea>
-
-            <button type="submit">Submit Feedback</button>
-        </form>
-    </div>
-
 </div>
 
-<?php include "footer.php"; ?>
+<div class="container">
+    <!-- Left menu -->
+    <div class="sidebar">
+        <button id="btn_profile"  onclick="showSection('profile')">Edit Profile</button>
+        <button id="btn_transport"onclick="showSection('transport')">Add Transport</button>
+        <button id="btn_bookings" onclick="showSection('bookings')">View Booking Requests</button>
+        <button id="btn_ratings"  onclick="showSection('ratings')">Ratings & Reviews</button>
+        <button id="btn_forum"    onclick="showSection('forum')">Q & A Chat (Forum)</button>
+        <button id="btn_feedback" onclick="showSection('feedback')">Contact Us (Feedback)</button>
+    </div>
+
+    <!-- Right content -->
+    <div class="content">
+        <?php if ($alert): ?>
+            <div class="alert"><?php echo htmlspecialchars($alert); ?></div>
+        <?php endif; ?>
+
+        <!-- 1. Edit Profile -->
+        <div id="profile" class="section">
+            <div class="card">
+                <h2>Edit Profile (Driving License)</h2>
+                <form method="post">
+                    <label>Full Name</label>
+                    <input type="text" name="full_name"
+                           value="<?php echo htmlspecialchars($driver['full_name']); ?>" required>
+
+                    <label>Email (read only)</label>
+                    <input type="email" value="<?php echo htmlspecialchars($driver['email']); ?>" disabled>
+
+                    <label>Phone</label>
+                    <input type="text" name="phone"
+                           value="<?php echo htmlspecialchars($driver['phone']); ?>">
+
+                    <label>Driving License Number</label>
+                    <input type="text" name="license_number"
+                           value="<?php echo htmlspecialchars($driver['license_number']); ?>" required>
+
+                    <label>Driving License Expiry Date</label>
+                    <input type="date" name="license_expiry"
+                           value="<?php echo htmlspecialchars($driver['license_expiry']); ?>" required>
+
+                    <button type="submit" name="update_profile" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 2. Add Transport -->
+        <div id="transport" class="section">
+            <div class="card">
+                <h2>Add Transport</h2>
+                <form method="post">
+                    <label>Vehicle Type</label>
+                    <input type="text" name="vehicle_type" placeholder="Car, Motorbike, Van..." required>
+
+                    <label>Vehicle Model</label>
+                    <input type="text" name="vehicle_model" placeholder="Perodua Myvi 1.3" required>
+
+                    <label>Destination (Area / Location covered)</label>
+                    <input type="text" name="destination_area" placeholder="MMU, Cyberjaya area" required>
+
+                    <label>Day Availability</label>
+                    <input type="text" name="available_days" placeholder="Mon–Fri / Weekend only" required>
+
+                    <label>Time From</label>
+                    <input type="time" name="time_from" required>
+
+                    <label>Time To</label>
+                    <input type="time" name="time_to" required>
+
+                    <label>Price (per trip)</label>
+                    <input type="number" step="0.01" name="price_per_trip" required>
+
+                    <label>Payment Method</label>
+                    <input type="text" name="payment_method" placeholder="Cash, TnG eWallet..." required>
+
+                    <button type="submit" name="add_transport" class="btn btn-primary">Add</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Your Transport List</h2>
+                <table>
+                    <tr>
+                        <th>Vehicle</th>
+                        <th>Destination</th>
+                        <th>Days</th>
+                        <th>Time</th>
+                        <th>Price</th>
+                        <th>Payment</th>
+                        <th>Status</th>
+                    </tr>
+                    <?php if ($transports && $transports->num_rows > 0): ?>
+                        <?php while ($t = $transports->fetch_assoc()): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($t['vehicle_type']." - ".$t['vehicle_model']); ?></td>
+                                <td><?php echo htmlspecialchars($t['destination_area']); ?></td>
+                                <td><?php echo htmlspecialchars($t['available_days']); ?></td>
+                                <td><?php echo htmlspecialchars($t['time_from']." - ".$t['time_to']); ?></td>
+                                <td><?php echo htmlspecialchars($t['price_per_trip']); ?></td>
+                                <td><?php echo htmlspecialchars($t['payment_method']); ?></td>
+                                <td><?php echo $t['is_active'] ? "Active" : "Inactive"; ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="7">No transport added.</td></tr>
+                    <?php endif; ?>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. View Booking Requests -->
+        <div id="bookings" class="section">
+            <div class="card">
+                <h2>Transport Booking Requests</h2>
+                <table>
+                    <tr>
+                        <th>Requester</th>
+                        <th>Contact</th>
+                        <th>Vehicle</th>
+                        <th>Route</th>
+                        <th>Date & Time</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                    <?php if ($bookings && $bookings->num_rows > 0): ?>
+                        <?php while ($b = $bookings->fetch_assoc()): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($b['requester_name'] ?? ''); ?></td>
+                                <td>
+                                    <?php echo htmlspecialchars($b['requester_email'] ?? ''); ?><br>
+                                    <?php echo htmlspecialchars($b['requester_phone'] ?? ''); ?>
+                                </td>
+                                <td><?php echo htmlspecialchars(($b['vehicle_type'] ?? '')." - ".($b['vehicle_model'] ?? '')); ?></td>
+                                <td><?php echo htmlspecialchars($b['pickup_location'] ?? ''); ?> → <?php echo htmlspecialchars($b['dropoff_location'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($b['travel_date'] ?? ''); ?><br><?php echo htmlspecialchars($b['travel_time'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($b['status'] ?? ''); ?></td>
+                                <td>
+                                    <?php if (($b['status'] ?? '') === 'pending'): ?>
+                                        <form method="post" style="display:inline-block;">
+                                            <input type="hidden" name="booking_id" value="<?php echo $b['booking_id']; ?>">
+                                            <input type="hidden" name="status" value="accepted">
+                                            <button class="btn btn-primary" name="update_booking_status">Accept</button>
+                                        </form>
+                                        <form method="post" style="display:inline-block;">
+                                            <input type="hidden" name="booking_id" value="<?php echo $b['booking_id']; ?>">
+                                            <input type="hidden" name="status" value="rejected">
+                                            <button class="btn btn-danger" name="update_booking_status">Reject</button>
+                                        </form>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="7">No booking requests.</td></tr>
+                    <?php endif; ?>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. Ratings & Reviews (using `reviews` table) -->
+        <div id="ratings" class="section">
+            <div class="card">
+                <h2>Ratings & Reviews</h2>
+                <table>
+                    <tr>
+                        <th>Rating</th>
+                        <th>Review</th>
+                        <th>Related Booking</th>
+                        <th>Date</th>
+                    </tr>
+                    <?php if ($reviews && $reviews->num_rows > 0): ?>
+                        <?php while ($r = $reviews->fetch_assoc()): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($r['rating'] ?? ''); ?></td>
+                                <td><?php echo nl2br(htmlspecialchars($r['review_text'] ?? '')); ?></td>
+                                <td>Booking ID: <?php echo htmlspecialchars($r['booking_id'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($r['created_at'] ?? ''); ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="4">No ratings / reviews yet.</td></tr>
+                    <?php endif; ?>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. Forum -->
+        <div id="forum" class="section">
+            <div class="card">
+                <h2>Q & A Chat (Forum) – Ask Question</h2>
+                <form method="post">
+                    <label>Title</label>
+                    <input type="text" name="question_title" required>
+
+                    <label>Question</label>
+                    <textarea name="question_body" rows="3" required></textarea>
+
+                    <button type="submit" name="add_question" class="btn btn-primary">Post Question</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Forum Threads</h2>
+                <?php if ($questions && $questions->num_rows > 0): ?>
+                    <?php while ($q = $questions->fetch_assoc()): ?>
+                        <div style="border-bottom:1px solid #ddd;padding:8px 0;">
+                            <strong><?php echo htmlspecialchars($q['title']); ?></strong><br>
+                            <small>By <?php echo htmlspecialchars($q['full_name']); ?> | <?php echo htmlspecialchars($q['created_at']); ?></small>
+                            <p><?php echo nl2br(htmlspecialchars($q['body'])); ?></p>
+
+                            <?php
+                            $qid = $q['question_id'];
+                            $replies = $conn->query(
+                                "SELECT fr.*, d.full_name
+                                 FROM forum_replies fr
+                                 LEFT JOIN drivers d ON fr.driver_id = d.driver_id
+                                 WHERE fr.question_id = $qid
+                                 ORDER BY fr.created_at ASC"
+                            );
+                            ?>
+                            <?php if ($replies && $replies->num_rows > 0): ?>
+                                <div style="margin-left:15px;border-left:2px solid #eee;padding-left:8px;">
+                                    <?php while ($rep = $replies->fetch_assoc()): ?>
+                                        <p>
+                                            <strong><?php echo htmlspecialchars($rep['full_name'] ?? 'Admin'); ?>:</strong>
+                                            <?php echo nl2br(htmlspecialchars($rep['reply_text'])); ?><br>
+                                            <small><?php echo htmlspecialchars($rep['created_at']); ?></small>
+                                        </p>
+                                    <?php endwhile; ?>
+                                </div>
+                            <?php else: ?>
+                                <p style="margin-left:15px;color:#777;">No replies yet.</p>
+                            <?php endif; ?>
+
+                            <form method="post" style="margin-top:6px;">
+                                <input type="hidden" name="question_id" value="<?php echo $q['question_id']; ?>">
+                                <label>Your reply</label>
+                                <textarea name="reply_text" rows="2" required></textarea>
+                                <button type="submit" name="add_reply" class="btn btn-secondary">Reply</button>
+                            </form>
+                        </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <p>No questions yet.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- 6. Contact Us / Feedback -->
+        <div id="feedback" class="section">
+            <div class="card">
+                <h2>Contact Us (Feedback)</h2>
+                <form method="post">
+                    <label>Subject</label>
+                    <input type="text" name="subject" required>
+
+                    <label>Message</label>
+                    <textarea name="message" rows="4" required></textarea>
+
+                    <button type="submit" name="send_feedback" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>
