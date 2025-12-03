@@ -1,351 +1,330 @@
 <?php
 session_start();
+include "db_connect.php";
+include "function.php";
 
-include "db_connect.php"; // DB connection ($conn)
-include "function.php";   // redirect() + SweetAlert helpers (if any)
-
-// If already logged in, redirect to dashboard
-if (isset($_SESSION['driver_id'])) {
-    redirect("driver_dashboard.php");
-}
-
-// Handle form submission
+// If form submitted
 if (isset($_POST['register'])) {
 
-    $full_name         = trim($_POST['full_name']);
-    $identification_id = trim($_POST['identification_id']);
-    $email             = trim($_POST['email']);
-    $car_model         = trim($_POST['car_model']);
-    $car_plate_number  = trim($_POST['car_plate_number']);
-    $password_plain    = $_POST['password'];
-    $confirm_password  = $_POST['confirm_password'];
+    // 1. Get form values (driver)
+    $full_name         = trim($_POST['full_name'] ?? "");
+    $identification_id = trim($_POST['identification_id'] ?? "");
+    $email             = trim($_POST['email'] ?? "");
+    $password_plain    = $_POST['password'] ?? "";
 
-    // 1. All fields required
+    // 1b. Get form values (vehicle)
+    $car_model        = trim($_POST['car_model'] ?? "");
+    $car_plate_number = trim($_POST['car_plate_number'] ?? "");
+    $vehicle_color    = trim($_POST['vehicle_color'] ?? "");
+    $vehicle_type     = trim($_POST['vehicle_type'] ?? "");
+    $seat_count_raw   = trim($_POST['seat_count'] ?? "");
+    $seat_count       = $seat_count_raw === "" ? 0 : (int)$seat_count_raw;
+
+    // Hash password
+    $password_hash = password_hash($password_plain, PASSWORD_BCRYPT);
+
+    // 2. Basic validation
     if (
-        $full_name === '' ||
-        $identification_id === '' ||
-        $email === '' ||
-        $car_model === '' ||
-        $car_plate_number === '' ||
-        $password_plain === '' ||
-        $confirm_password === ''
+        $full_name === "" ||
+        $identification_id === "" ||
+        $email === "" ||
+        $password_plain === "" ||
+        $car_model === "" ||
+        $car_plate_number === "" ||
+        $vehicle_color === "" ||
+        $vehicle_type === "" ||
+        $seat_count <= 0
     ) {
         $_SESSION['swal_title'] = "Missing Fields";
-        $_SESSION['swal_msg']   = "All fields are required. Please fill in every field.";
+        $_SESSION['swal_msg']   = "Please fill in all required fields, including vehicle details.";
         $_SESSION['swal_type']  = "warning";
+        redirect("driver_register.php");
+        exit;
     }
-    // 2. Email format validation
-    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
+    // Optional: require MMU email
+    if (!str_contains($email, "@student.mmu.edu.my")) {
         $_SESSION['swal_title'] = "Invalid Email";
-        $_SESSION['swal_msg']   = "Please enter a valid email address.";
+        $_SESSION['swal_msg']   = "Please use your MMU student email.";
         $_SESSION['swal_type']  = "warning";
+        redirect("driver_register.php");
+        exit;
     }
-    // 2B. Email must be MMU student email
-    elseif (substr($email, -19) !== "@student.mmu.edu.my") {
-        $_SESSION['swal_title'] = "Invalid Email Domain";
-        $_SESSION['swal_msg']   = "You must use your MMU student email (@student.mmu.edu.my) to register.";
+
+    // 3. Check duplicate email in drivers table
+    $check = $conn->prepare("SELECT driver_id FROM drivers WHERE email = ?");
+    if (!$check) {
+        $_SESSION['swal_title'] = "Error";
+        $_SESSION['swal_msg']   = "Database error (check email).";
+        $_SESSION['swal_type']  = "error";
+        redirect("driver_register.php");
+        exit;
+    }
+
+    $check->bind_param("s", $email);
+    $check->execute();
+    $result = $check->get_result();
+
+    if ($result && $result->num_rows > 0) {
+        // Email already used
+        $_SESSION['swal_title'] = "Email Exists";
+        $_SESSION['swal_msg']   = "This email is already registered as a driver.";
         $_SESSION['swal_type']  = "warning";
+        $check->close();
+        redirect("driver_register.php");
+        exit;
     }
-    // 3. Password length validation
-    elseif (strlen($password_plain) < 6) {
-        $_SESSION['swal_title'] = "Weak Password";
-        $_SESSION['swal_msg']   = "Password must be at least 6 characters.";
-        $_SESSION['swal_type']  = "warning";
+    $check->close();
+
+    // 4. Insert into drivers table (WITHOUT vehicle columns)
+    $insert_driver = $conn->prepare("
+        INSERT INTO drivers (full_name, identification_id, email, password)
+        VALUES (?, ?, ?, ?)
+    ");
+
+    if (!$insert_driver) {
+        $_SESSION['swal_title'] = "Error";
+        $_SESSION['swal_msg']   = "Database error (insert driver).";
+        $_SESSION['swal_type']  = "error";
+        redirect("driver_register.php");
+        exit;
     }
-    // 4. Confirm password validation
-    elseif ($password_plain !== $confirm_password) {
-        $_SESSION['swal_title'] = "Password Mismatch";
-        $_SESSION['swal_msg']   = "Password and confirm password do not match.";
-        $_SESSION['swal_type']  = "warning";
+
+    $insert_driver->bind_param(
+        "ssss",
+        $full_name,
+        $identification_id,
+        $email,
+        $password_hash
+    );
+
+    if (!$insert_driver->execute()) {
+        $_SESSION['swal_title'] = "Error";
+        $_SESSION['swal_msg']   = "Failed to create driver account.";
+        $_SESSION['swal_type']  = "error";
+        $insert_driver->close();
+        redirect("driver_register.php");
+        exit;
     }
-    else {
 
-        // 5. Check if email already exists
-        $check = $conn->prepare("SELECT driver_id FROM drivers WHERE email = ?");
-        if (!$check) {
-            $_SESSION['swal_title'] = "Error";
-            $_SESSION['swal_msg']   = "Database error (check email).";
-            $_SESSION['swal_type']  = "error";
-        } else {
-            $check->bind_param("s", $email);
-            $check->execute();
-            $result = $check->get_result();
+    // Get new driver_id
+    $driver_id = $conn->insert_id;
+    $insert_driver->close();
 
-            if ($result && $result->num_rows > 0) {
-                // Email already used
-                $_SESSION['swal_title'] = "Cannot Register";
-                $_SESSION['swal_msg']   = "Cannot register with this email. This email is already used by another driver.";
-                $_SESSION['swal_type']  = "error";
-            } else {
-                // 6. Insert new driver
-                $password_hashed = password_hash($password_plain, PASSWORD_BCRYPT);
+    // 5. Insert vehicle record (one vehicle per driver)
+    $insert_vehicle = $conn->prepare("
+        INSERT INTO vehicles (
+            driver_id,
+            vehicle_model,
+            plate_number,
+            vehicle_color,
+            vehicle_type,
+            seat_count
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+    ");
 
-                $insert = $conn->prepare("
-                    INSERT INTO drivers
-                    (full_name, identification_id, email, car_model, car_plate_number, password)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ");
-
-                if (!$insert) {
-                    $_SESSION['swal_title'] = "Error";
-                    $_SESSION['swal_msg']   = "Database error (insert).";
-                    $_SESSION['swal_type']  = "error";
-                } else {
-                    $insert->bind_param(
-                        "ssssss",
-                        $full_name,
-                        $identification_id,
-                        $email,
-                        $car_model,
-                        $car_plate_number,
-                        $password_hashed
-                    );
-
-                    if ($insert->execute()) {
-                        $_SESSION['swal_title'] = "Registration Successful";
-                        $_SESSION['swal_msg']   = "Your driver account has been created. Please login.";
-                        $_SESSION['swal_type']  = "success";
-
-                        redirect("driver_login.php");
-                    } else {
-                        $_SESSION['swal_title'] = "Error";
-                        $_SESSION['swal_msg']   = "Failed to create account. Please try again.";
-                        $_SESSION['swal_type']  = "error";
-                    }
-
-                    $insert->close();
-                }
-            }
-
-            $check->close();
-        }
+    if ($insert_vehicle) {
+        $insert_vehicle->bind_param(
+            "issssi",
+            $driver_id,
+            $car_model,
+            $car_plate_number,
+            $vehicle_color,
+            $vehicle_type,
+            $seat_count
+        );
+        $insert_vehicle->execute();  // even if this fails, driver account is already created
+        $insert_vehicle->close();
     }
+
+    // 6. Success message
+    $_SESSION['swal_title'] = "Registration Successful";
+    $_SESSION['swal_msg']   = "Your driver account has been created. You can now log in.";
+    $_SESSION['swal_type']  = "success";
+
+    redirect("driver_login.php");
+    exit;
 }
 
+// ---------- Show registration form ----------
 include "header.php";
 ?>
 
 <style>
-    body {
-        background: #f5f7fb;
-    }
-
-    .register-wrapper {
-        min-height: calc(100vh - 140px); /* leave space for header + footer */
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 15px;
-    }
-
-    /* Card not too long: reduced width and padding */
-    .register-card {
-        background-color: #fff;
-        border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        max-width: 440px;
-        width: 100%;
-        padding: 24px 22px 18px;
-        border: 1px solid #e0e0e0;
-    }
-
-    .register-header {
-        text-align: center;
-        margin-bottom: 14px;
-    }
-
-    .register-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        border: 2px solid #27ae60;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 8px;
-        font-size: 24px;
-        color: #27ae60;
-    }
-
-    .register-header h2 {
-        margin: 0;
-        font-size: 22px;
-        color: #005A9C;
-        font-weight: 700;
-    }
-
-    .register-subtitle {
-        margin-top: 4px;
-        color: #666;
-        font-size: 13px;
-    }
-
-    .register-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px 14px;
-        margin-top: 16px;
-    }
-
-    .form-group-full {
-        grid-column: 1 / 3; /* span two columns */
-    }
-
-    .form-group {
-        text-align: left;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 13px;
-        margin-bottom: 4px;
-        color: #333;
-        font-weight: 500;
-    }
-
-    .form-group input {
-        width: 100%;
-        padding: 8px 10px;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-        font-size: 13px;
-        outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        box-sizing: border-box;
-    }
-
-    .form-group input:focus {
-        border-color: #005A9C;
-        box-shadow: 0 0 0 2px rgba(0, 90, 156, 0.15);
-    }
-
-    .btn-register {
-        width: 100%;
-        border: none;
-        padding: 10px 14px;
-        border-radius: 999px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        background: linear-gradient(135deg, #005A9C, #27ae60);
-        color: #fff;
-        margin-top: 12px;
-        transition: transform 0.1s ease, box-shadow 0.1s ease;
-        box-shadow: 0 8px 18px rgba(0,0,0,0.16);
-    }
-
-    .btn-register:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 10px 22px rgba(0,0,0,0.18);
-    }
-
-    .btn-register:active {
-        transform: translateY(0);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.18);
-    }
-
-    .register-footer-links {
-        margin-top: 14px;
-        font-size: 12px;
-        text-align: center;
-        color: #777;
-    }
-
-    .register-footer-links a {
-        color: #005A9C;
-        text-decoration: none;
-        font-weight: 500;
-    }
-
-    .register-footer-links a:hover {
-        text-decoration: underline;
-    }
-
-    @media (max-width: 600px) {
-        .register-card {
-            padding: 20px 16px 14px;
-        }
-        .register-grid {
-            grid-template-columns: 1fr;
-        }
-        .form-group-full {
-            grid-column: 1 / 2;
-        }
-    }
+.auth-wrapper {
+    min-height: calc(100vh - 140px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 12px;
+    background: #f5f7fb;
+}
+.auth-card {
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.08);
+    padding: 26px 34px 30px;
+    max-width: 640px;
+    width: 100%;
+}
+.auth-title {
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #004b82;
+}
+.auth-subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 18px;
+}
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 12px 16px;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+.form-group label {
+    font-size: 12px;
+    color: #444;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+.form-group input {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-group input:focus {
+    border-color: #005a9c;
+    box-shadow: 0 0 0 2px rgba(0,90,156,0.18);
+}
+.btn-primary-wide {
+    width: 100%;
+    border: none;
+    margin-top: 18px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #005a9c, #27ae60);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+}
+.btn-primary-wide:hover {
+    transform: translateY(-1px);
+}
+.auth-footer {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 12px;
+}
+.auth-footer a {
+    color: #005a9c;
+    text-decoration: none;
+    font-weight: 500;
+}
+@media (max-width: 640px) {
+    .auth-card { padding: 22px 18px 24px; }
+    .form-grid-2 { grid-template-columns: 1fr; }
+}
 </style>
 
-<div class="register-wrapper">
-    <div class="register-card">
-        <div class="register-header">
-            <div class="register-icon">
-                <i class="fa-solid fa-car-side"></i>
-            </div>
-            <h2>Driver Registration</h2>
-            <p class="register-subtitle">Create your driver account to offer transport services.</p>
-        </div>
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h2 class="auth-title">Driver Registration</h2>
+        <p class="auth-subtitle">
+            Create your driver account and register your vehicle.
+        </p>
 
-        <form id="driverRegisterForm" method="post" action="">
-            <div class="register-grid">
-                <div class="form-group form-group-full">
+        <form method="post" action="driver_register.php">
+            <!-- Driver info -->
+            <h3 style="font-size:14px;font-weight:600;color:#004b82;margin-bottom:6px;">
+                Driver Information
+            </h3>
+            <div class="form-grid-2" style="margin-bottom:12px;">
+                <div class="form-group" style="grid-column:1/3;">
                     <label for="full_name">Full Name</label>
-                    <input type="text" id="full_name" name="full_name" placeholder="Enter your full name" required>
+                    <input type="text" id="full_name" name="full_name" required>
                 </div>
 
                 <div class="form-group">
                     <label for="identification_id">Identification / Matric ID</label>
-                    <input type="text" id="identification_id" name="identification_id" placeholder="IC / Passport / Matric" required>
+                    <input type="text" id="identification_id" name="identification_id" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="email">Driver Email (MMU email)</label>
-                    <input type="email" id="email" name="email" placeholder="e.g. xxx@student.mmu.edu.my" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="car_model">Car Model</label>
-                    <input type="text" id="car_model" name="car_model" placeholder="e.g. Perodua Myvi" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="car_plate_number">Car Plate Number</label>
-                    <input type="text" id="car_plate_number" name="car_plate_number" placeholder="e.g. WXX 1234" required>
+                    <label for="email">Driver Email (MMU)</label>
+                    <input type="email" id="email" name="email"
+                           placeholder="example@student.mmu.edu.my" required>
                 </div>
 
                 <div class="form-group">
                     <label for="password">Password (min 6 characters)</label>
-                    <input type="password" id="password" name="password" placeholder="Enter password" required minlength="6">
-                </div>
-
-                <div class="form-group">
-                    <label for="confirm_password">Confirm Password</label>
-                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Re-enter password" required minlength="6">
+                    <input type="password" id="password" name="password" minlength="6" required>
                 </div>
             </div>
 
-            <button type="submit" name="register" class="btn-register">
+            <!-- Vehicle info -->
+            <h3 style="font-size:14px;font-weight:600;color:#004b82;margin:8px 0 6px;">
+                Vehicle Information
+            </h3>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="car_model">Vehicle Model</label>
+                    <input type="text" id="car_model" name="car_model"
+                           placeholder="e.g. TOYOTA ALPHARD" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="car_plate_number">Car Plate Number</label>
+                    <input type="text" id="car_plate_number" name="car_plate_number"
+                           placeholder="e.g. WXX 1234" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="vehicle_color">Vehicle Color</label>
+                    <input type="text" id="vehicle_color" name="vehicle_color"
+                           placeholder="e.g. White" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="vehicle_type">Vehicle Type</label>
+                    <input type="text" id="vehicle_type" name="vehicle_type"
+                           placeholder="e.g. Sedan, MPV" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="seat_count">Seat Count</label>
+                    <input type="number" id="seat_count" name="seat_count"
+                           min="1" max="8" placeholder="e.g. 4" required>
+                </div>
+            </div>
+
+            <button type="submit" name="register" class="btn-primary-wide">
                 Create Driver Account
             </button>
         </form>
 
-        <div class="register-footer-links">
+        <div class="auth-footer">
             Already a driver? <a href="driver_login.php">Login here</a>
         </div>
     </div>
 </div>
 
-<!-- Front-end validation: block submit if passwords do not match -->
-<script>
-document.getElementById('driverRegisterForm').addEventListener('submit', function(e) {
-    const pwd  = document.getElementById('password').value;
-    const cpwd = document.getElementById('confirm_password').value;
-
-    if (pwd !== cpwd) {
-        e.preventDefault();
-        alert("Password and confirm password do not match.");
-    }
-});
-</script>
-
 <?php
 include "footer.php";
 ?>
+---
+
+
