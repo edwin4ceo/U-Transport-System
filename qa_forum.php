@@ -159,7 +159,7 @@ include "header.php";
         <div class="faq-answer">
             <p>
                 No. U-Transport is a web-based system accessible through a modern web browser (Chrome, Safari, etc.) 
-                on your laptop. There is no native app on the App Store or Play Store.
+                on PC or Laptop. There is no native app on the App Store or Play Store.
             </p>
         </div>
     </div>
