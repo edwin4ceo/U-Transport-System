@@ -14,13 +14,13 @@ $driver_id = $_SESSION['driver_id'];
 
 /**
  * IMPORTANT:
- * Adjust this query according to YOUR actual bookings table.
+ * Adjust this query based on your actual bookings table.
  *
  * Assumed table structure:
  *   bookings (
  *       booking_id INT,
  *       driver_id INT,
- *       student_id INT,
+ *       student_id INT,      -- FK to students.id
  *       pickup_point VARCHAR,
  *       dropoff_point VARCHAR,
  *       travel_datetime DATETIME,
@@ -29,12 +29,18 @@ $driver_id = $_SESSION['driver_id'];
  *   )
  *
  *   students (
- *       student_id INT,
- *       full_name VARCHAR
+ *       id INT,              -- PK
+ *       name VARCHAR(100),
+ *       student_id VARCHAR(50),
+ *       email VARCHAR(100),
+ *       password VARCHAR(255),
+ *       phone VARCHAR(20)
  *   )
  */
+
 $history = [];
 
+// JOIN students.id according to your SQL structure
 $stmt = $conn->prepare("
     SELECT 
         b.booking_id,
@@ -43,9 +49,9 @@ $stmt = $conn->prepare("
         b.travel_datetime,
         b.status,
         b.fare_amount,
-        s.full_name AS passenger_name
+        s.name AS passenger_name
     FROM bookings b
-    LEFT JOIN students s ON b.student_id = s.student_id
+    LEFT JOIN students s ON b.student_id = s.id
     WHERE b.driver_id = ?
     ORDER BY b.travel_datetime DESC, b.booking_id DESC
 ");
