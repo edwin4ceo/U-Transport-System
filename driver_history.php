@@ -13,47 +13,50 @@ if (!isset($_SESSION['driver_id'])) {
 $driver_id = $_SESSION['driver_id'];
 
 /**
- * IMPORTANT:
- * Adjust this query based on your actual bookings table.
+ * Driver ride history based on current tables:
  *
- * Assumed table structure:
- *   bookings (
- *       booking_id INT,
- *       driver_id INT,
- *       student_id INT,      -- FK to students.id
- *       pickup_point VARCHAR,
- *       dropoff_point VARCHAR,
- *       travel_datetime DATETIME,
- *       status VARCHAR,      -- e.g. COMPLETED / CANCELLED / PENDING
- *       fare_amount DECIMAL
- *   )
+ * bookings (
+ *   id INT,
+ *   student_id VARCHAR(50),   -- FK to students.student_id (string)
+ *   destination VARCHAR(255),
+ *   date_time DATETIME,
+ *   passengers INT,
+ *   pickup_point VARCHAR(255),
+ *   remark TEXT,
+ *   status VARCHAR(50),
+ *   created_at TIMESTAMP,
+ *   driver_id INT NULL        -- you need to add this via ALTER TABLE
+ * )
  *
- *   students (
- *       id INT,              -- PK
- *       name VARCHAR(100),
- *       student_id VARCHAR(50),
- *       email VARCHAR(100),
- *       password VARCHAR(255),
- *       phone VARCHAR(20)
- *   )
+ * students (
+ *   id INT,
+ *   name VARCHAR(100),
+ *   student_id VARCHAR(50),
+ *   email VARCHAR(100),
+ *   password VARCHAR(255),
+ *   phone VARCHAR(20)
+ * )
  */
 
 $history = [];
 
-// JOIN students.id according to your SQL structure
+// Fetch bookings for this driver
 $stmt = $conn->prepare("
     SELECT 
-        b.booking_id,
+        b.id AS booking_id,
         b.pickup_point,
-        b.dropoff_point,
-        b.travel_datetime,
+        b.destination,
+        b.date_time,
+        b.passengers,
+        b.remark,
         b.status,
-        b.fare_amount,
-        s.name AS passenger_name
+        s.name  AS passenger_name,
+        s.phone AS passenger_phone
     FROM bookings b
-    LEFT JOIN students s ON b.student_id = s.id
+    LEFT JOIN students s 
+        ON b.student_id = s.student_id
     WHERE b.driver_id = ?
-    ORDER BY b.travel_datetime DESC, b.booking_id DESC
+    ORDER BY b.date_time DESC, b.id DESC
 ");
 
 if ($stmt) {
@@ -148,6 +151,8 @@ include "header.php";
     justify-content: space-between;
     font-size: 12px;
     color: #555;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .history-bottom-row {
@@ -155,6 +160,8 @@ include "header.php";
     justify-content: space-between;
     margin-top: 4px;
     font-size: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 /* Status badge */
@@ -163,6 +170,12 @@ include "header.php";
     border-radius: 999px;
     font-size: 11px;
     font-weight: 600;
+}
+
+.badge-pending {
+    background: #fff8e6;
+    color: #d35400;
+    border: 1px solid #f8d49a;
 }
 
 .badge-completed {
@@ -177,14 +190,8 @@ include "header.php";
     border: 1px solid #f5b7b1;
 }
 
-.badge-pending {
-    background: #fff8e6;
-    color: #d35400;
-    border: 1px solid #f8d49a;
-}
-
-/* Fare pill */
-.fare-pill {
+/* Simple pill */
+.info-pill {
     padding: 3px 9px;
     border-radius: 999px;
     background: #eef4ff;
@@ -225,28 +232,31 @@ include "header.php";
         <?php else: ?>
             <?php foreach ($history as $row): ?>
                 <?php
-                    $pickup  = $row['pickup_point']  ?? '';
-                    $dropoff = $row['dropoff_point'] ?? '';
-                    $route   = $pickup && $dropoff 
-                               ? $pickup . " → " . $dropoff 
-                               : "Trip #" . (int)$row['booking_id'];
+                    $pickup      = $row['pickup_point'] ?? '';
+                    $destination = $row['destination']   ?? '';
+                    $route       = $pickup && $destination
+                                   ? $pickup . " → " . $destination
+                                   : "Trip #" . (int)$row['booking_id'];
 
-                    $datetime = $row['travel_datetime'] 
-                        ? date("d M Y, h:i A", strtotime($row['travel_datetime']))
+                    $datetime = $row['date_time']
+                        ? date("d M Y, h:i A", strtotime($row['date_time']))
                         : "-";
 
-                    $status = strtoupper($row['status'] ?? "");
-                    $badgeClass = "badge-status";
-                    if ($status === "COMPLETED") {
-                        $badgeClass .= " badge-completed";
-                    } elseif ($status === "CANCELLED") {
-                        $badgeClass .= " badge-cancelled";
-                    } else {
-                        $badgeClass .= " badge-pending";
+                    $statusRaw = trim($row['status'] ?? '');
+                    $status    = $statusRaw !== '' ? strtoupper($statusRaw) : 'PENDING';
+
+                    // Map status to badge class
+                    $badgeClass = "badge-status badge-pending";
+                    if (in_array(strtoupper($statusRaw), ['COMPLETED', 'FINISHED', 'DONE'])) {
+                        $badgeClass = "badge-status badge-completed";
+                    } elseif (in_array(strtoupper($statusRaw), ['CANCELLED', 'REJECTED', 'FAILED'])) {
+                        $badgeClass = "badge-status badge-cancelled";
                     }
 
-                    $fare = isset($row['fare_amount']) ? (float)$row['fare_amount'] : 0;
-                    $passenger_name = $row['passenger_name'] ?? "Passenger";
+                    $passengers      = isset($row['passengers']) ? (int)$row['passengers'] : 1;
+                    $remark          = $row['remark'] ?? '';
+                    $passenger_name  = $row['passenger_name']  ?? 'Passenger';
+                    $passenger_phone = $row['passenger_phone'] ?? '';
                 ?>
                 <div class="history-item">
                     <div class="history-top-row">
@@ -260,19 +270,33 @@ include "header.php";
 
                     <div class="history-middle-row">
                         <div>
-                            Passenger: <strong><?php echo htmlspecialchars($passenger_name); ?></strong>
+                            Passenger: 
+                            <strong><?php echo htmlspecialchars($passenger_name); ?></strong>
+                            <?php if ($passenger_phone): ?>
+                                <span style="font-size:11px; color:#777; margin-left:4px;">
+                                    (<?php echo htmlspecialchars($passenger_phone); ?>)
+                                </span>
+                            <?php endif; ?>
                         </div>
                         <div>
-                            Booking ID: #<?php echo (int)$row['booking_id']; ?>
+                            Passengers: <strong><?php echo $passengers; ?></strong>
                         </div>
                     </div>
 
+                    <?php if ($remark !== ''): ?>
+                        <div class="history-middle-row">
+                            <div>
+                                Remark: <span><?php echo htmlspecialchars($remark); ?></span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="history-bottom-row">
                         <span class="<?php echo $badgeClass; ?>">
-                            <?php echo $status ? htmlspecialchars($status) : "UNKNOWN"; ?>
+                            <?php echo htmlspecialchars($status); ?>
                         </span>
-                        <span class="fare-pill">
-                            RM <?php echo number_format($fare, 2); ?>
+                        <span class="info-pill">
+                            Booking ID: #<?php echo (int)$row['booking_id']; ?>
                         </span>
                     </div>
                 </div>
