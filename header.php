@@ -52,7 +52,7 @@ if (isset($_SESSION['student_id'])) {
                     // Driver menu
                     ?>
                     <li><a href="driver_dashboard.php">Dashboard</a></li>
-                    <li><a href="driver_rides.php">My Rides</a></li>
+                    <li><a href="driver_my_rides.php">My Rides</a></li>
                     <li><a href="driver_history.php">History</a></li>
                     <li><a href="driver_profile.php">Profile</a></li>
                     <li><a href="#" id="driverLogoutLink" style="color: #ffcccb;">Logout</a></li>
