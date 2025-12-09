@@ -420,7 +420,7 @@ include "header.php";
                     <div class="quick-card">
                         <div class="quick-icon"><i class="fa-solid fa-calendar-day"></i></div>
                         <div class="quick-title">Today's Trips</div>
-                        <a href="driver_trips_today.php" class="quick-link">Open →</a>
+                        <a href="driver_today's_trip.php" class="quick-link">Open →</a>
                     </div>
 
                     <div class="quick-card">
