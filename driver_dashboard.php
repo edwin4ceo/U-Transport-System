@@ -431,7 +431,7 @@ include "header.php";
 
                     <div class="quick-card">
                         <div class="quick-icon"><i class="fa-solid fa-comments"></i></div>
-                        <div class="quick-title">Q & A / Chat</div>
+                        <div class="quick-title">Chat</div>
                         <a href="driver_forum.php" class="quick-link">Go →</a>
                     </div>
 
