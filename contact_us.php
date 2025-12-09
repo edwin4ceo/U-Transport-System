@@ -224,6 +224,10 @@ include "header.php";
     color: #ffffff;
     box-shadow: 0 4px 10px rgba(0,75,130,0.35);
     white-space: nowrap;
+
+    /* ensure button stays on the right, fixed width */
+    width: 120px;
+    flex: 0 0 auto;
 }
 
 .chat-input-wrapper button:disabled {
