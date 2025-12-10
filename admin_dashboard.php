@@ -116,7 +116,7 @@ $total_reviews    = getCount($conn, "reviews");
                     <li class="nav-divider"></li>
 
                     <li><a href="admin_profile.php" class="user-action-link"><i class="fa-solid fa-user-circle"></i> Profile</a></li>
-                    <li><a href="logout.php" class="user-action-link logout-btn"><i class="fa-solid fa-right-from-bracket"></i></a></li>
+                    <li><a href="admin_login.php" class="user-action-link logout-btn"><i class="fa-solid fa-right-from-bracket"></i></a></li>
                 </ul>
             </nav>
         </div>
