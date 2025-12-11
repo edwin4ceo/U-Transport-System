@@ -2,39 +2,89 @@
 session_start();
 require_once 'db_connect.php';
 
+// Only logged-in admin can access
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: admin_login.php");
     exit();
 }
 
-function getCount($conn, $table, $condition = "") {
-    $sql = "SELECT COUNT(*) as count FROM $table $condition";
-    $result = mysqli_query($conn, $sql);
-    return ($result) ? mysqli_fetch_assoc($result)['count'] : 0;
+// Selected driver
+$selected_driver_id = isset($_GET['driver_id']) ? (int)$_GET['driver_id'] : 0;
+
+/**
+ * Admin view of driver–admin chat.
+ * Uses table: driver_support_messages
+ */
+
+// Handle new admin message
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $selected_driver_id = (int)($_POST['driver_id'] ?? 0);
+    $message = trim($_POST['message'] ?? '');
+
+    if ($selected_driver_id > 0 && $message !== '') {
+        $stmt = $conn->prepare("
+            INSERT INTO driver_support_messages (driver_id, sender_type, message)
+            VALUES (?, 'admin', ?)
+        ");
+        if ($stmt) {
+            $stmt->bind_param("is", $selected_driver_id, $message);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+
+    header("Location: admin_driver_chat.php?driver_id=" . $selected_driver_id);
+    exit();
 }
 
-// 1. Fetch Existing Counts
-$pending_drivers  = getCount($conn, "users", "WHERE role='driver' AND verification_status='pending'");
-$total_passengers = getCount($conn, "users", "WHERE role='passenger'");
-$total_drivers    = getCount($conn, "users", "WHERE role='driver'");
-$feedback_count   = getCount($conn, "contact_messages");
+// Fetch drivers who have messages (or you can fetch all drivers if you want)
+$drivers = [];
+$result = $conn->query("
+    SELECT DISTINCT d.id AS driver_id, d.full_name, d.email
+    FROM driver_support_messages m
+    JOIN users d ON m.driver_id = d.id
+    WHERE d.role = 'driver'
+    ORDER BY d.full_name ASC
+");
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $drivers[] = $row;
+    }
+}
 
-// 2. Fetch NEW Counts (Bookings & Reviews)
-$total_bookings   = getCount($conn, "bookings");
-$total_reviews    = getCount($conn, "reviews");
+// Fetch chat history for selected driver
+$messages = [];
+if ($selected_driver_id > 0) {
+    $stmt = $conn->prepare("
+        SELECT id, driver_id, sender_type, message, created_at
+        FROM driver_support_messages
+        WHERE driver_id = ?
+        ORDER BY created_at ASC, id ASC
+    ");
+    if ($stmt) {
+        $stmt->bind_param("i", $selected_driver_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $messages[] = $row;
+            }
+        }
+        $stmt->close();
+    }
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard | FMD Staff</title>
+    <title>Driver Chat | FMD Staff</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         body { background-color: #f4f6f9; }
-        
-        /* --- SINGLE ROW HEADER STYLES --- */
+
+        /* --- ADMIN HEADER (same as admin_dashboard) --- */
         .admin-header {
             background-color: #2c3e50;
             color: white;
@@ -90,36 +140,152 @@ $total_reviews    = getCount($conn, "reviews");
         .logout-btn { color: #e74c3c !important; }
         .logout-btn:hover { color: #ff6b6b !important; }
 
-        /* Dashboard Grid */
-        .dashboard-cards { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
-            gap: 20px; 
-            margin-top: 30px; 
+        /* PAGE WRAPPER */
+        .chat-page-container {
+            margin-top: 30px;
         }
 
-        .card { 
-            padding: 25px; 
-            background: white; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-            text-align: center; 
+        .chat-header-title h2 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #2c3e50;
         }
 
-        .badge { 
-            background-color: #e74c3c; 
-            color: white; 
-            padding: 2px 6px; 
-            border-radius: 4px; 
-            font-size: 0.7rem; 
-            vertical-align: middle; 
-            position: relative; 
-            top: -1px; 
+        .chat-header-title p {
+            margin: 4px 0 0;
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+
+        /* Driver selector */
+        .chat-controls {
+            margin: 18px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 13px;
+        }
+
+        .chat-controls select {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #d0d4dd;
+            font-size: 13px;
+        }
+
+        /* Chat card (same style pattern as driver chat) */
+        .chat-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e3e6ea;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            height: 70vh;
+            max-height: 600px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 6px;
+            margin-bottom: 10px;
+        }
+
+        .chat-message-row {
+            display: flex;
+            margin-bottom: 8px;
+        }
+
+        /* On admin page:
+           - driver messages = left
+           - admin (you) messages = right */
+        .chat-message-row.driver { justify-content: flex-start; }
+        .chat-message-row.admin  { justify-content: flex-end; }
+
+        .chat-bubble {
+            max-width: 80%;
+            padding: 8px 10px;
+            border-radius: 14px;
+            font-size: 13px;
+            line-height: 1.4;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .chat-bubble.driver {
+            background: #eef4ff;
+            color: #2c3e50;
+            border-bottom-left-radius: 3px;
+        }
+
+        .chat-bubble.admin {
+            background: #004b82;
+            color: #ffffff;
+            border-bottom-right-radius: 3px;
+        }
+
+        .chat-meta {
+            font-size: 10px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .chat-empty {
+            text-align: center;
+            padding: 30px 10px;
+            color: #777;
+            font-size: 13px;
+        }
+
+        /* Input bar – same layout as driver chat */
+        .chat-input-wrapper {
+            width: 100%;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            border-top: 1px solid #e3e6ea;
+            padding-top: 10px;
+        }
+
+        .chat-input-wrapper textarea {
+            flex: 1 1 auto;
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 10px;
+            border: 1px solid #d0d4dd;
+            padding: 10px;
+            font-size: 13px;
+            resize: none;
+            min-height: 40px;
+            max-height: 150px;
+        }
+
+        .chat-input-wrapper textarea:focus {
+            border-color: #004b82;
+            box-shadow: 0 0 0 2px rgba(0,75,130,0.12);
+        }
+
+        .chat-input-wrapper button {
+            flex: 0 0 auto;
+            width: 120px;
+            border: none;
+            border-radius: 999px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #004b82;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(0,75,130,0.35);
         }
     </style>
 </head>
 <body>
 
+    <!-- ADMIN HEADER (same as dashboard) -->
     <header class="admin-header">
         <div class="container">
             <div class="logo-section">
@@ -128,13 +294,8 @@ $total_reviews    = getCount($conn, "reviews");
 
             <nav class="admin-nav">
                 <ul>
-                    <li><a href="admin_dashboard.php" style="color:white;">Home</a></li>
-                    <li>
-                        <a href="verify_drivers.php">
-                            Approve 
-                            <?php if($pending_drivers>0) echo "<span class='badge'>$pending_drivers</span>"; ?>
-                        </a>
-                    </li>
+                    <li><a href="admin_dashboard.php">Home</a></li>
+                    <li><a href="verify_drivers.php">Approve</a></li>
                     <li><a href="view_drivers.php">Drivers</a></li>
                     <li><a href="view_passengers.php">Passengers</a></li>
                     <li><a href="view_bookings.php">Bookings</a></li>
@@ -144,89 +305,114 @@ $total_reviews    = getCount($conn, "reviews");
 
                     <li class="nav-divider"></li>
 
-                    <li><a href="admin_profile.php" class="user-action-link"><i class="fa-solid fa-user-circle"></i> Profile</a></li>
-                    <li><a href="admin_login.php" class="user-action-link logout-btn"><i class="fa-solid fa-right-from-bracket"></i></a></li>
+                    <li>
+                        <a href="admin_profile.php" class="user-action-link">
+                            <i class="fa-solid fa-user-circle"></i> Profile
+                        </a>
+                    </li>
+                    <li>
+                        <a href="admin_login.php" class="user-action-link logout-btn">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </a>
+                    </li>
                 </ul>
             </nav>
         </div>
     </header>
 
     <main>
-        <div class="container" style="margin-top: 30px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h2>Dashboard Overview</h2>
-                <span style="color:#7f8c8d;">
-                    Welcome, <strong><?php echo htmlspecialchars($_SESSION['full_name']); ?></strong>
-                </span>
+        <div class="container chat-page-container">
+            <div class="chat-header-title">
+                <h2>Driver Support Chat</h2>
+                <p>Select a driver and reply to their messages.</p>
             </div>
-            
-            <div class="dashboard-cards">
-                <div class="card" style="border-top: 4px solid #e74c3c;">
-                    <i class="fa-solid fa-user-check fa-3x" style="color: #e74c3c;"></i>
-                    <h3><?php echo $pending_drivers; ?></h3>
-                    <p>Pending Approvals</p>
-                    <a href="verify_drivers.php" style="color: #e74c3c; text-decoration: none; font-weight: bold;">
-                        Review Applications &rarr;
-                    </a>
+
+            <form method="get" class="chat-controls">
+                <span>Select driver:</span>
+                <select name="driver_id" onchange="this.form.submit()">
+                    <option value="0">-- Choose a driver --</option>
+                    <?php foreach ($drivers as $d): ?>
+                        <option value="<?php echo (int)$d['driver_id']; ?>"
+                            <?php echo $selected_driver_id == $d['driver_id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($d['full_name']) . " (ID: " . (int)$d['driver_id'] . ")"; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <noscript><button type="submit">Load</button></noscript>
+            </form>
+
+            <div class="chat-card">
+                <div class="chat-messages" id="chatMessages">
+
+                    <?php if ($selected_driver_id === 0): ?>
+                        <div class="chat-empty">
+                            <i class="fa-regular fa-user"></i><br>
+                            Please select a driver to view the conversation.
+                        </div>
+
+                    <?php elseif (count($messages) === 0): ?>
+                        <div class="chat-empty">
+                            <i class="fa-regular fa-comments"></i><br>
+                            No messages yet from this driver.
+                        </div>
+
+                    <?php else: ?>
+                        <?php foreach ($messages as $msg): ?>
+                            <?php
+                                $isAdmin = ($msg['sender_type'] === 'admin');
+                                $rowClass    = $isAdmin ? 'admin' : 'driver';
+                                $bubbleClass = $isAdmin ? 'admin' : 'driver';
+                                $timeLabel   = date("d M Y, h:i A", strtotime($msg['created_at']));
+                            ?>
+                            <div class="chat-message-row <?php echo $rowClass; ?>">
+                                <div class="chat-bubble <?php echo $bubbleClass; ?>">
+                                    <?php echo nl2br(htmlspecialchars($msg['message'])); ?>
+                                    <div class="chat-meta">
+                                        <?php echo $isAdmin ? 'You • ' : 'Driver • '; ?>
+                                        <?php echo $timeLabel; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+
                 </div>
 
-                <div class="card" style="border-top: 4px solid #27ae60;">
-                    <i class="fa-solid fa-car fa-3x" style="color: #27ae60;"></i>
-                    <h3><?php echo $total_drivers; ?></h3>
-                    <p>Total Drivers</p>
-                    <a href="view_drivers.php" style="color: #27ae60; text-decoration: none; font-weight: bold;">
-                        View List &rarr;
-                    </a>
-                </div>
+                <?php if ($selected_driver_id > 0): ?>
+                    <form method="post" class="chat-input-wrapper" onsubmit="return handleAdminSubmit(event);">
+                        <input type="hidden" name="driver_id" value="<?php echo (int)$selected_driver_id; ?>">
 
-                <div class="card" style="border-top: 4px solid #3498db;">
-                    <i class="fa-solid fa-users fa-3x" style="color: #3498db;"></i>
-                    <h3><?php echo $total_passengers; ?></h3>
-                    <p>Total Passengers</p>
-                    <a href="view_passengers.php" style="color: #3498db; text-decoration: none; font-weight: bold;">
-                        View List &rarr;
-                    </a>
-                </div>
+                        <textarea 
+                            name="message"
+                            id="adminMessage"
+                            placeholder="Type your reply to the driver..."
+                        ></textarea>
 
-                <div class="card" style="border-top: 4px solid #9b59b6;">
-                    <i class="fa-solid fa-address-book fa-3x" style="color: #9b59b6;"></i>
-                    <h3><?php echo $total_bookings; ?></h3>
-                    <p>Total Bookings</p>
-                    <a href="view_bookings.php" style="color: #9b59b6; text-decoration: none; font-weight: bold;">
-                        View Logs &rarr;
-                    </a>
-                </div>
-
-                <div class="card" style="border-top: 4px solid #f1c40f;">
-                    <i class="fa-solid fa-star-half-stroke fa-3x" style="color: #f1c40f;"></i>
-                    <h3><?php echo $total_reviews; ?></h3>
-                    <p>Reviews Posted</p>
-                    <a href="manage_reviews.php" style="color: #f1c40f; text-decoration: none; font-weight: bold;">
-                        Moderate &rarr;
-                    </a>
-                </div>
-
-                <div class="card" style="border-top: 4px solid #e67e22;">
-                    <i class="fa-solid fa-envelope-open-text fa-3x" style="color: #e67e22;"></i>
-                    <h3><?php echo $feedback_count; ?></h3>
-                    <p>Feedback Messages</p>
-                    <a href="view_feedback.php" style="color: #e67e22; text-decoration: none; font-weight: bold;">
-                        Read Inbox &rarr;
-                    </a>
-                </div>
-
-                <!-- NEW: Driver Chat card -->
-                <div class="card" style="border-top: 4px solid #1abc9c;">
-                    <i class="fa-solid fa-comments fa-3x" style="color: #1abc9c;"></i>
-                    <h3>Driver Chat</h3>
-                    <p>View and reply to drivers</p>
-                    <a href="admin_driver_chat.php" style="color: #1abc9c; text-decoration: none; font-weight: bold;">
-                        Open Chat &rarr;
-                    </a>
-                </div>
-
+                        <button type="submit" id="adminSendBtn">Send</button>
+                    </form>
+                <?php endif; ?>
             </div>
         </div>
     </main>
+
+    <script>
+        // Auto-scroll to bottom
+        var container = document.getElementById("chatMessages");
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleAdminSubmit(e) {
+            var t = document.getElementById("adminMessage");
+            var b = document.getElementById("adminSendBtn");
+            if (!t) return true;
+            if (t.value.trim() === "") {
+                e.preventDefault();
+                return false;
+            }
+            b.disabled = true;
+            return true;
+        }
+    </script>
 </body>
 </html>
