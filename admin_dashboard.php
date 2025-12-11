@@ -13,7 +13,9 @@ $selected_driver_id = isset($_GET['driver_id']) ? (int)$_GET['driver_id'] : 0;
 
 /**
  * Admin view of driver–admin chat.
- * Uses table: driver_support_messages
+ * Uses tables:
+ *   drivers (driver_id, full_name, email, ...)
+ *   driver_support_messages (id, driver_id, sender_type, message, created_at)
  */
 
 // Handle new admin message
@@ -37,13 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// Fetch drivers who have messages (or you can fetch all drivers if you want)
+// Fetch drivers who have messages (from drivers table)
 $drivers = [];
 $result = $conn->query("
-    SELECT DISTINCT d.id AS driver_id, d.full_name, d.email
+    SELECT DISTINCT d.driver_id, d.full_name, d.email
     FROM driver_support_messages m
-    JOIN users d ON m.driver_id = d.id
-    WHERE d.role = 'driver'
+    JOIN drivers d ON m.driver_id = d.driver_id
     ORDER BY d.full_name ASC
 ");
 if ($result) {
@@ -175,7 +176,7 @@ if ($selected_driver_id > 0) {
             font-size: 13px;
         }
 
-        /* Chat card (same style pattern as driver chat) */
+        /* Chat card */
         .chat-card {
             background: #ffffff;
             border-radius: 16px;
@@ -200,9 +201,6 @@ if ($selected_driver_id > 0) {
             margin-bottom: 8px;
         }
 
-        /* On admin page:
-           - driver messages = left
-           - admin (you) messages = right */
         .chat-message-row.driver { justify-content: flex-start; }
         .chat-message-row.admin  { justify-content: flex-end; }
 
@@ -240,7 +238,7 @@ if ($selected_driver_id > 0) {
             font-size: 13px;
         }
 
-        /* Input bar – same layout as driver chat */
+        /* Input bar */
         .chat-input-wrapper {
             width: 100%;
             display: flex;
@@ -285,7 +283,7 @@ if ($selected_driver_id > 0) {
 </head>
 <body>
 
-    <!-- ADMIN HEADER (same as dashboard) -->
+    <!-- ADMIN HEADER -->
     <header class="admin-header">
         <div class="container">
             <div class="logo-section">
