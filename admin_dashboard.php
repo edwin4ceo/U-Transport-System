@@ -91,9 +91,31 @@ $total_reviews    = getCount($conn, "reviews");
         .logout-btn:hover { color: #ff6b6b !important; }
 
         /* Dashboard Grid */
-        .dashboard-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 30px; }
-        .card { padding: 25px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
-        .badge { background-color: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; vertical-align: middle; position: relative; top: -1px; }
+        .dashboard-cards { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+            gap: 20px; 
+            margin-top: 30px; 
+        }
+
+        .card { 
+            padding: 25px; 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            text-align: center; 
+        }
+
+        .badge { 
+            background-color: #e74c3c; 
+            color: white; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            font-size: 0.7rem; 
+            vertical-align: middle; 
+            position: relative; 
+            top: -1px; 
+        }
     </style>
 </head>
 <body>
@@ -107,10 +129,17 @@ $total_reviews    = getCount($conn, "reviews");
             <nav class="admin-nav">
                 <ul>
                     <li><a href="admin_dashboard.php" style="color:white;">Home</a></li>
-                    <li><a href="verify_drivers.php">Approve <?php if($pending_drivers>0) echo "<span class='badge'>$pending_drivers</span>"; ?></a></li>
+                    <li>
+                        <a href="verify_drivers.php">
+                            Approve 
+                            <?php if($pending_drivers>0) echo "<span class='badge'>$pending_drivers</span>"; ?>
+                        </a>
+                    </li>
                     <li><a href="view_drivers.php">Drivers</a></li>
                     <li><a href="view_passengers.php">Passengers</a></li>
-                    <li><a href="view_bookings.php">Bookings</a></li> <li><a href="manage_reviews.php">Reviews</a></li>   <li><a href="view_feedback.php">Feedback</a></li>
+                    <li><a href="view_bookings.php">Bookings</a></li>
+                    <li><a href="manage_reviews.php">Reviews</a></li>
+                    <li><a href="view_feedback.php">Feedback</a></li>
                     <li><a href="reports.php">Reports</a></li>
 
                     <li class="nav-divider"></li>
@@ -126,7 +155,9 @@ $total_reviews    = getCount($conn, "reviews");
         <div class="container" style="margin-top: 30px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h2>Dashboard Overview</h2>
-                <span style="color:#7f8c8d;">Welcome, <strong><?php echo htmlspecialchars($_SESSION['full_name']); ?></strong></span>
+                <span style="color:#7f8c8d;">
+                    Welcome, <strong><?php echo htmlspecialchars($_SESSION['full_name']); ?></strong>
+                </span>
             </div>
             
             <div class="dashboard-cards">
@@ -134,43 +165,66 @@ $total_reviews    = getCount($conn, "reviews");
                     <i class="fa-solid fa-user-check fa-3x" style="color: #e74c3c;"></i>
                     <h3><?php echo $pending_drivers; ?></h3>
                     <p>Pending Approvals</p>
-                    <a href="verify_drivers.php" style="color: #e74c3c; text-decoration: none; font-weight: bold;">Review Applications &rarr;</a>
+                    <a href="verify_drivers.php" style="color: #e74c3c; text-decoration: none; font-weight: bold;">
+                        Review Applications &rarr;
+                    </a>
                 </div>
 
                 <div class="card" style="border-top: 4px solid #27ae60;">
                     <i class="fa-solid fa-car fa-3x" style="color: #27ae60;"></i>
                     <h3><?php echo $total_drivers; ?></h3>
                     <p>Total Drivers</p>
-                    <a href="view_drivers.php" style="color: #27ae60; text-decoration: none; font-weight: bold;">View List &rarr;</a>
+                    <a href="view_drivers.php" style="color: #27ae60; text-decoration: none; font-weight: bold;">
+                        View List &rarr;
+                    </a>
                 </div>
 
                 <div class="card" style="border-top: 4px solid #3498db;">
                     <i class="fa-solid fa-users fa-3x" style="color: #3498db;"></i>
                     <h3><?php echo $total_passengers; ?></h3>
                     <p>Total Passengers</p>
-                    <a href="view_passengers.php" style="color: #3498db; text-decoration: none; font-weight: bold;">View List &rarr;</a>
+                    <a href="view_passengers.php" style="color: #3498db; text-decoration: none; font-weight: bold;">
+                        View List &rarr;
+                    </a>
                 </div>
 
                 <div class="card" style="border-top: 4px solid #9b59b6;">
                     <i class="fa-solid fa-address-book fa-3x" style="color: #9b59b6;"></i>
                     <h3><?php echo $total_bookings; ?></h3>
                     <p>Total Bookings</p>
-                    <a href="view_bookings.php" style="color: #9b59b6; text-decoration: none; font-weight: bold;">View Logs &rarr;</a>
+                    <a href="view_bookings.php" style="color: #9b59b6; text-decoration: none; font-weight: bold;">
+                        View Logs &rarr;
+                    </a>
                 </div>
 
                 <div class="card" style="border-top: 4px solid #f1c40f;">
                     <i class="fa-solid fa-star-half-stroke fa-3x" style="color: #f1c40f;"></i>
                     <h3><?php echo $total_reviews; ?></h3>
                     <p>Reviews Posted</p>
-                    <a href="manage_reviews.php" style="color: #f1c40f; text-decoration: none; font-weight: bold;">Moderate &rarr;</a>
+                    <a href="manage_reviews.php" style="color: #f1c40f; text-decoration: none; font-weight: bold;">
+                        Moderate &rarr;
+                    </a>
                 </div>
 
                 <div class="card" style="border-top: 4px solid #e67e22;">
                     <i class="fa-solid fa-envelope-open-text fa-3x" style="color: #e67e22;"></i>
                     <h3><?php echo $feedback_count; ?></h3>
                     <p>Feedback Messages</p>
-                    <a href="view_feedback.php" style="color: #e67e22; text-decoration: none; font-weight: bold;">Read Inbox &rarr;</a>
+                    <a href="view_feedback.php" style="color: #e67e22; text-decoration: none; font-weight: bold;">
+                        Read Inbox &rarr;
+                    </a>
                 </div>
+
+                <!-- NEW: Driver Chat card -->
+                <div class="card" style="border-top: 4px solid #1abc9c;">
+                    <i class="fa-solid fa-comments fa-3x" style="color: #1abc9c;"></i>
+                    <h3>Driver Chat</h3>
+                    <p>View and reply to drivers</p>
+                    <a href="admin_driver_chat.php" style="color: #1abc9c; text-decoration: none; font-weight: bold;">
+                        Open Chat &rarr;
+                    </a>
+                </div>
+
             </div>
         </div>
     </main>
