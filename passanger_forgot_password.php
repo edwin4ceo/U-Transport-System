@@ -14,14 +14,21 @@ if(isset($_POST['reset_password'])){
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
 
-    // 1. Validation: Check if passwords match
-    if($new_password !== $confirm_password){
+    // 1. Validation: Check MMU Domain
+    // PHP-side validation in case JS is bypassed
+    if (!str_contains($email, "@student.mmu.edu.my")) {
+        $_SESSION['swal_title'] = "Invalid Email Domain";
+        $_SESSION['swal_msg'] = "Please confirm if you entered the correct @student.mmu.edu.my email address.";
+        $_SESSION['swal_type'] = "error";
+    }
+    // 2. Validation: Check if passwords match
+    elseif($new_password !== $confirm_password){
         $_SESSION['swal_title'] = "Password Mismatch";
         $_SESSION['swal_msg'] = "New passwords do not match. Please try again.";
         $_SESSION['swal_type'] = "error";
     }
     else {
-        // 2. Verify User Identity (Check if Email AND Student ID match)
+        // 3. Verify User Identity
         $stmt = $conn->prepare("SELECT * FROM students WHERE email = ? AND student_id = ?");
         $stmt->bind_param("ss", $email, $student_id);
         $stmt->execute();
@@ -35,7 +42,6 @@ if(isset($_POST['reset_password'])){
             $update_stmt->bind_param("ss", $new_password_hash, $email);
             
             if($update_stmt->execute()){
-                // Success
                 $_SESSION['swal_title'] = "Password Reset Successful";
                 $_SESSION['swal_msg'] = "You can now login with your new password.";
                 $_SESSION['swal_type'] = "success";
@@ -44,7 +50,6 @@ if(isset($_POST['reset_password'])){
                 alert("Database error: " . $conn->error);
             }
         } else {
-            // Identity Verification Failed
             $_SESSION['swal_title'] = "Verification Failed";
             $_SESSION['swal_msg'] = "The Email and Student ID provided do not match our records.";
             $_SESSION['swal_type'] = "error";
@@ -56,13 +61,14 @@ if(isset($_POST['reset_password'])){
 <?php include "header.php"; ?>
 
 <style>
-    /* Force footer to bottom for short page */
-    footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
+    /* Standard Input Styling (No more seamless wrapper) */
+    input[type="email"], input[type="text"], input[type="password"] {
         width: 100%;
-        z-index: 1000;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box; /* Ensures padding doesn't affect width */
     }
 
     /* Password Eye Icon Style */
@@ -70,14 +76,15 @@ if(isset($_POST['reset_password'])){
         position: relative;
         width: 100%;
     }
+    /* Override margin-bottom for inputs inside wrapper to avoid double margins */
     .password-wrapper input {
-        width: 100%;
+        margin-bottom: 15px; 
         padding-right: 40px; 
     }
     .toggle-password {
         position: absolute;
         right: 15px;
-        top: 35%;
+        top: 35%; /* Center vertically based on input height */
         transform: translateY(-50%);
         cursor: pointer;
         color: #7f8c8d;
@@ -92,20 +99,24 @@ if(isset($_POST['reset_password'])){
 <p>Enter your details to verify your identity and set a new password.</p>
 
 <form action="" method="POST">
+    
     <label>MMU Email</label>
-    <input type="email" name="email" required placeholder="Enter your registered email">
+    <input type="email" name="email" id="emailInput" required placeholder="e.g. 1231201234@student.mmu.edu.my">
 
     <label>Student ID</label>
-    <input type="text" name="student_id" required placeholder="Enter your 10-digit Student ID">
+    <input type="text" name="student_id" id="studentIDInput" required placeholder="Auto-filled from email">
 
     <label>New Password</label>
     <div class="password-wrapper">
         <input type="password" name="new_password" id="newPass" required placeholder="Create new password">
-        <i class="fa-solid fa-eye-slash toggle-password" id="eyeIcon"></i>
+        <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconNew"></i>
     </div>
 
     <label>Confirm New Password</label>
-    <input type="password" name="confirm_password" required placeholder="Re-enter new password">
+    <div class="password-wrapper">
+        <input type="password" name="confirm_password" id="confirmPass" required placeholder="Re-enter new password">
+        <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconConfirm"></i>
+    </div>
 
     <button type="submit" name="reset_password">Reset Password</button>
 </form>
@@ -115,32 +126,69 @@ if(isset($_POST['reset_password'])){
 </div>
 
 <script>
-    const passwordInput = document.getElementById('newPass');
-    const eyeIcon = document.getElementById('eyeIcon');
+    const emailInput = document.getElementById('emailInput');
+    const studentIdInput = document.getElementById('studentIDInput');
 
-    function showPassword() {
-        passwordInput.type = 'text';
-        eyeIcon.classList.remove('fa-eye-slash');
-        eyeIcon.classList.add('fa-eye');
-    }
-
-    function hidePassword() {
-        passwordInput.type = 'password';
-        eyeIcon.classList.remove('fa-eye');
-        eyeIcon.classList.add('fa-eye-slash');
-    }
-
-    // Mouse Events
-    eyeIcon.addEventListener('mousedown', showPassword);
-    eyeIcon.addEventListener('mouseup', hidePassword);
-    eyeIcon.addEventListener('mouseleave', hidePassword);
-
-    // Touch Events (Mobile)
-    eyeIcon.addEventListener('touchstart', function(e) {
-        e.preventDefault();
-        showPassword();
+    // 1. Auto-fill Student ID from Full Email
+    emailInput.addEventListener('input', function() {
+        const val = this.value;
+        // If user types '@', take the part before it
+        if (val.includes('@')) {
+            studentIdInput.value = val.split('@')[0];
+        } else {
+            studentIdInput.value = val;
+        }
     });
-    eyeIcon.addEventListener('touchend', hidePassword);
+
+    // 2. Domain Validation on Blur (User clicks away)
+    emailInput.addEventListener('blur', function() {
+        const val = this.value;
+        const requiredDomain = "@student.mmu.edu.my";
+
+        // Only check if field is not empty
+        if (val.length > 0) {
+            if (!val.endsWith(requiredDomain)) {
+                // Show SweetAlert Warning
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Email Format',
+                    text: 'Please confirm if you entered the correct @student.mmu.edu.my address.',
+                    confirmButtonColor: '#005A9C'
+                });
+            }
+        }
+    });
+
+    // 3. Password Toggle Function
+    function setupPasswordToggle(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+
+        function show() {
+            input.type = 'text';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+
+        function hide() {
+            input.type = 'password';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+
+        icon.addEventListener('mousedown', show);
+        icon.addEventListener('mouseup', hide);
+        icon.addEventListener('mouseleave', hide);
+
+        icon.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            show();
+        });
+        icon.addEventListener('touchend', hide);
+    }
+
+    setupPasswordToggle('newPass', 'eyeIconNew');
+    setupPasswordToggle('confirmPass', 'eyeIconConfirm');
 </script>
 
 <?php include "footer.php"; ?>
