@@ -66,7 +66,7 @@ if(isset($_POST['login'])){
 
 <form action="" method="POST">
     <label>Email</label>
-    <input type="email" name="email" required placeholder="Your MMU Email">
+    <input type="email" name="email" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required placeholder="Your MMU Email">
 
     <label>Password</label>
     <input type="password" name="password" required placeholder="Your Password">
