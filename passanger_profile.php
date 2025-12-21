@@ -54,7 +54,7 @@ include "header.php";
     .profile-container {
         max-width: 850px; 
         margin: 0 auto;   
-        padding-bottom: 100px;
+        padding-bottom: 30px; /* Footer padding kept small as requested */
     }
 
     /* --- [IMAGE MATCHED DESIGN] Profile Header --- */
@@ -99,16 +99,14 @@ include "header.php";
         justify-content: center;
     }
 
-    /* [MODIFIED] Name size reduced further */
     .profile-name {
-        font-size: 1rem; /* Now same size as standard text, but bold */
+        font-size: 1rem; 
         font-weight: 800;
         color: #222;
         margin: 0 0 5px 0;
         line-height: 1;
     }
 
-    /* [MODIFIED] Phone size kept readable */
     .profile-phone {
         color: #777;
         font-size: 1rem; 
@@ -165,7 +163,7 @@ include "header.php";
         background-color: #e0f2f1;
     }
 
-    /* --- Section Headers & Other CSS (Unchanged) --- */
+    /* --- Section Headers --- */
     .section-header-blue {
         background-color: #005A9C; 
         color: white;
@@ -174,7 +172,10 @@ include "header.php";
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin: 20px 0 15px 0;
+        
+        /* Consistent Top Spacing for all headers */
+        margin: 40px 0 15px 0; 
+        
         font-weight: bold;
         font-size: 1rem;
         box-shadow: 0 3px 8px rgba(0, 90, 156, 0.2); 
@@ -186,12 +187,14 @@ include "header.php";
         transition: all 0.2s ease;
     }
 
+    /* --- Scroll Container --- */
     .favorites-scroll {
         display: flex;
         overflow-x: auto;
         gap: 12px; 
         padding-bottom: 10px;
         scrollbar-width: none;
+        margin-bottom: 10px;
     }
     .favorites-scroll::-webkit-scrollbar { display: none; }
 
@@ -229,6 +232,12 @@ include "header.php";
         justify-content: center;
         cursor: pointer;
         font-size: 0.7rem;
+    }
+
+    /* --- [MODIFIED] History List Spacing Fix --- */
+    .history-list {
+        /* Changed from 10px to 30px to match the upper gap */
+        margin-bottom: 30px;
     }
 
     .history-item {
