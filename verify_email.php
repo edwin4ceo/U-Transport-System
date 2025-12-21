@@ -12,6 +12,7 @@ if (!isset($_SESSION['temp_register_data'])) {
 
 // Handle Verification Form Submission
 if (isset($_POST['verify_btn'])) {
+    // We receive the combined code from the HIDDEN input field named 'otp_input'
     $user_entered_code = $_POST['otp_input'];
     $correct_code = $_SESSION['temp_register_data']['otp_code'];
 
@@ -31,7 +32,7 @@ if (isset($_POST['verify_btn'])) {
             // Success: Clear temporary session data
             unset($_SESSION['temp_register_data']);
             
-            // Set success message for SweetAlert (if used in login page)
+            // Set success message for SweetAlert
             $_SESSION['swal_title'] = "Registration Successful!";
             $_SESSION['swal_msg'] = "Your account has been verified. Please login.";
             $_SESSION['swal_type'] = "success";
@@ -59,48 +60,84 @@ if (isset($_POST['verify_btn'])) {
 <style>
     .verify-container {
         max-width: 450px;
-        margin: 50px auto;
-        padding: 30px;
+        margin: 80px auto;
+        padding: 40px;
         background: #fff;
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1); /* Nicer shadow */
         text-align: center;
+        font-family: 'Arial', sans-serif;
     }
     .verify-container h2 {
         color: #333;
         margin-bottom: 10px;
+        font-weight: 700;
     }
     .verify-container p {
         color: #666;
-        margin-bottom: 20px;
+        margin-bottom: 30px;
+        font-size: 14px;
+        line-height: 1.6;
     }
-    .otp-input {
-        width: 100%;
-        padding: 12px;
-        margin: 15px 0;
+
+    /* --- NEW OTP STYLES --- */
+    .otp-field {
+        display: flex;
+        justify-content: center;
+        gap: 15px; /* Spacing between boxes */
+        margin-bottom: 30px;
+    }
+
+    .otp-field input {
+        width: 50px;
+        height: 55px;
+        font-size: 24px;
+        font-weight: bold;
         text-align: center;
-        font-size: 1.5rem;
-        letter-spacing: 8px;
         border: 2px solid #ddd;
-        border-radius: 6px;
+        border-radius: 8px;
+        background: #f9f9f9;
+        transition: all 0.2s ease;
+        outline: none;
+        color: #333;
     }
+
+    /* Active state (when user clicks) */
+    .otp-field input:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 5px rgba(40, 167, 69, 0.3);
+        background: #fff;
+    }
+
+    /* Hide the spinner arrows for number input */
+    .otp-field input::-webkit-outer-spin-button,
+    .otp-field input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    .otp-field input[type=number] {
+        -moz-appearance: textfield; /* Firefox */
+    }
+
+    /* Button Style */
     .btn-verify {
         width: 100%;
-        padding: 12px;
+        padding: 14px;
         background-color: #28a745;
         color: white;
         border: none;
-        border-radius: 6px;
-        font-size: 1rem;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
         cursor: pointer;
-        transition: 0.3s;
+        transition: background 0.3s;
     }
     .btn-verify:hover {
         background-color: #218838;
     }
     .resend-link {
         display: block;
-        margin-top: 15px;
+        margin-top: 20px;
         font-size: 0.9rem;
         color: #007bff;
         text-decoration: none;
@@ -111,19 +148,74 @@ if (isset($_POST['verify_btn'])) {
 </style>
 
 <div class="verify-container">
-    <h2>Verify Email</h2>
+    <h2>Verify Your Account</h2>
     <p>We have sent a 4-digit verification code to:<br> 
-       <strong><?php echo htmlspecialchars($_SESSION['temp_register_data']['email']); ?></strong>
+       <strong style="color:#333; font-size:16px;"><?php echo htmlspecialchars($_SESSION['temp_register_data']['email']); ?></strong>
     </p>
 
-    <form action="" method="POST">
-        <label for="otp_input" style="font-weight:bold; display:block; text-align:left;">Enter Code:</label>
-        <input type="number" id="otp_input" name="otp_input" class="otp-input" placeholder="0000" required>
+    <form action="" method="POST" id="otpForm">
+        <input type="hidden" name="otp_input" id="full_otp_input">
+
+        <div class="otp-field">
+            <input type="number" class="otp-box" maxlength="1" required>
+            <input type="number" class="otp-box" maxlength="1" required>
+            <input type="number" class="otp-box" maxlength="1" required>
+            <input type="number" class="otp-box" maxlength="1" required>
+        </div>
         
-        <button type="submit" name="verify_btn" class="btn-verify">Verify & Register</button>
+        <button type="submit" name="verify_btn" class="btn-verify">Verify Code</button>
     </form>
     
-    <a href="passanger_register.php" class="resend-link">Wrong Email? Go back to Register</a>
+    <a href="passanger_register.php" class="resend-link">Wrong Email? Go Back</a>
 </div>
+
+<script>
+    const inputs = document.querySelectorAll(".otp-box");
+    const hiddenInput = document.getElementById("full_otp_input");
+    const form = document.getElementById("otpForm");
+
+    inputs.forEach((input, index) => {
+        // 1. Handle Input (Auto-jump to next)
+        input.addEventListener("input", (e) => {
+            // Ensure only 1 digit is entered per box
+            if (input.value.length > 1) {
+                input.value = input.value.slice(0, 1);
+            }
+
+            // If user typed a number, move to next box
+            if (input.value.length === 1) {
+                if (index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            }
+            
+            // Update the hidden input value
+            updateHiddenInput();
+        });
+
+        // 2. Handle Backspace (Jump to previous)
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Backspace" && input.value === "") {
+                if (index > 0) {
+                    inputs[index - 1].focus();
+                }
+            }
+        });
+    });
+
+    // Function to combine all 4 boxes into the hidden input
+    function updateHiddenInput() {
+        let code = "";
+        inputs.forEach((input) => {
+            code += input.value;
+        });
+        hiddenInput.value = code;
+    }
+
+    // Ensure hidden input is filled before submit (just in case)
+    form.addEventListener("submit", (e) => {
+        updateHiddenInput();
+    });
+</script>
 
 <?php include "footer.php"; ?>
