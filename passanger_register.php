@@ -5,6 +5,15 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
+// --- INCLUDE PHPMAILER ---
+// Ensure the folder 'PHPMailer' exists in your project directory
+require 'PHPMailer/Exception.php';
+require 'PHPMailer/PHPMailer.php';
+require 'PHPMailer/SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 // Initialize variables to keep form data (Sticky Form)
 $name = "";
 $student_id = "";
@@ -13,7 +22,8 @@ $email = "";
 // Process the registration form when submitted
 if(isset($_POST['register'])){
     // Get values from form
-    $name             = $_POST['name'];
+    // MODIFIED: Force name to be Uppercase immediately
+    $name             = strtoupper($_POST['name']); 
     $student_id       = $_POST['student_id'];
     $email            = $_POST['email'];
     $password         = $_POST['password'];
@@ -26,7 +36,6 @@ if(isset($_POST['register'])){
         $_SESSION['swal_title'] = "Invalid Student ID";
         $_SESSION['swal_msg'] = "Student ID must be exactly 10 digits.";
         $_SESSION['swal_type'] = "error";
-        // No redirect here, we let the page reload so values stick
     }
     
     // Validate Name (Must not contain numbers)
@@ -34,7 +43,6 @@ if(isset($_POST['register'])){
         $_SESSION['swal_title'] = "Invalid Name";
         $_SESSION['swal_msg'] = "Name cannot contain numbers.";
         $_SESSION['swal_type'] = "error";
-        // Clear name only, keep others
         $name = ""; 
     }
 
@@ -55,8 +63,9 @@ if(isset($_POST['register'])){
     }
 
     else {
-        // Check for duplicate email
+        // Check for duplicate email in Database
         $check = $conn->query("SELECT * FROM students WHERE email='$email'");
+        
         if($check->num_rows > 0){
             $_SESSION['swal_title'] = "Registration Failed";
             $_SESSION['swal_msg'] = "This email is already registered. Please login instead.";
@@ -67,23 +76,64 @@ if(isset($_POST['register'])){
             $_SESSION['swal_cancel_text'] = "Try Again";
         } 
         else {
-            // --- 3. INSERT DATA (All checks passed) ---
+            // --- 3. SEND OTP INSTEAD OF INSERTING ---
             
-            // Hash the password
+            // Generate 4-digit code
+            $otp_code = rand(1000, 9999);
+
+            // Hash the password NOW
             $password_hash = password_hash($password, PASSWORD_BCRYPT);
 
-            $sql = "INSERT INTO students (name, student_id, email, password) 
-                    VALUES ('$name','$student_id','$email','$password_hash')";
+            // Store user data in SESSION temporarily
+            $_SESSION['temp_register_data'] = [
+                'name' => $name, // This is now Uppercase
+                'student_id' => $student_id,
+                'email' => $email,
+                'password_hash' => $password_hash,
+                'otp_code' => $otp_code
+            ];
 
-            if($conn->query($sql)){
-                // SUCCESS
-                $_SESSION['swal_title'] = "Congratulations!";
-                $_SESSION['swal_msg'] = "Registration Successful! Please login to continue.";
-                $_SESSION['swal_type'] = "success";
+            // Setup PHPMailer
+            $mail = new PHPMailer(true);
+
+            try {
+                // Server settings
+                $mail->isSMTP();
+                $mail->Host       = 'smtp.gmail.com';
+                $mail->SMTPAuth   = true;
                 
-                redirect("passanger_login.php");
-            } else {
-                alert("Registration failed: " . $conn->error);
+                // Credentials
+                $mail->Username   = 'soonkit0726@gmail.com';  
+                $mail->Password   = 'oprh ldrk nwvg eyiv';    
+                
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = 587;
+
+                // Recipients
+                $mail->setFrom('soonkit0726@gmail.com', 'U-Transport System');
+                $mail->addAddress($email, $name);
+
+                // Content
+                $mail->isHTML(true);
+                $mail->Subject = 'Verify Your Account - U-Transport';
+                $mail->Body    = "
+                    <h3>Hello $name,</h3>
+                    <p>Thank you for registering. Your verification code is:</p>
+                    <h2 style='color: #2c3e50; letter-spacing: 5px; font-size: 24px;'>$otp_code</h2>
+                    <p>Please enter this code in the website to complete your registration.</p>
+                ";
+                $mail->AltBody = "Your verification code is: $otp_code";
+
+                $mail->send();
+
+                // Redirect to Verification Page
+                header("Location: verify_email.php");
+                exit();
+
+            } catch (Exception $e) {
+                $_SESSION['swal_title'] = "Email Error";
+                $_SESSION['swal_msg'] = "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+                $_SESSION['swal_type'] = "error";
             }
         }
     }
@@ -134,7 +184,7 @@ if(isset($_POST['register'])){
 
 <form action="" method="POST">
     <label>Full Name</label>
-    <input type="text" name="name" id="nameInput" value="<?php echo htmlspecialchars($name); ?>" required placeholder="Enter your full name">
+    <input type="text" name="name" id="nameInput" value="<?php echo htmlspecialchars($name); ?>" required placeholder="ENTER YOUR FULL NAME" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
 
     <label>Student ID (10 Digits)</label>
     <input type="text" name="student_id" id="studentIDInput" value="<?php echo htmlspecialchars($student_id); ?>" maxlength="10" required placeholder="e.g. 1234567890">
@@ -149,7 +199,10 @@ if(isset($_POST['register'])){
     </div>
 
     <label>Confirm Password</label>
-    <input type="password" name="confirm_password" required placeholder="Re-enter your password">
+    <div class="password-wrapper">
+        <input type="password" name="confirm_password" id="confirmPasswordInput" required placeholder="Re-enter your password">
+        <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconConfirm"></i>
+    </div>
 
     <button type="submit" name="register">Register</button>
 </form>
@@ -165,7 +218,6 @@ if(isset($_POST['register'])){
 
     studentIdInput.addEventListener('input', function() {
         const id = this.value;
-        // Only fill if ID contains numbers, otherwise clear or keep partial
         if (id.length > 0) {
             emailInput.value = id + "@student.mmu.edu.my";
         } else {
@@ -173,33 +225,41 @@ if(isset($_POST['register'])){
         }
     });
 
-    // 2. Password "Press and Hold" to View
-    const passwordInput = document.getElementById('passwordInput');
-    const eyeIcon = document.getElementById('eyeIcon');
+    // 2. Helper Function to Toggle Password Visibility
+    function setupPasswordToggle(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
 
-    function showPassword() {
-        passwordInput.type = 'text';
-        eyeIcon.classList.remove('fa-eye-slash');
-        eyeIcon.classList.add('fa-eye');
+        function show() {
+            input.type = 'text';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+
+        function hide() {
+            input.type = 'password';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+
+        // Mouse Events (Desktop)
+        icon.addEventListener('mousedown', show);
+        icon.addEventListener('mouseup', hide);
+        icon.addEventListener('mouseleave', hide);
+
+        // Touch Events (Mobile)
+        icon.addEventListener('touchstart', function(e) {
+            e.preventDefault(); 
+            show();
+        });
+        icon.addEventListener('touchend', hide);
     }
 
-    function hidePassword() {
-        passwordInput.type = 'password';
-        eyeIcon.classList.remove('fa-eye');
-        eyeIcon.classList.add('fa-eye-slash');
-    }
+    // Initialize toggle for Main Password
+    setupPasswordToggle('passwordInput', 'eyeIcon');
 
-    // Mouse Events (Desktop)
-    eyeIcon.addEventListener('mousedown', showPassword);
-    eyeIcon.addEventListener('mouseup', hidePassword);
-    eyeIcon.addEventListener('mouseleave', hidePassword); // Hide if mouse drags out
-
-    // Touch Events (Mobile)
-    eyeIcon.addEventListener('touchstart', function(e) {
-        e.preventDefault(); // Prevent ghost clicks
-        showPassword();
-    });
-    eyeIcon.addEventListener('touchend', hidePassword);
+    // Initialize toggle for Confirm Password
+    setupPasswordToggle('confirmPasswordInput', 'eyeIconConfirm');
 
 </script>
 

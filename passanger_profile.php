@@ -10,29 +10,39 @@ if(!isset($_SESSION['student_id'])){
 
 $student_id = $_SESSION['student_id'];
 
-// Retrieve current student information from database
+// --- [KEEPING FUNCTIONALITY] Handle Delete Favourite Driver Logic ---
+if(isset($_POST['delete_fav_id'])){
+    $fav_id_to_delete = $_POST['delete_fav_id'];
+    $del_stmt = $conn->prepare("DELETE FROM favourite_drivers WHERE id = ? AND student_id = ?");
+    $del_stmt->bind_param("is", $fav_id_to_delete, $student_id);
+    
+    if($del_stmt->execute()){
+        echo "<script>alert('Driver removed from favourites.'); window.location.href='passanger_profile.php';</script>";
+        exit;
+    }
+}
+// --------------------------------------------------
+
+// Retrieve current student information
 $stmt = $conn->prepare("SELECT * FROM students WHERE student_id = ?");
 $stmt->bind_param("s", $student_id);
 $stmt->execute();
 $student = $stmt->get_result()->fetch_assoc();
 
-// Calculate total number of bookings made by this student
+// Calculate stats
 $booking_count = $conn->query("SELECT COUNT(*) as total FROM bookings WHERE student_id = '$student_id'")->fetch_assoc()['total'];
-
-// Calculate total reviews written by this student
 $review_count_query = $conn->query("SELECT COUNT(*) as total FROM reviews WHERE passenger_id = '$student_id'");
 $review_count = $review_count_query ? $review_count_query->fetch_assoc()['total'] : 0;
 
-// Retrieve the latest 3 booking records for history display
+// Retrieve latest 3 bookings
 $history_sql = "SELECT * FROM bookings WHERE student_id = '$student_id' ORDER BY date_time DESC LIMIT 3";
 $history_result = $conn->query($history_sql);
 
-// Retrieve list of favourite drivers associated with this student
-$fav_sql = "SELECT f.*, d.name, d.car_model FROM favourite_drivers f 
+// Retrieve favourite drivers
+$fav_sql = "SELECT f.id as fav_record_id, f.*, d.name, d.car_model FROM favourite_drivers f 
             JOIN drivers d ON f.driver_id = d.id 
             WHERE f.student_id = '$student_id'";
 $fav_result = false; 
-// Check if the drivers table exists before querying to prevent errors
 if($conn->query("SHOW TABLES LIKE 'drivers'")->num_rows > 0) {
     $fav_result = $conn->query($fav_sql);
 }
@@ -41,125 +51,134 @@ include "header.php";
 ?>
 
 <style>
-    /* Sets the maximum width of the page content to prevent it from being too wide on desktop */
     .profile-container {
-        max-width: 800px; 
+        max-width: 850px; 
         margin: 0 auto;   
-        padding-bottom: 100px;
+        padding-bottom: 30px; /* Footer padding kept small as requested */
     }
 
-    /* Styling for the top white card containing user info */
+    /* --- [IMAGE MATCHED DESIGN] Profile Header --- */
     .profile-header {
-        text-align: center;
-        margin-bottom: 20px;
         background: white;
-        padding: 30px 20px;
-        border-radius: 0 0 20px 20px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+        padding: 25px 30px;
+        border-radius: 15px; 
+        box-shadow: 0 2px 15px rgba(0,0,0,0.03); 
+        margin-bottom: 30px;
+        
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap; 
+        gap: 20px;
+        border: 1px solid #f9f9f9;
     }
 
-    /* Styling for the circular profile picture container */
+    /* Left: Avatar & Info */
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
     .avatar-circle {
-        width: 90px; 
-        height: 90px;
-        background: linear-gradient(135deg, #e0f2f1, #b2dfdb);
+        width: 70px; 
+        height: 70px;
+        background-color: #e0f2f1; 
         border-radius: 50%;
-        margin: 0 auto 15px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #009688;
-        font-size: 3rem; 
-        border: 4px solid white;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        color: #009688; 
+        font-size: 2rem; 
+        flex-shrink: 0;
     }
 
-    /* Styling for the user's display name */
+    .user-info {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
     .profile-name {
-        font-size: 1.5rem; 
+        font-size: 1rem; 
         font-weight: 800;
-        color: #333;
+        color: #222;
         margin: 0 0 5px 0;
+        line-height: 1;
     }
 
-    /* Styling for the phone number display area */
     .profile-phone {
-        color: #666;
+        color: #777;
         font-size: 1rem; 
-        margin-bottom: 20px;
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 10px;
+        gap: 8px;
     }
+    
+    .phone-edit-icon {
+        color: #999;
+        font-size: 0.9rem; 
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .phone-edit-icon:hover { color: #009688; }
 
-    /* Styling for the 'Add' button next to the phone number */
-    .link-add-phone {
-        font-size: 0.8rem;
-        color: #005A9C;
-        background: #e7f3fe;
-        padding: 5px 12px;
-        border-radius: 15px;
-        text-decoration: none;
-        font-weight: bold;
-        transition: all 0.2s;
-        display: inline-flex;
+    /* Right: Stats & Button */
+    .header-right {
+        display: flex;
         align-items: center;
-        gap: 5px;
-    }
-    .link-add-phone:hover {
-        background: #005A9C;
-        color: white;
+        gap: 25px; 
     }
 
-    /* Layout container for the Rides and Reviews counts */
     .stats-row {
         display: flex;
-        justify-content: center;
-        gap: 50px; 
-        margin-bottom: 25px;
+        gap: 30px; 
+        text-align: center;
     }
 
-    .stat-item { text-align: center; }
-    
-    /* Styling for the statistic numbers */
-    .stat-num { font-weight: 800; font-size: 1.3rem; display: block; color: #333; }
-    
-    /* Styling for the statistic labels (Rides/Reviews) */
-    .stat-label { font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-item { display: flex; flex-direction: column; align-items: center; }
+    .stat-num { font-weight: 800; font-size: 1.2rem; color: #222; }
+    .stat-label { font-size: 0.75rem; color: #999; letter-spacing: 0.5px; margin-top: 2px; }
 
-    /* Styling for the main Edit Profile button */
-    .btn-edit-profile {
-        background: linear-gradient(to right, #00b09b, #96c93d); 
-        color: white;
-        border: none;
-        padding: 12px 45px; 
-        font-size: 1rem; 
-        border-radius: 50px;
-        font-weight: bold;
+    /* Vertical Divider Line */
+    .divider-line {
+        width: 1px;
+        height: 40px;
+        background-color: #eee;
+    }
+
+    /* Edit Button (Oval Outline) */
+    .btn-edit-pill {
+        border: 2px solid #00bfa5; 
+        color: #009688;
+        background: transparent;
+        padding: 8px 30px;
+        border-radius: 30px;
+        font-weight: 700;
+        font-size: 1rem;
         text-decoration: none;
-        display: inline-block;
-        box-shadow: 0 4px 12px rgba(0, 176, 155, 0.3);
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: all 0.2s;
     }
-    .btn-edit-profile:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(0, 176, 155, 0.5);
+    .btn-edit-pill:hover {
+        background-color: #e0f2f1;
     }
 
-    /* Styling for the section headers (Favourite, History, etc.) */
+    /* --- Section Headers --- */
     .section-header-blue {
         background-color: #005A9C; 
         color: white;
-        padding: 10px 25px;
+        padding: 8px 20px; 
         border-radius: 50px; 
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin: 30px 0 20px 0;
+        
+        /* Consistent Top Spacing for all headers */
+        margin: 40px 0 15px 0; 
+        
         font-weight: bold;
-        font-size: 1.05rem;
-        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.2); 
+        font-size: 1rem;
+        box-shadow: 0 3px 8px rgba(0, 90, 156, 0.2); 
         text-decoration: none; 
     }
     .section-header-blue:hover {
@@ -167,50 +186,76 @@ include "header.php";
         transform: scale(1.01);
         transition: all 0.2s ease;
     }
-    .section-header-blue i {
-        font-size: 1.3rem;
-        color: rgba(255,255,255,0.9);
-    }
 
-    /* Container for horizontal scrolling of favourite drivers */
+    /* --- Scroll Container --- */
     .favorites-scroll {
         display: flex;
         overflow-x: auto;
-        gap: 15px;
+        gap: 12px; 
         padding-bottom: 10px;
         scrollbar-width: none;
+        margin-bottom: 10px;
     }
     .favorites-scroll::-webkit-scrollbar { display: none; }
 
-    /* Styling for individual driver cards */
     .fav-card {
-        min-width: 130px;
+        min-width: 120px; 
         background: white;
-        border-radius: 15px;
-        padding: 15px;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+        border-radius: 12px;
+        padding: 12px; 
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         text-align: center;
         border: 1px solid #f0f0f0;
+        position: relative;
+        transition: transform 0.2s;
+    }
+    .fav-card:hover { transform: translateY(-3px); }
+
+    .fav-card img {
+        width: 45px !important; 
+        height: 45px !important;
+        margin-bottom: 8px !important;
     }
 
-    /* Styling for individual history items */
+    .btn-delete-fav {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(254, 226, 226, 0.8);
+        color: #ef4444;
+        border: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.7rem;
+    }
+
+    /* --- [MODIFIED] History List Spacing Fix --- */
+    .history-list {
+        /* Changed from 10px to 30px to match the upper gap */
+        margin-bottom: 30px;
+    }
+
     .history-item {
         background: white;
-        border-radius: 15px;
-        padding: 18px;
-        margin-bottom: 15px;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.05);
-        border-left: 5px solid #eee;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        border-left: 4px solid #eee;
     }
     .history-item:hover { border-left-color: #005A9C; }
 
-    /* Styling for status badges */
     .status-badge {
-        font-size: 0.8rem;
-        padding: 4px 10px;
+        font-size: 0.75rem;
+        padding: 3px 8px;
         border-radius: 20px;
         font-weight: bold;
     }
@@ -222,62 +267,82 @@ include "header.php";
 <div class="profile-container">
 
     <div class="profile-header">
-        <div class="avatar-circle">
-            <i class="fa-regular fa-user"></i>
-        </div>
         
-        <h2 class="profile-name"><?php echo htmlspecialchars($student['name']); ?></h2>
-        
-        <p class="profile-phone">
-            <?php if (!empty($student['phone'])): ?>
-                <span><?php echo htmlspecialchars($student['phone']); ?></span>
-                <a href="passanger_profile_edit.php" style="color: #999; font-size: 0.8rem; margin-left: 5px;"><i class="fa-solid fa-pen"></i></a>
-            <?php else: ?>
-                <span>No phone number added</span>
-                <a href="passanger_profile_edit.php" class="link-add-phone"><i class="fa-solid fa-plus"></i> Add</a>
-            <?php endif; ?>
-        </p>
-
-        <div class="stats-row">
-            <div class="stat-item">
-                <span class="stat-num"><?php echo $booking_count; ?></span>
-                <span class="stat-label">Rides</span>
+        <div class="header-left">
+            <div class="avatar-circle">
+                <i class="fa-regular fa-user"></i>
             </div>
-            <div class="stat-item">
-                <span class="stat-num"><?php echo $review_count; ?></span>
-                <span class="stat-label">Reviews</span>
+            <div class="user-info">
+                <h2 class="profile-name"><?php echo htmlspecialchars($student['name']); ?></h2>
+                <div class="profile-phone">
+                    <?php if (!empty($student['phone'])): ?>
+                        <i class="fa-solid fa-phone" style="font-size: 0.8rem; margin-right: 5px;"></i>
+                        <span><?php echo htmlspecialchars($student['phone']); ?></span>
+                        <a href="passanger_profile_edit.php" class="phone-edit-icon">
+                            <i class="fa-solid fa-pen"></i>
+                        </a>
+                    <?php else: ?>
+                        <a href="passanger_profile_edit.php" style="color:#009688; font-weight:bold; text-decoration:none;">
+                            + Add Phone
+                        </a>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
 
-        <a href="passanger_profile_edit.php" class="btn-edit-profile">Edit Profile</a>
+        <div class="header-right">
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-num"><?php echo $booking_count; ?></span>
+                    <span class="stat-label">RIDES</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-num"><?php echo $review_count; ?></span>
+                    <span class="stat-label">REVIEWS</span>
+                </div>
+            </div>
+            
+            <div class="divider-line"></div>
+            
+            <a href="passanger_profile_edit.php" class="btn-edit-pill">
+                Edit
+            </a>
+        </div>
     </div>
 
-    <div style="padding: 0 15px;">
+    <div style="padding: 0 10px;">
 
         <div class="section-header-blue">
             <span>Favourite Drivers</span>
-            <i class="fa-solid fa-circle-chevron-right"></i>
+            <i class="fa-solid fa-heart"></i>
         </div>
         
         <div class="favorites-scroll">
             <?php if($fav_result && $fav_result->num_rows > 0): ?>
                 <?php while($fav = $fav_result->fetch_assoc()): ?>
                     <div class="fav-card">
-                        <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($fav['name']); ?>&background=random" alt="Driver" style="width:55px; height:55px; border-radius:50%; margin-bottom:10px;">
-                        <div style="font-weight:bold; font-size:0.9rem;"><?php echo $fav['name']; ?></div>
-                        <div style="color:#888; font-size:0.8rem;"><?php echo $fav['car_model']; ?></div>
+                        <form method="POST" onsubmit="return confirm('Remove driver from favourites?');">
+                            <input type="hidden" name="delete_fav_id" value="<?php echo $fav['fav_record_id']; ?>">
+                            <button type="submit" class="btn-delete-fav">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+
+                        <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($fav['name']); ?>&background=random" alt="Driver">
+                        <div style="font-weight:bold; font-size:0.85rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><?php echo $fav['name']; ?></div>
+                        <div style="color:#888; font-size:0.75rem;"><?php echo $fav['car_model']; ?></div>
                     </div>
                 <?php endwhile; ?>
             <?php else: ?>
-                <div style="color: #999; font-style: italic; width: 100%; text-align: center; padding: 20px; font-size: 0.9rem;">
-                    No favourite drivers yet.
+                <div style="color: #999; font-style: italic; width: 100%; text-align: center; padding: 15px; font-size: 0.85rem;">
+                    No favourite drivers.
                 </div>
             <?php endif; ?>
         </div>
 
         <a href="passanger_booking_history.php" class="section-header-blue">
             <span>Recent History</span>
-            <i class="fa-solid fa-circle-chevron-right"></i>
+            <i class="fa-solid fa-clock-rotate-left"></i>
         </a>
 
         <div class="history-list">
@@ -285,8 +350,8 @@ include "header.php";
                 <?php while($row = $history_result->fetch_assoc()): ?>
                     <div class="history-item">
                         <div>
-                            <div style="font-weight: bold; font-size: 1rem;"><?php echo $row['destination']; ?></div>
-                            <div style="color: #888; font-size: 0.8rem; margin-top: 4px;">
+                            <div style="font-weight: bold; font-size: 0.95rem;"><?php echo $row['destination']; ?></div>
+                            <div style="color: #888; font-size: 0.75rem; margin-top: 3px;">
                                 <i class="fa-regular fa-calendar"></i> <?php echo date("d M, h:i A", strtotime($row['date_time'])); ?>
                             </div>
                         </div>
@@ -298,18 +363,18 @@ include "header.php";
                     </div>
                 <?php endwhile; ?>
             <?php else: ?>
-                <p style="color: #999; text-align: center; padding: 20px; font-size: 0.9rem;">No ride history found.</p>
+                <p style="color: #999; text-align: center; padding: 15px; font-size: 0.85rem;">No ride history found.</p>
             <?php endif; ?>
         </div>
         
         <div class="section-header-blue">
             <span>My Reviews</span>
-            <i class="fa-solid fa-circle-chevron-right"></i>
+            <i class="fa-regular fa-star"></i>
         </div>
         
-        <div style="text-align: center; color: #999; padding: 25px; background: white; border-radius: 15px; box-shadow: 0 3px 8px rgba(0,0,0,0.05);">
-            <i class="fa-regular fa-comment-dots" style="font-size: 2.2rem; margin-bottom: 12px; color: #ccc;"></i>
-            <p style="margin: 0; font-size: 0.9rem;">Your feedback helps the community!<br><small>Reviews you write will appear here.</small></p>
+        <div style="text-align: center; color: #999; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+            <i class="fa-regular fa-comment-dots" style="font-size: 2rem; margin-bottom: 10px; color: #ccc;"></i>
+            <p style="margin: 0; font-size: 0.85rem;">Your feedback helps the community!</p>
         </div>
 
     </div>

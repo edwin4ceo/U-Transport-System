@@ -20,7 +20,6 @@ include "header.php";
 <style>
     /* Force Footer to bottom for this short page */
     footer {
-        position: fixed;
         bottom: 0;
         left: 0;
         width: 100%;
