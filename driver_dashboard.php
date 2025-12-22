@@ -65,12 +65,13 @@ include "header.php";
         background: #f5f7fb;
     }
 
-    /* ✅ UPDATED: wider container */
+    /* ✅ FULL-WIDTH DASHBOARD */
     .dashboard-wrapper {
         min-height: calc(100vh - 140px);
-        padding: 30px 24px 40px;
-        max-width: 1800px; /* was 1320px */
-        margin: 0 auto;
+        padding: 30px 40px 40px; /* more breathing space */
+        max-width: 100%;
+        margin: 0;               /* remove centered container */
+        box-sizing: border-box;
     }
 
     .dashboard-header {
@@ -148,12 +149,12 @@ include "header.php";
         color: #fff;
     }
 
-    /* ✅ UPDATED: more spacing */
+    /* ✅ Wider + nicer proportions */
     .dashboard-grid {
         display: grid;
-        grid-template-columns: 2fr 3fr;
-        gap: 28px; /* was 18px */
-        margin-top: 10px;
+        grid-template-columns: 1.6fr 2.4fr;
+        gap: 36px;
+        margin-top: 14px;
     }
 
     .card {
@@ -294,10 +295,10 @@ include "header.php";
     @media (max-width: 900px) {
         .dashboard-wrapper {
             padding: 20px 14px 28px;
-            max-width: 100%; /* keep responsive */
         }
         .dashboard-grid {
             grid-template-columns: 1fr;
+            gap: 18px;
         }
         .quick-actions-grid {
             grid-template-columns: repeat(2, 1fr);
