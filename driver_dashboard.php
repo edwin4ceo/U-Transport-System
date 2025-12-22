@@ -65,10 +65,11 @@ include "header.php";
         background: #f5f7fb;
     }
 
+    /* ✅ UPDATED: wider container */
     .dashboard-wrapper {
         min-height: calc(100vh - 140px);
         padding: 30px 24px 40px;
-        max-width: 1320px;
+        max-width: 1800px; /* was 1320px */
         margin: 0 auto;
     }
 
@@ -147,10 +148,11 @@ include "header.php";
         color: #fff;
     }
 
+    /* ✅ UPDATED: more spacing */
     .dashboard-grid {
         display: grid;
         grid-template-columns: 2fr 3fr;
-        gap: 18px;
+        gap: 28px; /* was 18px */
         margin-top: 10px;
     }
 
@@ -292,6 +294,7 @@ include "header.php";
     @media (max-width: 900px) {
         .dashboard-wrapper {
             padding: 20px 14px 28px;
+            max-width: 100%; /* keep responsive */
         }
         .dashboard-grid {
             grid-template-columns: 1fr;
