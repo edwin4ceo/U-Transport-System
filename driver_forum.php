@@ -17,9 +17,9 @@ $stmt = $conn->prepare("
     SELECT 
         b.id AS booking_id,
         b.status,
-        s.full_name AS student_name
+        COALESCE(s.name, 'Student') AS student_name
     FROM bookings b
-    LEFT JOIN students s ON s.student_id = b.student_id
+    LEFT JOIN students s ON s.id = b.student_id
     WHERE b.driver_id = ?
     ORDER BY b.id DESC
 ");
