@@ -4,24 +4,20 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
-// --- 1. IDENTIFY USER ROLE (DRIVER OR STUDENT) ---
-$current_role = ""; // Will be 'driver' or 'student'
+// --- 1. IDENTIFY USER ROLE ---
+$current_role = ""; 
 $current_id = "";
 
 if (isset($_SESSION['driver_id'])) {
-    // User is a Driver
     $current_role = 'driver';
     $current_id = $_SESSION['driver_id'];
 } 
 elseif (isset($_SESSION['student_id'])) {
-    // User is a Student (Passenger)
-    // NOTE: Ensure your login page sets $_SESSION['student_id'] correctly
     $current_role = 'student';
     $current_id = $_SESSION['student_id'];
 } 
 else {
-    // No one is logged in, redirect to login page
-    // You can change this to redirect to a landing page if preferred
+    // Redirect if not logged in
     redirect("passanger_login.php"); 
     exit;
 }
@@ -31,23 +27,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $message = trim($_POST['message'] ?? '');
 
     if ($message !== '') {
+        // [IMPORTANT] Keep this as a single line string to prevent extra spaces in the DB
+        $auto_reply_text = "Thank you for your message. This is an automated reply. Our support team will get back to you within 5-10 minutes. We appreciate your patience.";
+
         if ($current_role === 'driver') {
-            // Insert into Driver Table
+            // A. DRIVER SIDE
+            // Insert User Message
             $stmt = $conn->prepare("INSERT INTO driver_support_messages (driver_id, sender_type, message) VALUES (?, 'driver', ?)");
-            $stmt->bind_param("is", $current_id, $message); // Assuming driver_id is INT
+            $stmt->bind_param("is", $current_id, $message);
+            $stmt->execute(); $stmt->close();
+
+            // Insert Auto-Reply
+            $stmt_auto = $conn->prepare("INSERT INTO driver_support_messages (driver_id, sender_type, message) VALUES (?, 'admin', ?)");
+            $stmt_auto->bind_param("is", $current_id, $auto_reply_text);
+            $stmt_auto->execute(); $stmt_auto->close();
+
         } else {
-            // Insert into Student Table
+            // B. STUDENT SIDE
+            // Insert User Message
             $stmt = $conn->prepare("INSERT INTO student_support_messages (student_id, sender_type, message) VALUES (?, 'student', ?)");
-            $stmt->bind_param("ss", $current_id, $message); // Assuming student_id is STRING (e.g., 121110xxxx)
-        }
-        
-        if ($stmt) {
-            $stmt->execute();
-            $stmt->close();
+            $stmt->bind_param("ss", $current_id, $message);
+            $stmt->execute(); $stmt->close();
+
+            // Insert Auto-Reply
+            $stmt_auto = $conn->prepare("INSERT INTO student_support_messages (student_id, sender_type, message) VALUES (?, 'admin', ?)");
+            $stmt_auto->bind_param("ss", $current_id, $auto_reply_text);
+            $stmt_auto->execute(); $stmt_auto->close();
         }
     }
 
-    // Refresh page to prevent form resubmission
+    // Refresh page to show new messages
     header("Location: contact_us.php");
     exit;
 }
@@ -56,13 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $messages = [];
 
 if ($current_role === 'driver') {
-    // Fetch Driver Messages
     $sql = "SELECT id, driver_id, sender_type, message, created_at 
             FROM driver_support_messages 
             WHERE driver_id = ? 
             ORDER BY created_at ASC, id ASC";
 } else {
-    // Fetch Student Messages
     $sql = "SELECT id, student_id, sender_type, message, created_at 
             FROM student_support_messages 
             WHERE student_id = ? 
@@ -136,31 +143,32 @@ include "header.php";
 .chat-message-row {
     display: flex;
     margin-bottom: 8px;
+    width: 100%;
 }
 
-/* Alignment Classes */
 .chat-message-row.me { justify-content: flex-end; }
-.chat-message-row.admin { justify-content: flex-start; }
+.chat-message-row.support { justify-content: flex-start; }
 
+/* --- BUBBLE STYLES (Compact Size) --- */
 .chat-bubble {
-    max-width: 80%;
-    padding: 10px 14px;
+    max-width: 80%; 
+    padding: 8px 12px; 
     border-radius: 14px;
-    font-size: 14px;
-    line-height: 1.4;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    font-size: 13px; 
+    line-height: 1.4; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     position: relative;
+    word-wrap: break-word;
+    text-align: left; 
 }
 
-/* User Bubble Style */
 .chat-bubble.me {
     background: #004b82;
     color: #ffffff;
     border-bottom-right-radius: 2px;
 }
 
-/* Admin Bubble Style */
-.chat-bubble.admin {
+.chat-bubble.support {
     background: #eef4ff;
     color: #2c3e50;
     border-bottom-left-radius: 2px;
@@ -169,16 +177,16 @@ include "header.php";
 .chat-meta {
     font-size: 10px;
     margin-top: 4px;
-    opacity: 0.8;
-    text-align: right;
+    opacity: 0.7;
+    text-align: right; 
+    display: block;
 }
-.chat-bubble.admin .chat-meta { text-align: left; }
 
 .chat-empty {
     text-align: center;
     padding: 40px 10px;
     color: #777;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 /* Input Area */
@@ -197,10 +205,10 @@ include "header.php";
     box-sizing: border-box;
     border-radius: 20px;
     border: 1px solid #d0d4dd;
-    padding: 12px 15px;
-    font-size: 14px;
+    padding: 10px 14px; 
+    font-size: 13px; 
     resize: none;
-    min-height: 45px;
+    min-height: 40px;
     max-height: 150px;
     font-family: inherit;
 }
@@ -212,11 +220,11 @@ include "header.php";
 
 .chat-input-wrapper button {
     flex: 0 0 auto;
-    width: 100px;
+    width: 90px;
     border: none;
     border-radius: 20px;
-    padding: 12px 16px;
-    font-size: 14px;
+    padding: 10px 14px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     background: #004b82;
@@ -233,7 +241,7 @@ include "header.php";
 <div class="chat-wrapper">
     <div class="chat-header-title">
         <h1>Contact Support (<?php echo ucfirst($current_role); ?>)</h1>
-        <p>Chat with the admin if you have any issues or questions.</p>
+        <p>Chat with the support team if you have any issues.</p>
     </div>
 
     <div class="chat-card">
@@ -248,24 +256,21 @@ include "header.php";
             <?php else: ?>
                 <?php foreach ($messages as $msg): ?>
                     <?php
-                        // Check who sent the message to decide alignment
-                        // 'driver' or 'student' = Me (The User)
-                        // 'admin' = The Admin
                         $sender = $msg['sender_type'];
                         $isMe = ($sender === 'driver' || $sender === 'student');
                         
-                        $rowClass = $isMe ? 'me' : 'admin';
-                        $bubbleClass = $isMe ? 'me' : 'admin';
-                        $displayName = $isMe ? "You" : "Admin";
+                        $rowClass = $isMe ? 'me' : 'support';
+                        $bubbleClass = $isMe ? 'me' : 'support';
+                        $displayName = $isMe ? "You" : "Support Team";
                         $timeLabel = date("d M Y, h:i A", strtotime($msg['created_at']));
                     ?>
 
                     <div class="chat-message-row <?= $rowClass ?>">
                         <div class="chat-bubble <?= $bubbleClass ?>">
                             <?= nl2br(htmlspecialchars($msg['message'])) ?>
-                            <div class="chat-meta">
+                            <span class="chat-meta">
                                 <?= $displayName ?> • <?= $timeLabel ?>
-                            </div>
+                            </span>
                         </div>
                     </div>
 
@@ -277,7 +282,7 @@ include "header.php";
         <form method="post" class="chat-input-wrapper">
             <textarea 
                 name="message"
-                placeholder="Type your message to the admin..."
+                placeholder="Type your message..."
                 required
             ></textarea>
 
@@ -287,7 +292,6 @@ include "header.php";
 </div>
 
 <script>
-// Scroll to the bottom of the chat container automatically
 var container = document.getElementById("chatMessages");
 if (container) {
     container.scrollTop = container.scrollHeight;
