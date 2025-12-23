@@ -90,7 +90,9 @@ if(isset($_POST['register'])){
                 'student_id' => $student_id,
                 'email' => $email,
                 'password_hash' => $password_hash,
-                'otp_code' => $otp_code
+                'otp_code' => $otp_code,
+                'otp_timestamp' => time(), // Save current time
+                'resend_count' => 0 // <--- NEW: Initialize resend counter
             ];
 
             // Setup PHPMailer
