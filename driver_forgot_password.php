@@ -159,3 +159,12 @@ include "header.php";
 </div>
 
 <?php include "footer.php"; ?>
+require_once "send_mail.php";
+
+error_log(">>> BEFORE sendOtpEmail <<<");
+
+sendOtpEmail("kelvinng051129@gmail.com", "Test", "1234");
+
+error_log(">>> AFTER sendOtpEmail <<<");
+
+exit;
