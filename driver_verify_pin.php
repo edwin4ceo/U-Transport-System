@@ -1,120 +1,143 @@
 <?php
 session_start();
-require_once "db_connect.php";
-require_once "function.php";
 
-$msg = "";
-$email = trim($_GET["email"] ?? "");
+include "db_connect.php";
+include "function.php";
 
-// If we don't have a reset_driver_id in session, force user to restart flow
 if (!isset($_SESSION["reset_driver_id"])) {
-    die("Session expired. Please restart the password reset process.");
+    redirect("driver_forgot_password.php");
+    exit;
 }
-$driver_id = (int)$_SESSION["reset_driver_id"];
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+$driver_id = (int)$_SESSION["reset_driver_id"];
+$email = $_SESSION["reset_email"] ?? "";
+
+if (isset($_POST["verify_pin"])) {
     $pin = trim($_POST["pin"] ?? "");
 
     if ($pin === "" || !preg_match('/^\d{4}$/', $pin)) {
-        $msg = "Please enter a valid 4-digit PIN.";
+        $_SESSION['swal_title'] = "Invalid PIN";
+        $_SESSION['swal_msg']   = "Please enter a valid 4-digit PIN.";
+        $_SESSION['swal_type']  = "warning";
     } else {
         $pin_hash = hash("sha256", $pin);
 
-        // Read latest OTP record for this driver
         $stmt = $conn->prepare("
             SELECT id, otp_hash, expires_at, attempts
             FROM driver_reset_otps
             WHERE driver_id = ?
             LIMIT 1
         ");
-        $stmt->bind_param("i", $driver_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-
-        if (!$res || $res->num_rows !== 1) {
-            $msg = "Invalid or expired PIN. Please request a new one.";
+        if (!$stmt) {
+            $_SESSION['swal_title'] = "Error";
+            $_SESSION['swal_msg']   = "Database error.";
+            $_SESSION['swal_type']  = "error";
         } else {
-            $row = $res->fetch_assoc();
-            $otp_id = (int)$row["id"];
-            $db_hash = $row["otp_hash"];
-            $expires_at = $row["expires_at"];
-            $attempts = (int)$row["attempts"];
+            $stmt->bind_param("i", $driver_id);
+            $stmt->execute();
+            $res = $stmt->get_result();
 
-            // Basic rate limit (max 5 attempts)
-            if ($attempts >= 5) {
-                $msg = "Too many attempts. Please request a new PIN.";
-            } elseif (strtotime($expires_at) <= time()) {
-                $msg = "PIN expired. Please request a new one.";
-            } elseif (!hash_equals($db_hash, $pin_hash)) {
-
-                // Increment attempts on failure
-                $upd = $conn->prepare("UPDATE driver_reset_otps SET attempts = attempts + 1 WHERE id = ?");
-                $upd->bind_param("i", $otp_id);
-                $upd->execute();
-                $upd->close();
-
-                $msg = "Incorrect PIN. Please try again.";
+            if (!$res || $res->num_rows !== 1) {
+                $_SESSION['swal_title'] = "PIN Invalid";
+                $_SESSION['swal_msg']   = "Invalid or expired PIN. Please request a new one.";
+                $_SESSION['swal_type']  = "error";
             } else {
-                // PIN verified: remove OTP record
-                $del = $conn->prepare("DELETE FROM driver_reset_otps WHERE id = ?");
-                $del->bind_param("i", $otp_id);
-                $del->execute();
-                $del->close();
+                $row = $res->fetch_assoc();
+                $otp_id = (int)$row["id"];
+                $db_hash = $row["otp_hash"];
+                $expires_at = $row["expires_at"];
+                $attempts = (int)$row["attempts"];
 
-                // Create a reset token (valid for 30 minutes)
-                $token = bin2hex(random_bytes(32));
-                $token_hash = hash("sha256", $token);
-                $reset_expires = date("Y-m-d H:i:s", time() + 1800);
+                if ($attempts >= 5) {
+                    $_SESSION['swal_title'] = "Too Many Attempts";
+                    $_SESSION['swal_msg']   = "Too many attempts. Please request a new PIN.";
+                    $_SESSION['swal_type']  = "error";
+                } elseif (strtotime($expires_at) <= time()) {
+                    $_SESSION['swal_title'] = "PIN Expired";
+                    $_SESSION['swal_msg']   = "PIN expired. Please request a new one.";
+                    $_SESSION['swal_type']  = "error";
+                } elseif (!hash_equals($db_hash, $pin_hash)) {
 
-                // Remove old tokens for this driver (optional but recommended)
-                $del2 = $conn->prepare("DELETE FROM driver_password_resets WHERE driver_id = ?");
-                $del2->bind_param("i", $driver_id);
-                $del2->execute();
-                $del2->close();
+                    $upd = $conn->prepare("UPDATE driver_reset_otps SET attempts = attempts + 1 WHERE id = ?");
+                    if ($upd) {
+                        $upd->bind_param("i", $otp_id);
+                        $upd->execute();
+                        $upd->close();
+                    }
 
-                // Store reset token
-                $ins = $conn->prepare("
-                    INSERT INTO driver_password_resets (driver_id, token_hash, expires_at)
-                    VALUES (?, ?, ?)
-                ");
-                $ins->bind_param("iss", $driver_id, $token_hash, $reset_expires);
-                $ins->execute();
-                $ins->close();
+                    $_SESSION['swal_title'] = "Incorrect PIN";
+                    $_SESSION['swal_msg']   = "Incorrect PIN. Please try again.";
+                    $_SESSION['swal_type']  = "warning";
+                } else {
+                    // Verified: delete OTP and allow reset
+                    $del = $conn->prepare("DELETE FROM driver_reset_otps WHERE id = ?");
+                    if ($del) {
+                        $del->bind_param("i", $otp_id);
+                        $del->execute();
+                        $del->close();
+                    }
 
-                // Clear session flag so it cannot be reused
-                unset($_SESSION["reset_driver_id"]);
+                    $_SESSION["reset_verified"] = true;
 
-                // Redirect to reset password page with token
-                header("Location: driver_reset_password.php?token=" . urlencode($token));
-                exit;
+                    $_SESSION['swal_title'] = "Verified";
+                    $_SESSION['swal_msg']   = "PIN verified. You may now reset your password.";
+                    $_SESSION['swal_type']  = "success";
+
+                    redirect("driver_reset_password.php");
+                    exit;
+                }
             }
+
+            $stmt->close();
         }
-        $stmt->close();
     }
 }
+
+include "header.php";
 ?>
-<!-- Minimal HTML form example (you can style with your UI) -->
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Verify PIN</title>
-</head>
-<body>
-  <h2>Verify PIN</h2>
-  <?php if ($email !== ""): ?>
-    <p>We sent a 4-digit PIN to: <b><?php echo htmlspecialchars($email); ?></b></p>
-  <?php endif; ?>
 
-  <?php if ($msg !== ""): ?>
-    <p style="color:red;"><?php echo htmlspecialchars($msg); ?></p>
-  <?php endif; ?>
+<style>
+    body { background: #f5f7fb; }
+    .forgot-wrapper { min-height: calc(100vh - 140px); display:flex; align-items:center; justify-content:center; padding:40px 15px; }
+    .forgot-card { background:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.08); max-width:420px; width:100%; padding:26px 24px 20px; border:1px solid #e0e0e0; }
+    .forgot-header { text-align:center; margin-bottom:14px; }
+    .forgot-icon { width:52px; height:52px; border-radius:50%; border:2px solid #f39c12; display:flex; align-items:center; justify-content:center; margin:0 auto 8px; font-size:22px; color:#f39c12; }
+    .forgot-header h2 { margin:0; font-size:22px; color:#005A9C; font-weight:700; }
+    .forgot-subtitle { margin-top:4px; color:#666; font-size:13px; }
+    .form-group { text-align:left; margin-bottom:14px; }
+    .form-group label { display:block; font-size:13px; margin-bottom:4px; color:#333; font-weight:500; }
+    .form-group input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid #ccc; font-size:13px; outline:none; transition:border-color 0.2s, box-shadow 0.2s; box-sizing:border-box; }
+    .form-group input:focus { border-color:#005A9C; box-shadow:0 0 0 2px rgba(0, 90, 156, 0.15); }
+    .btn-reset { width:100%; border:none; padding:10px 14px; border-radius:999px; font-size:14px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#f39c12,#e67e22); color:#fff; margin-top:6px; box-shadow:0 8px 18px rgba(0,0,0,0.16); }
+    .forgot-footer-links { margin-top:14px; font-size:12px; text-align:center; color:#777; }
+    .forgot-footer-links a { color:#005A9C; text-decoration:none; font-weight:500; }
+</style>
 
-  <form method="POST">
-    <label>4-digit PIN:</label><br>
-    <input type="text" name="pin" maxlength="4" autocomplete="one-time-code" required>
-    <br><br>
-    <button type="submit">Verify</button>
-  </form>
-</body>
-</html>
+<div class="forgot-wrapper">
+    <div class="forgot-card">
+        <div class="forgot-header">
+            <div class="forgot-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <h2>Verify PIN</h2>
+            <p class="forgot-subtitle">
+                Enter the 4-digit PIN sent to <b><?php echo htmlspecialchars($email); ?></b>.
+            </p>
+        </div>
+
+        <form method="post" action="">
+            <div class="form-group">
+                <label for="pin">4-digit PIN</label>
+                <input type="text" id="pin" name="pin" maxlength="4" placeholder="e.g. 1234" required autocomplete="one-time-code">
+            </div>
+
+            <button type="submit" name="verify_pin" class="btn-reset">
+                Verify
+            </button>
+        </form>
+
+        <div class="forgot-footer-links">
+            Back to <a href="driver_forgot_password.php">Forgot Password</a>
+        </div>
+    </div>
+</div>
+
+<?php include "footer.php"; ?>
