@@ -1,27 +1,31 @@
 <?php
-// send_mail.php
+
+require 'PHPMailer/Exception.php';
+require 'PHPMailer/PHPMailer.php';
+require 'PHPMailer/SMTP.php';
+
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-
-require 'vendor/autoload.php';
 
 function sendDriverOtpEmail($toEmail, $driverName, $otp) {
     $mail = new PHPMailer(true);
 
-    try { 
+    try {
+        
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com'; 
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'kelvinng051129@gmail.com';
-        $mail->Password   = 'szvd kjeo jwfx bxnh';
+        $mail->Username   = 'kelvinng051129gmail.com'; 
+        $mail->Password   = 'szvd kjeo jwfx bxnh';      
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        // --- Sender and Recipient ---
+        // --- sender and recipient ---
         $mail->setFrom('no-reply@yourcompany.com', 'Driver Support');
         $mail->addAddress($toEmail, $driverName);
 
-        // --- Email Content ---
+        // --- email content ---
         $mail->isHTML(true);
         $mail->Subject = 'Your Verification Code';
         
@@ -39,7 +43,8 @@ function sendDriverOtpEmail($toEmail, $driverName, $otp) {
         $mail->send();
         return true;
     } catch (Exception $e) {
-        throw new Exception("Message could not be sent. Mailer Error: {$mail->ErrorInfo}");
+        error_log("Mail Error: " . $mail->ErrorInfo);
+        throw new Exception("Message could not be sent.");
     }
 }
 ?>
