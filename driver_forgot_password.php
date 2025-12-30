@@ -3,9 +3,8 @@ session_start();
 
 require_once "db_connect.php";
 require_once "function.php";
-require_once "send_mail.php"; // 用你已经成功的 SMTP
+require_once "send_mail.php"; 
 
-// 已登录可选择导回 dashboard
 // if (isset($_SESSION['driver_id'])) {
 //     redirect("driver_dashboard.php");
 //     exit;
@@ -75,13 +74,11 @@ if (isset($_POST['reset_password'])) {
                 ];
 
                 try {
-                    // 用你已经验证成功的 send_mail.php
                     sendDriverOtpEmail($email, $name, $otp);
 
                     header("Location: driver_verify_otp.php");
                     exit;
                 } catch (Exception $e) {
-                    // 不给用户看系统错误
                     // error_log($e->getMessage());
 
                     $_SESSION['swal_title'] = "Email Error";
