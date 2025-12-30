@@ -1,14 +1,12 @@
 <?php
 // send_mail.php
 
-/**
- * Load PHPMailer (supports both Composer and manual folder).
- */
+// ---- Load PHPMailer (Composer first, fallback to manual files) ----
 $autoload = __DIR__ . "/vendor/autoload.php";
-if (file_exists($autoload)) {
+if (is_file($autoload)) {
     require_once $autoload;
 } else {
-    // Manual include (your current PHPMailer folder structure)
+    // Manual include (your PHPMailer folder must contain these 3 files)
     require_once __DIR__ . "/PHPMailer/Exception.php";
     require_once __DIR__ . "/PHPMailer/PHPMailer.php";
     require_once __DIR__ . "/PHPMailer/SMTP.php";
@@ -17,24 +15,30 @@ if (file_exists($autoload)) {
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+// Toggle SMTP debug here (set to true only when troubleshooting)
+const MAIL_DEBUG = false;
+
 /**
- * Load SMTP config from mail_config.php
+ * Load SMTP config from mail_config.php (same directory as this file).
  */
 function mailConfig(): array
 {
     $path = __DIR__ . "/mail_config.php";
-    if (!file_exists($path)) {
-        throw new Exception("Missing mail_config.php. Please create it in the project root.");
+    if (!is_file($path)) {
+        throw new Exception("Missing mail_config.php in: " . __DIR__);
     }
 
     $cfg = require $path;
 
-    $required = ["host", "port", "username", "password", "from_email", "from_name"];
+    $required = ["host", "port", "username", "password", "from_name"];
     foreach ($required as $k) {
-        if (!isset($cfg[$k]) || $cfg[$k] === "") {
-            throw new Exception("mail_config.php is missing: " . $k);
+        if (!isset($cfg[$k]) || trim((string)$cfg[$k]) === "") {
+            throw new Exception("mail_config.php is missing/empty: " . $k);
         }
     }
+
+    // Force FROM email to match username (Gmail SMTP best practice)
+    $cfg["from_email"] = $cfg["username"];
 
     return $cfg;
 }
@@ -47,6 +51,12 @@ function buildMailer(): PHPMailer
     $cfg = mailConfig();
 
     $mail = new PHPMailer(true);
+
+    if (MAIL_DEBUG) {
+        $mail->SMTPDebug  = 2;
+        $mail->Debugoutput = 'html';
+    }
+
     $mail->isSMTP();
     $mail->Host       = $cfg["host"];
     $mail->SMTPAuth   = true;
@@ -55,13 +65,10 @@ function buildMailer(): PHPMailer
     $mail->Port       = (int)$cfg["port"];
 
     // Encryption
-    if ((int)$cfg["port"] === 465) {
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-    } else {
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    }
+    $mail->SMTPSecure = ((int)$cfg["port"] === 465)
+        ? PHPMailer::ENCRYPTION_SMTPS
+        : PHPMailer::ENCRYPTION_STARTTLS;
 
-    // Recommended defaults
     $mail->CharSet = "UTF-8";
     $mail->setFrom($cfg["from_email"], $cfg["from_name"]);
 
@@ -69,17 +76,16 @@ function buildMailer(): PHPMailer
 }
 
 /**
- * Send OTP email (can be used for driver or student).
- *
- * IMPORTANT: Do not print raw error messages to users in production.
+ * Send OTP email.
  */
 function sendOtpEmail(string $toEmail, string $toName, string $otp, string $context = "Password Reset"): void
 {
     $mail = buildMailer();
 
     $toName = $toName ?: "User";
-    $safeName = htmlspecialchars($toName, ENT_QUOTES, "UTF-8");
-    $safeOtp  = htmlspecialchars($otp, ENT_QUOTES, "UTF-8");
+
+    $safeName    = htmlspecialchars($toName, ENT_QUOTES, "UTF-8");
+    $safeOtp     = htmlspecialchars($otp, ENT_QUOTES, "UTF-8");
     $safeContext = htmlspecialchars($context, ENT_QUOTES, "UTF-8");
 
     $mail->addAddress($toEmail, $toName);
@@ -87,20 +93,16 @@ function sendOtpEmail(string $toEmail, string $toName, string $otp, string $cont
     $mail->Subject = "{$safeContext} Verification Code";
 
     $mail->Body = "
-        <div style='font-family:Arial,sans-serif; line-height:1.6;'>
-            <p>Hi {$safeName},</p>
-            <p>You requested a verification code for: <b>{$safeContext}</b>.</p>
-            <p>Your verification code is:</p>
-            <div style='font-size:28px; font-weight:700; letter-spacing:5px; margin:10px 0; color:#004b82;'>
-                {$safeOtp}
-            </div>
-            <p>This code will expire in <b>10 minutes</b>.</p>
-            <p>If you did not request this, you can ignore this email.</p>
-        </div>
+        <h3>Hello {$safeName},</h3>
+        <p>You requested a verification code for <b>{$safeContext}</b>.</p>
+        <p>Here is your verification code:</p>
+        <h2 style='color:#004b82; letter-spacing:5px;'>{$safeOtp}</h2>
+        <p>This code will expire in 10 minutes.</p>
+        <p>If you did not request this, you can ignore this email.</p>
     ";
 
     $mail->AltBody =
-        "Hi {$toName},\n\n"
+        "Hello {$toName},\n\n"
         . "Your verification code for {$context} is: {$otp}\n"
         . "This code will expire in 10 minutes.\n\n"
         . "If you did not request this, you can ignore this email.\n";
@@ -108,17 +110,11 @@ function sendOtpEmail(string $toEmail, string $toName, string $otp, string $cont
     $mail->send();
 }
 
-/**
- * Backward-compatible wrapper for your driver flow (so you don't need to rename everywhere).
- */
 function sendDriverOtpEmail(string $toEmail, string $name, string $otp): void
 {
     sendOtpEmail($toEmail, $name, $otp, "Driver Password Reset");
 }
 
-/**
- * Optional wrapper for student flow if needed.
- */
 function sendStudentOtpEmail(string $toEmail, string $name, string $otp): void
 {
     sendOtpEmail($toEmail, $name, $otp, "Student Password Reset");
