@@ -4,7 +4,6 @@ session_start();
 require_once "db_connect.php";
 require_once "function.php";
 
-// 必须有 reset session 才能进来
 if (!isset($_SESSION['driver_reset'])) {
     redirect("driver_forgot_password.php");
     exit;

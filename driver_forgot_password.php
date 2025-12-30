@@ -79,12 +79,11 @@ if (isset($_POST['reset_password'])) {
                     header("Location: driver_verify_otp.php");
                     exit;
                 } catch (Exception $e) {
-                    // error_log($e->getMessage());
-
                     $_SESSION['swal_title'] = "Email Error";
-                    $_SESSION['swal_msg']   = "Unable to send verification email. Please try again.";
+                    $_SESSION['swal_msg']   = "Mailer Error: " . $e->getMessage(); // 暂时显示原因
                     $_SESSION['swal_type']  = "error";
-                }
+}
+
             } else {
                 $_SESSION['swal_title'] = "Account Not Found";
                 $_SESSION['swal_msg']   = "Email and identification ID do not match our records.";
