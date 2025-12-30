@@ -1,170 +1,248 @@
 <?php
 session_start();
-
 include "db_connect.php";
 include "function.php";
-require_once "send_mail.php";
 
-if (isset($_POST['send_pin'])) {
+// --- INCLUDE PHPMAILER ---
+require 'PHPMailer/Exception.php';
+require 'PHPMailer/PHPMailer.php';
+require 'PHPMailer/SMTP.php';
 
-    $email             = trim($_POST['email'] ?? '');
-    $identification_id = trim($_POST['identification_id'] ?? '');
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
-    // 1) Required
-    if ($email === '' || $identification_id === '') {
-        $_SESSION['swal_title'] = "Missing Fields";
-        $_SESSION['swal_msg']   = "Email and Identification ID are required.";
-        $_SESSION['swal_type']  = "warning";
+// Redirect if already logged in
+if (isset($_SESSION['driver_id'])) {
+    redirect("driver_dashboard.php"); // 
+    exit;
+}
+
+if (isset($_POST['reset_password'])) {
+
+    $driver_id = trim($_POST['driver_id'] ?? "");
+    $email     = trim($_POST['email'] ?? ""); // auto-filled
+    $new_password = $_POST['new_password'] ?? "";
+    $confirm_password = $_POST['confirm_password'] ?? "";
+
+    // 1) Basic validation
+    if ($driver_id === "" || $email === "") {
+        $_SESSION['swal_title'] = "Missing Info";
+        $_SESSION['swal_msg']   = "Please enter your Driver ID.";
+        $_SESSION['swal_type']  = "error";
     }
-    // 2) Email format
-    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $_SESSION['swal_title'] = "Invalid Email";
-        $_SESSION['swal_msg']   = "Please enter a valid email address.";
-        $_SESSION['swal_type']  = "warning";
+    // 2) Password match
+    elseif ($new_password !== $confirm_password) {
+        $_SESSION['swal_title'] = "Password Mismatch";
+        $_SESSION['swal_msg']   = "New passwords do not match. Please try again.";
+        $_SESSION['swal_type']  = "error";
     }
-    // 3) Enforce MMU student email
-    elseif (substr($email, -19) !== "@student.mmu.edu.my") {
-        $_SESSION['swal_title'] = "Invalid Email Domain";
-        $_SESSION['swal_msg']   = "You must use your MMU student email (@student.mmu.edu.my).";
-        $_SESSION['swal_type']  = "warning";
+    // 3) Password length (optional but recommended)
+    elseif (strlen($new_password) < 6) {
+        $_SESSION['swal_title'] = "Weak Password";
+        $_SESSION['swal_msg']   = "Password must be at least 6 characters.";
+        $_SESSION['swal_type']  = "error";
     }
     else {
 
-        // Always show generic message to prevent email enumeration
-        $genericTitle = "PIN Sent";
-        $genericMsg   = "If the account exists, a PIN has been sent. Please check your inbox and spam folder.";
+        /**
+         * 4) Verify identity
+         */
+        $stmt = $conn->prepare("SELECT driver_id, full_name, email FROM drivers WHERE driver_id = ? AND email = ? LIMIT 1");
+        $stmt->bind_param("ss", $driver_id, $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-        // Check driver by email + identification_id
-        $stmt = $conn->prepare("
-            SELECT driver_id, full_name 
-            FROM drivers 
-            WHERE email = ? AND identification_id = ?
-            LIMIT 1
-        ");
+        if ($result->num_rows === 1) {
 
-        if ($stmt) {
-            $stmt->bind_param("ss", $email, $identification_id);
-            $stmt->execute();
-            $res = $stmt->get_result();
+            $row  = $result->fetch_assoc();
+            $name = $row['full_name'];
 
-            if ($res && $res->num_rows === 1) {
-                $driver = $res->fetch_assoc();
-                $driver_id = (int)$driver["driver_id"];
-                $name = $driver["full_name"] ?? "Driver";
+            // Generate OTP (better than rand)
+            $otp = random_int(1000, 9999);
 
-                // Generate 4-digit OTP (valid for 10 minutes)
-                $otp = str_pad((string)random_int(0, 9999), 4, "0", STR_PAD_LEFT);
-                $otp_hash = hash("sha256", $otp);
-                $expires_at = date("Y-m-d H:i:s", time() + 600);
+            // Hash the NEW password
+            $new_password_hash = password_hash($new_password, PASSWORD_BCRYPT);
 
-                // Delete previous OTPs for this driver
-                $del = $conn->prepare("DELETE FROM driver_reset_otps WHERE driver_id = ?");
-                if ($del) {
-                    $del->bind_param("i", $driver_id);
-                    $del->execute();
-                    $del->close();
-                }
+            // Store Data in Session
+            $_SESSION['temp_driver_reset_data'] = [
+                'email' => $email,
+                'name' => $name,
+                'driver_id' => $driver_id,
+                'new_password_hash' => $new_password_hash,
+                'otp_code' => $otp,
+                'otp_timestamp' => time(),
+                'resend_count' => 0
+            ];
 
-                // Insert new OTP
-                $ins = $conn->prepare("
-                    INSERT INTO driver_reset_otps (driver_id, otp_hash, expires_at, attempts) 
-                    VALUES (?, ?, ?, 0)
-                ");
-                if ($ins) {
-                    $ins->bind_param("iss", $driver_id, $otp_hash, $expires_at);
-                    $ins->execute();
-                    $ins->close();
-                }
+            // Send OTP Email
+            $mail = new PHPMailer(true);
 
-                // Store driver id in session for verification step
-                $_SESSION["reset_driver_id"] = $driver_id;
-                $_SESSION["reset_email"] = $email;
+            try {
+                $mail->isSMTP();
+                $mail->Host       = 'smtp.gmail.com';
+                $mail->SMTPAuth   = true;
+                $mail->Username   = 'kelvinng051129@gmail.com';
+                $mail->Password   = 'pzugwxelatppzoig';
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = 587;
+                // $mail->SMTPDebug  = 2;
+                // $mail->Debugoutput = 'error_log';
 
-                // Send email (silent on failure)
-                try {
-                    sendDriverOtpEmail($email, $name, $otp);
-                } catch (Exception $e) {
-                    // intentionally silent
-                }
+                $mail->setFrom('kelvinng051129@gmail.com', 'U-Transport System');
+                $mail->addAddress($email, $name);
+
+                $mail->isHTML(true);
+                $mail->Subject = 'Driver Reset Password Verification Code';
+                $mail->Body    = "
+                    <h3>Hello $name,</h3>
+                    <p>You have requested to reset your driver account password.</p>
+                    <p>Here is your verification code:</p>
+                    <h2 style='color:#004b82; letter-spacing:5px;'>$otp</h2>
+                    <p>This code will expire in <b>10 minutes</b>.</p>
+                    <br>
+                    <p style='font-size:12px;color:#666;'>If you did not request this, please ignore this email.</p>
+                ";
+
+                $mail->send();
+
+                header("Location: verify_driver_reset_otp.php");
+                exit();
+
+            } catch (Exception $e) {
+                $_SESSION['swal_title'] = "Email Error";
+                $_SESSION['swal_msg']   = "Mailer Error: {$mail->ErrorInfo}";
+                $_SESSION['swal_type']  = "error";
             }
 
-            $stmt->close();
+        } else {
+            $_SESSION['swal_title'] = "Verification Failed";
+            $_SESSION['swal_msg']   = "The Driver ID or email does not match our records.";
+            $_SESSION['swal_type']  = "error";
         }
-
-        // Always redirect to verify page (generic)
-        $_SESSION['swal_title'] = $genericTitle;
-        $_SESSION['swal_msg']   = $genericMsg;
-        $_SESSION['swal_type']  = "success";
-
-        redirect("driver_verify_pin.php");
-        exit;
     }
 }
-
-include "header.php";
 ?>
 
+<?php include "header.php"; ?>
+
 <style>
-    body { background: #f5f7fb; }
-    .forgot-wrapper { min-height: calc(100vh - 140px); display:flex; align-items:center; justify-content:center; padding:40px 15px; }
-    .forgot-card { background:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.08); max-width:420px; width:100%; padding:26px 24px 20px; border:1px solid #e0e0e0; }
-    .forgot-header { text-align:center; margin-bottom:14px; }
-    .forgot-icon { width:52px; height:52px; border-radius:50%; border:2px solid #f39c12; display:flex; align-items:center; justify-content:center; margin:0 auto 8px; font-size:22px; color:#f39c12; }
-    .forgot-header h2 { margin:0; font-size:22px; color:#005A9C; font-weight:700; }
-    .forgot-subtitle { margin-top:4px; color:#666; font-size:13px; }
-    .form-group { text-align:left; margin-bottom:14px; }
-    .form-group label { display:block; font-size:13px; margin-bottom:4px; color:#333; font-weight:500; }
-    .form-group input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid #ccc; font-size:13px; outline:none; transition:border-color 0.2s, box-shadow 0.2s; box-sizing:border-box; }
-    .form-group input:focus { border-color:#005A9C; box-shadow:0 0 0 2px rgba(0, 90, 156, 0.15); }
-    .btn-reset { width:100%; border:none; padding:10px 14px; border-radius:999px; font-size:14px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#f39c12,#e67e22); color:#fff; margin-top:6px; transition:transform 0.1s ease, box-shadow 0.1s ease; box-shadow:0 8px 18px rgba(0,0,0,0.16); }
-    .btn-reset:hover { transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,0.18); }
-    .btn-reset:active { transform:translateY(0); box-shadow:0 6px 12px rgba(0,0,0,0.18); }
-    .forgot-footer-links { margin-top:14px; font-size:12px; text-align:center; color:#777; }
-    .forgot-footer-links a { color:#005A9C; text-decoration:none; font-weight:500; }
-    .forgot-footer-links a:hover { text-decoration:underline; }
+    input[type="email"], input[type="text"], input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+
+    .password-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    .password-wrapper input {
+        margin-bottom: 15px;
+        padding-right: 40px;
+    }
+    .toggle-password {
+        position: absolute;
+        right: 15px;
+        top: 35%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #7f8c8d;
+        z-index: 10;
+        font-size: 1.1rem;
+        user-select: none;
+    }
+    .toggle-password:hover { color: #005A9C; }
+
+    .form-card{
+        max-width: 420px;
+        margin: 30px auto;
+        padding: 20px;
+        border: 1px solid #eee;
+        border-radius: 10px;
+        background: #fff;
+    }
+    .muted { color:#666; font-size:13px; }
 </style>
 
-<div class="forgot-wrapper">
-    <div class="forgot-card">
-        <div class="forgot-header">
-            <div class="forgot-icon">
-                <i class="fa-solid fa-key"></i>
-            </div>
-            <h2>Forgot Password</h2>
-            <p class="forgot-subtitle">
-                Enter your MMU email and identification ID to receive a 4-digit PIN.
-            </p>
+<div class="form-card">
+    <h2>Driver Forgot Password</h2>
+
+    <p class="muted" style="margin-bottom:6px;">Enter your Driver ID and new password.</p>
+    <p style="color:red;font-size:13px;margin-top:0;font-weight:500;">
+        * You will need to verify your email in the next step.
+    </p>
+
+    <form action="" method="POST">
+
+        <label>Driver ID</label>
+        <input type="text" name="driver_id" id="driverIDInput" required placeholder="e.g. DRV0001" maxlength="20">
+
+        <label>Email</label>
+        <input type="email" name="email" id="emailInput" required placeholder="Auto-filled email" readonly style="background:#f9f9f9; cursor:not-allowed;">
+
+        <label>New Password</label>
+        <div class="password-wrapper">
+            <input type="password" name="new_password" id="newPass" required placeholder="Create new password">
+            <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconNew"></i>
         </div>
 
-        <form method="post" action="">
-            <div class="form-group">
-                <label for="email">Driver Email (MMU email)</label>
-                <input type="email" id="email" name="email" placeholder="e.g. xxx@student.mmu.edu.my" required>
-            </div>
-
-            <div class="form-group">
-                <label for="identification_id">Identification / Matric ID</label>
-                <input type="text" id="identification_id" name="identification_id" placeholder="IC / Passport / Matric" required>
-            </div>
-
-            <button type="submit" name="send_pin" class="btn-reset">
-                Send PIN
-            </button>
-        </form>
-
-        <div class="forgot-footer-links">
-            Remembered your password? <a href="driver_login.php">Back to login</a>
+        <label>Confirm New Password</label>
+        <div class="password-wrapper">
+            <input type="password" name="confirm_password" id="confirmPass" required placeholder="Re-enter new password">
+            <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconConfirm"></i>
         </div>
+
+        <button type="submit" name="reset_password" style="font-size:15px;width:100%;">
+            Verify Email to Complete Reset Password
+        </button>
+    </form>
+
+    <div style="margin-top: 15px; text-align: center;">
+        <a href="driver_login.php" style="color:#666;text-decoration:none;">&larr; Back to Driver Login</a>
     </div>
 </div>
 
+<script>
+    const driverIdInput = document.getElementById('driverIDInput');
+    const emailInput = document.getElementById('emailInput');
+
+    driverIdInput.addEventListener('input', function() {
+        const id = this.value.trim();
+        if (id.length > 0) {
+            emailInput.value = ""; 
+        } else {
+            emailInput.value = "";
+        }
+    });
+
+    function setupPasswordToggle(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+
+        function show() {
+            input.type = 'text';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+        function hide() {
+            input.type = 'password';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+
+        icon.addEventListener('mousedown', show);
+        icon.addEventListener('mouseup', hide);
+        icon.addEventListener('mouseleave', hide);
+
+        icon.addEventListener('touchstart', function(e){ e.preventDefault(); show(); });
+        icon.addEventListener('touchend', hide);
+    }
+
+    setupPasswordToggle('newPass', 'eyeIconNew');
+    setupPasswordToggle('confirmPass', 'eyeIconConfirm');
+</script>
+
 <?php include "footer.php"; ?>
-require_once "send_mail.php";
-
-error_log(">>> BEFORE sendOtpEmail <<<");
-
-sendOtpEmail("kelvinng051129@gmail.com", "Test", "1234");
-
-error_log(">>> AFTER sendOtpEmail <<<");
-
-exit;
