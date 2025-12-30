@@ -16,7 +16,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 // Toggle SMTP debug here (set to true only when troubleshooting)
-const MAIL_DEBUG = false;
+const MAIL_DEBUG = true;
 
 /**
  * Load SMTP config from mail_config.php (same directory as this file).
