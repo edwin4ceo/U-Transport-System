@@ -1,107 +1,125 @@
 <?php
 // send_mail.php
 
-// 1) Try Composer autoload first
+/**
+ * Load PHPMailer (supports both Composer and manual folder).
+ */
 $autoload = __DIR__ . "/vendor/autoload.php";
 if (file_exists($autoload)) {
     require_once $autoload;
 } else {
-    // 2) Fallback: support BOTH old-style and new-style PHPMailer folder structures
-
-    // Old-style (your current structure):
-    // /PHPMailer/Exception.php, /PHPMailer/PHPMailer.php, /PHPMailer/SMTP.php
-    $oldBase = __DIR__ . "/PHPMailer";
-    $oldEx   = $oldBase . "/Exception.php";
-    $oldPm   = $oldBase . "/PHPMailer.php";
-    $oldSm   = $oldBase . "/SMTP.php";
-
-    // New-style:
-    // /PHPMailer/src/Exception.php, /PHPMailer/src/PHPMailer.php, /PHPMailer/src/SMTP.php
-    $newBase = __DIR__ . "/PHPMailer/src";
-    $newEx   = $newBase . "/Exception.php";
-    $newPm   = $newBase . "/PHPMailer.php";
-    $newSm   = $newBase . "/SMTP.php";
-
-    if (file_exists($oldEx) && file_exists($oldPm) && file_exists($oldSm)) {
-        require_once $oldEx;
-        require_once $oldPm;
-        require_once $oldSm;
-    } elseif (file_exists($newEx) && file_exists($newPm) && file_exists($newSm)) {
-        require_once $newEx;
-        require_once $newPm;
-        require_once $newSm;
-    } else {
-        die("PHPMailer files not found. Please ensure PHPMailer is placed correctly in your project.");
-    }
+    // Manual include (your current PHPMailer folder structure)
+    require_once __DIR__ . "/PHPMailer/Exception.php";
+    require_once __DIR__ . "/PHPMailer/PHPMailer.php";
+    require_once __DIR__ . "/PHPMailer/SMTP.php";
 }
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 /**
- * SMTP configuration
- * NOTE: Use an App Password if your provider requires it (recommended).
+ * Load SMTP config from mail_config.php
  */
-const SMTP_HOST       = "smtp.gmail.com";
-const SMTP_PORT       = 587; // 587 for STARTTLS, 465 for SMTPS
-const SMTP_USER       = "YOUR_EMAIL@gmail.com";
-const SMTP_PASS       = "YOUR_APP_PASSWORD";  // Gmail App Password
-const SMTP_FROM_EMAIL = "YOUR_EMAIL@gmail.com";
-const SMTP_FROM_NAME  = "U-Transport System";
+function mailConfig(): array
+{
+    $path = __DIR__ . "/mail_config.php";
+    if (!file_exists($path)) {
+        throw new Exception("Missing mail_config.php. Please create it in the project root.");
+    }
+
+    $cfg = require $path;
+
+    $required = ["host", "port", "username", "password", "from_email", "from_name"];
+    foreach ($required as $k) {
+        if (!isset($cfg[$k]) || $cfg[$k] === "") {
+            throw new Exception("mail_config.php is missing: " . $k);
+        }
+    }
+
+    return $cfg;
+}
 
 /**
- * Send password reset OTP email to driver.
+ * Create a configured mailer instance.
+ */
+function buildMailer(): PHPMailer
+{
+    $cfg = mailConfig();
+
+    $mail = new PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host       = $cfg["host"];
+    $mail->SMTPAuth   = true;
+    $mail->Username   = $cfg["username"];
+    $mail->Password   = $cfg["password"];
+    $mail->Port       = (int)$cfg["port"];
+
+    // Encryption
+    if ((int)$cfg["port"] === 465) {
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+    } else {
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+    }
+
+    // Recommended defaults
+    $mail->CharSet = "UTF-8";
+    $mail->setFrom($cfg["from_email"], $cfg["from_name"]);
+
+    return $mail;
+}
+
+/**
+ * Send OTP email (can be used for driver or student).
+ *
+ * IMPORTANT: Do not print raw error messages to users in production.
+ */
+function sendOtpEmail(string $toEmail, string $toName, string $otp, string $context = "Password Reset"): void
+{
+    $mail = buildMailer();
+
+    $toName = $toName ?: "User";
+    $safeName = htmlspecialchars($toName, ENT_QUOTES, "UTF-8");
+    $safeOtp  = htmlspecialchars($otp, ENT_QUOTES, "UTF-8");
+    $safeContext = htmlspecialchars($context, ENT_QUOTES, "UTF-8");
+
+    $mail->addAddress($toEmail, $toName);
+    $mail->isHTML(true);
+    $mail->Subject = "{$safeContext} Verification Code";
+
+    $mail->Body = "
+        <div style='font-family:Arial,sans-serif; line-height:1.6;'>
+            <p>Hi {$safeName},</p>
+            <p>You requested a verification code for: <b>{$safeContext}</b>.</p>
+            <p>Your verification code is:</p>
+            <div style='font-size:28px; font-weight:700; letter-spacing:5px; margin:10px 0; color:#004b82;'>
+                {$safeOtp}
+            </div>
+            <p>This code will expire in <b>10 minutes</b>.</p>
+            <p>If you did not request this, you can ignore this email.</p>
+        </div>
+    ";
+
+    $mail->AltBody =
+        "Hi {$toName},\n\n"
+        . "Your verification code for {$context} is: {$otp}\n"
+        . "This code will expire in 10 minutes.\n\n"
+        . "If you did not request this, you can ignore this email.\n";
+
+    $mail->send();
+}
+
+/**
+ * Backward-compatible wrapper for your driver flow (so you don't need to rename everywhere).
  */
 function sendDriverOtpEmail(string $toEmail, string $name, string $otp): void
 {
-    $mail = new PHPMailer(true);
+    sendOtpEmail($toEmail, $name, $otp, "Driver Password Reset");
+}
 
-    try {
-        // Server settings
-        $mail->isSMTP();
-        $mail->Host       = SMTP_HOST;
-        $mail->SMTPAuth   = true;
-        $mail->Username   = SMTP_USER;
-        $mail->Password   = SMTP_PASS;
-
-        // Encryption
-        if (SMTP_PORT === 465) {
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        } else {
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        }
-
-        $mail->Port = SMTP_PORT;
-
-        // Sender & recipient
-        $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
-        $mail->addAddress($toEmail, $name ?: "Driver");
-
-        // Content
-        $mail->isHTML(true);
-        $mail->Subject = "Your Password Reset PIN";
-
-        $safeName = htmlspecialchars($name ?: "Driver", ENT_QUOTES, "UTF-8");
-        $safeOtp  = htmlspecialchars($otp, ENT_QUOTES, "UTF-8");
-
-        $mail->Body = "
-            <p>Hi {$safeName},</p>
-            <p>Your password reset PIN is:</p>
-            <div style='font-size:28px;font-weight:700;letter-spacing:4px;margin:10px 0;'>{$safeOtp}</div>
-            <p>This PIN will expire in 10 minutes.</p>
-            <p>If you did not request this, you can ignore this email.</p>
-        ";
-
-        $mail->AltBody =
-            "Hi {$name},\n\n"
-            . "Your password reset PIN is: {$otp}\n\n"
-            . "This PIN will expire in 10 minutes.\n"
-            . "If you did not request this, you can ignore this email.\n";
-
-        $mail->send();
-    } catch (Exception $e) {
-        // Optional debug:
-        // error_log("Mailer Error: " . $mail->ErrorInfo);
-        throw $e;
-    }
+/**
+ * Optional wrapper for student flow if needed.
+ */
+function sendStudentOtpEmail(string $toEmail, string $name, string $otp): void
+{
+    sendOtpEmail($toEmail, $name, $otp, "Student Password Reset");
 }
