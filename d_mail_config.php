@@ -2,7 +2,7 @@
 return [
   "host" => "smtp.gmail.com",
   "port" => 587,
-  "username" => "YOUR_GMAIL@gmail.com",
-  "password" => "YOUR_APP_PASSWORD_NO_SPACES",
+  "username" => "kelvinng051129@gmail.com",
+  "password" => "pzugwxelatppzoig",
   "from_name" => "U-Transport System",
 ];
