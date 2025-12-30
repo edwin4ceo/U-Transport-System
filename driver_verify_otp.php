@@ -3,11 +3,13 @@ session_start();
 ob_start();
 require_once __DIR__ . "/db_connect.php";
 
+// Security Check: Redirect to home if step 1 wasn't completed
 if (!isset($_SESSION['driver_reset'])) {
     header("Location: driver_forgot_password.php");
     exit;
 }
 
+// Handle OTP Verification
 if (isset($_POST['verify_otp'])) {
     $input_otp = trim($_POST['otp_code']);
     $session_otp = $_SESSION['driver_reset']['otp'];
@@ -21,14 +23,16 @@ if (isset($_POST['verify_otp'])) {
         header("Location: driver_forgot_password.php");
         exit;
     } elseif ($input_otp === $session_otp) {
+        // --- OTP Correct, Update Database ---
         $driver_id = $_SESSION['driver_reset']['driver_id'];
-        $new_hash  = $_SESSION['driver_reset']['pwd_hash']; 
+        $new_hash  = $_SESSION['driver_reset']['pwd_hash']; // Retrieve the password hash stored in step 1
 
+        // NOTE: Ensure your database column is named 'password' or change it below
         $stmt = $conn->prepare("UPDATE drivers SET password = ? WHERE driver_id = ?");
         $stmt->bind_param("si", $new_hash, $driver_id);
 
         if ($stmt->execute()) {
-            unset($_SESSION['driver_reset']); // Reset Session
+            unset($_SESSION['driver_reset']); // Destroy Reset Session
             
             $_SESSION['swal_title'] = "Success!";
             $_SESSION['swal_msg']   = "Password updated. Please login.";
