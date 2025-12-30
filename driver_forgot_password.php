@@ -5,6 +5,7 @@ require_once __DIR__ . "/db_connect.php";
 require_once __DIR__ . "/function.php";
 require_once __DIR__ . "/send_mail.php";
 
+// If already logged in, optionally redirect (keep commented if you want)
 // if (isset($_SESSION['driver_id'])) {
 //     redirect("driver_dashboard.php");
 //     exit;
@@ -64,25 +65,28 @@ if (isset($_POST['reset_password'])) {
                 /* ---------- OTP ---------- */
                 $otp = (string)random_int(1000, 9999);
 
+                // Store temp reset data in session (do not update password yet)
                 $_SESSION['driver_reset'] = [
                     'driver_id' => $driver_id,
                     'email'     => $email,
                     'name'      => $name,
                     'otp'       => $otp,
-                    'expires'   => time() + 600, // 10 min
+                    'expires'   => time() + 600, // 10 minutes
                     'pwd_hash'  => password_hash($new_password, PASSWORD_BCRYPT)
                 ];
 
                 try {
                     sendDriverOtpEmail($email, $name, $otp);
 
-                    header("Location: driver_verify_otp.php");
+                    // Use your redirect helper for consistent behavior
+                    redirect("driver_verify_otp.php");
                     exit;
+
                 } catch (Exception $e) {
                     $_SESSION['swal_title'] = "Email Error";
-                    $_SESSION['swal_msg']   = "Mailer Error: " . $e->getMessage(); // 暂时显示原因
+                    $_SESSION['swal_msg']   = "Mailer Error: " . $e->getMessage(); // dev only
                     $_SESSION['swal_type']  = "error";
-}
+                }
 
             } else {
                 $_SESSION['swal_title'] = "Account Not Found";
@@ -127,15 +131,16 @@ body { background:#f5f7fb; }
 .forgot-subtitle{font-size:13px;color:#666;}
 
 .form-group{margin-bottom:14px;}
-.form-group label{font-size:13px;font-weight:500;}
+.form-group label{font-size:13px;font-weight:500;display:block;margin-bottom:4px;}
 .form-group input{
     width:100%;padding:8px 10px;
     border-radius:8px;border:1px solid #ccc;font-size:13px;
+    box-sizing:border-box;
 }
 .btn-reset{
     width:100%;border:none;padding:10px;border-radius:999px;
     background:linear-gradient(135deg,#f39c12,#e67e22);
-    color:#fff;font-weight:600;
+    color:#fff;font-weight:600;cursor:pointer;
 }
 </style>
 
@@ -147,7 +152,7 @@ body { background:#f5f7fb; }
             <p class="forgot-subtitle">Verify your identity and receive an OTP.</p>
         </div>
 
-        <form method="post">
+        <form method="post" action="">
             <div class="form-group">
                 <label>Email</label>
                 <input type="email" name="email" required>
@@ -160,12 +165,12 @@ body { background:#f5f7fb; }
 
             <div class="form-group">
                 <label>New Password</label>
-                <input type="password" name="new_password" required>
+                <input type="password" name="new_password" required minlength="6">
             </div>
 
             <div class="form-group">
                 <label>Confirm Password</label>
-                <input type="password" name="confirm_password" required>
+                <input type="password" name="confirm_password" required minlength="6">
             </div>
 
             <button type="submit" name="reset_password" class="btn-reset">
