@@ -1,15 +1,38 @@
 <?php
 // send_mail.php
 
-// Try Composer autoload first; fallback to manual includes.
+// 1) Try Composer autoload first
 $autoload = __DIR__ . "/vendor/autoload.php";
 if (file_exists($autoload)) {
     require_once $autoload;
 } else {
-    // Manual PHPMailer include (place PHPMailer folder in project root)
-    require_once __DIR__ . "/PHPMailer/src/Exception.php";
-    require_once __DIR__ . "/PHPMailer/src/PHPMailer.php";
-    require_once __DIR__ . "/PHPMailer/src/SMTP.php";
+    // 2) Fallback: support BOTH old-style and new-style PHPMailer folder structures
+
+    // Old-style (your current structure):
+    // /PHPMailer/Exception.php, /PHPMailer/PHPMailer.php, /PHPMailer/SMTP.php
+    $oldBase = __DIR__ . "/PHPMailer";
+    $oldEx   = $oldBase . "/Exception.php";
+    $oldPm   = $oldBase . "/PHPMailer.php";
+    $oldSm   = $oldBase . "/SMTP.php";
+
+    // New-style:
+    // /PHPMailer/src/Exception.php, /PHPMailer/src/PHPMailer.php, /PHPMailer/src/SMTP.php
+    $newBase = __DIR__ . "/PHPMailer/src";
+    $newEx   = $newBase . "/Exception.php";
+    $newPm   = $newBase . "/PHPMailer.php";
+    $newSm   = $newBase . "/SMTP.php";
+
+    if (file_exists($oldEx) && file_exists($oldPm) && file_exists($oldSm)) {
+        require_once $oldEx;
+        require_once $oldPm;
+        require_once $oldSm;
+    } elseif (file_exists($newEx) && file_exists($newPm) && file_exists($newSm)) {
+        require_once $newEx;
+        require_once $newPm;
+        require_once $newSm;
+    } else {
+        die("PHPMailer files not found. Please ensure PHPMailer is placed correctly in your project.");
+    }
 }
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -19,12 +42,12 @@ use PHPMailer\PHPMailer\Exception;
  * SMTP configuration
  * NOTE: Use an App Password if your provider requires it (recommended).
  */
-const SMTP_HOST      = "smtp.gmail.com";     // e.g. smtp.gmail.com or smtp.office365.com
-const SMTP_PORT      = 587;                  // 587 for STARTTLS, 465 for SMTPS
-const SMTP_USER      = "YOUR_EMAIL@gmail.com";
-const SMTP_PASS      = "YOUR_APP_PASSWORD";  // Gmail App Password / Outlook password
-const SMTP_FROM_EMAIL= "YOUR_EMAIL@gmail.com";
-const SMTP_FROM_NAME = "U-Transport System";
+const SMTP_HOST       = "smtp.gmail.com";
+const SMTP_PORT       = 587; // 587 for STARTTLS, 465 for SMTPS
+const SMTP_USER       = "YOUR_EMAIL@gmail.com";
+const SMTP_PASS       = "YOUR_APP_PASSWORD";  // Gmail App Password
+const SMTP_FROM_EMAIL = "YOUR_EMAIL@gmail.com";
+const SMTP_FROM_NAME  = "U-Transport System";
 
 /**
  * Send password reset OTP email to driver.
@@ -52,7 +75,7 @@ function sendDriverOtpEmail(string $toEmail, string $name, string $otp): void
 
         // Sender & recipient
         $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
-        $mail->addAddress($toEmail, $name);
+        $mail->addAddress($toEmail, $name ?: "Driver");
 
         // Content
         $mail->isHTML(true);
@@ -77,8 +100,7 @@ function sendDriverOtpEmail(string $toEmail, string $name, string $otp): void
 
         $mail->send();
     } catch (Exception $e) {
-        // Do not expose detailed errors to the user.
-        // Optionally log it for debugging:
+        // Optional debug:
         // error_log("Mailer Error: " . $mail->ErrorInfo);
         throw $e;
     }
