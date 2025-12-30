@@ -1,11 +1,11 @@
 <?php
 session_start();
-ob_start(); 
+ob_start(); // Buffer output to prevent header errors
 
 require_once __DIR__ . "/db_connect.php";
-require_once __DIR__ . "/send_mail.php"; 
+require_once __DIR__ . "/send_mail.php"; // Ensure mail function is included
 
-// Process the submission of the form
+// Handle form submission
 if (isset($_POST['reset_request'])) {
 
     $email    = trim($_POST['email'] ?? "");
@@ -13,7 +13,7 @@ if (isset($_POST['reset_request'])) {
     $new_pass = $_POST['new_password'] ?? "";
     $confirm  = $_POST['confirm_password'] ?? "";
 
-    // Simple verification
+    // Basic Validation
     if (empty($email) || empty($ic) || empty($new_pass)) {
         $_SESSION['swal_title'] = "Missing Fields";
         $_SESSION['swal_msg']   = "Please fill in all fields.";
@@ -23,7 +23,7 @@ if (isset($_POST['reset_request'])) {
         $_SESSION['swal_msg']   = "Passwords do not match.";
         $_SESSION['swal_type']  = "error";
     } else {
-        // Check the library to verify the identity
+        // Verify identity in database
         $stmt = $conn->prepare("SELECT driver_id, full_name FROM drivers WHERE email = ? AND identification_id = ? LIMIT 1");
         $stmt->bind_param("ss", $email, $ic);
         $stmt->execute();
@@ -33,19 +33,19 @@ if (isset($_POST['reset_request'])) {
             $row = $res->fetch_assoc();
             $otp = (string)rand(1000, 9999);
 
-            
+            // Critical: Store User ID and pending password hash in Session
             $_SESSION['driver_reset'] = [
                 'driver_id' => $row['driver_id'],
                 'email'     => $email,
                 'otp'       => $otp,
-                'pwd_hash'  => password_hash($new_pass, PASSWORD_BCRYPT),
-                'expires'   => time() + 600 
+                'pwd_hash'  => password_hash($new_pass, PASSWORD_BCRYPT), // Store hash temporarily
+                'expires'   => time() + 600 // Valid for 10 minutes
             ];
 
             try {
                 sendDriverOtpEmail($email, $row['full_name'], $otp);
                 
-             
+                // Email sent successfully, redirect to OTP page
                 header("Location: driver_verify_otp.php"); 
                 exit;
 
