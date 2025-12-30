@@ -1,248 +1,182 @@
 <?php
 session_start();
-include "db_connect.php";
-include "function.php";
 
-// --- INCLUDE PHPMAILER ---
-require 'PHPMailer/Exception.php';
-require 'PHPMailer/PHPMailer.php';
-require 'PHPMailer/SMTP.php';
+require_once "db_connect.php";
+require_once "function.php";
+require_once "send_mail.php"; // 用你已经成功的 SMTP
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-// Redirect if already logged in
-if (isset($_SESSION['driver_id'])) {
-    redirect("driver_dashboard.php"); // 
-    exit;
-}
+// 已登录可选择导回 dashboard
+// if (isset($_SESSION['driver_id'])) {
+//     redirect("driver_dashboard.php");
+//     exit;
+// }
 
 if (isset($_POST['reset_password'])) {
 
-    $driver_id = trim($_POST['driver_id'] ?? "");
-    $email     = trim($_POST['email'] ?? ""); // auto-filled
+    $email        = trim($_POST['email'] ?? "");
+    $ic           = trim($_POST['identification_id'] ?? "");
     $new_password = $_POST['new_password'] ?? "";
-    $confirm_password = $_POST['confirm_password'] ?? "";
+    $confirm      = $_POST['confirm_password'] ?? "";
 
-    // 1) Basic validation
-    if ($driver_id === "" || $email === "") {
-        $_SESSION['swal_title'] = "Missing Info";
-        $_SESSION['swal_msg']   = "Please enter your Driver ID.";
+    /* ---------- Validation ---------- */
+    if ($email === "" || $ic === "" || $new_password === "" || $confirm === "") {
+        $_SESSION['swal_title'] = "Missing Fields";
+        $_SESSION['swal_msg']   = "All fields are required.";
+        $_SESSION['swal_type']  = "warning";
+    }
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['swal_title'] = "Invalid Email";
+        $_SESSION['swal_msg']   = "Please enter a valid email address.";
         $_SESSION['swal_type']  = "error";
     }
-    // 2) Password match
-    elseif ($new_password !== $confirm_password) {
-        $_SESSION['swal_title'] = "Password Mismatch";
-        $_SESSION['swal_msg']   = "New passwords do not match. Please try again.";
-        $_SESSION['swal_type']  = "error";
-    }
-    // 3) Password length (optional but recommended)
     elseif (strlen($new_password) < 6) {
         $_SESSION['swal_title'] = "Weak Password";
         $_SESSION['swal_msg']   = "Password must be at least 6 characters.";
+        $_SESSION['swal_type']  = "warning";
+    }
+    elseif ($new_password !== $confirm) {
+        $_SESSION['swal_title'] = "Password Mismatch";
+        $_SESSION['swal_msg']   = "Passwords do not match.";
         $_SESSION['swal_type']  = "error";
     }
     else {
+        /* ---------- Verify driver ---------- */
+        $stmt = $conn->prepare("
+            SELECT driver_id, full_name 
+            FROM drivers 
+            WHERE email = ? AND identification_id = ?
+            LIMIT 1
+        ");
 
-        /**
-         * 4) Verify identity
-         */
-        $stmt = $conn->prepare("SELECT driver_id, full_name, email FROM drivers WHERE driver_id = ? AND email = ? LIMIT 1");
-        $stmt->bind_param("ss", $driver_id, $email);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        if (!$stmt) {
+            $_SESSION['swal_title'] = "Error";
+            $_SESSION['swal_msg']   = "Database error.";
+            $_SESSION['swal_type']  = "error";
+        } else {
+            $stmt->bind_param("ss", $email, $ic);
+            $stmt->execute();
+            $res = $stmt->get_result();
 
-        if ($result->num_rows === 1) {
+            if ($res && $res->num_rows === 1) {
+                $row       = $res->fetch_assoc();
+                $driver_id = (int)$row['driver_id'];
+                $name      = $row['full_name'] ?? "Driver";
 
-            $row  = $result->fetch_assoc();
-            $name = $row['full_name'];
+                /* ---------- OTP ---------- */
+                $otp = (string)random_int(1000, 9999);
 
-            // Generate OTP (better than rand)
-            $otp = random_int(1000, 9999);
+                $_SESSION['driver_reset'] = [
+                    'driver_id' => $driver_id,
+                    'email'     => $email,
+                    'name'      => $name,
+                    'otp'       => $otp,
+                    'expires'   => time() + 600, // 10 min
+                    'pwd_hash'  => password_hash($new_password, PASSWORD_BCRYPT)
+                ];
 
-            // Hash the NEW password
-            $new_password_hash = password_hash($new_password, PASSWORD_BCRYPT);
+                try {
+                    // 用你已经验证成功的 send_mail.php
+                    sendDriverOtpEmail($email, $name, $otp);
 
-            // Store Data in Session
-            $_SESSION['temp_driver_reset_data'] = [
-                'email' => $email,
-                'name' => $name,
-                'driver_id' => $driver_id,
-                'new_password_hash' => $new_password_hash,
-                'otp_code' => $otp,
-                'otp_timestamp' => time(),
-                'resend_count' => 0
-            ];
+                    header("Location: driver_verify_otp.php");
+                    exit;
+                } catch (Exception $e) {
+                    // 不给用户看系统错误
+                    // error_log($e->getMessage());
 
-            // Send OTP Email
-            $mail = new PHPMailer(true);
-
-            try {
-                $mail->isSMTP();
-                $mail->Host       = 'smtp.gmail.com';
-                $mail->SMTPAuth   = true;
-                $mail->Username   = 'kelvinng051129@gmail.com';
-                $mail->Password   = 'pzugwxelatppzoig';
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port       = 587;
-                // $mail->SMTPDebug  = 2;
-                // $mail->Debugoutput = 'error_log';
-
-                $mail->setFrom('kelvinng051129@gmail.com', 'U-Transport System');
-                $mail->addAddress($email, $name);
-
-                $mail->isHTML(true);
-                $mail->Subject = 'Driver Reset Password Verification Code';
-                $mail->Body    = "
-                    <h3>Hello $name,</h3>
-                    <p>You have requested to reset your driver account password.</p>
-                    <p>Here is your verification code:</p>
-                    <h2 style='color:#004b82; letter-spacing:5px;'>$otp</h2>
-                    <p>This code will expire in <b>10 minutes</b>.</p>
-                    <br>
-                    <p style='font-size:12px;color:#666;'>If you did not request this, please ignore this email.</p>
-                ";
-
-                $mail->send();
-
-                header("Location: verify_driver_reset_otp.php");
-                exit();
-
-            } catch (Exception $e) {
-                $_SESSION['swal_title'] = "Email Error";
-                $_SESSION['swal_msg']   = "Mailer Error: {$mail->ErrorInfo}";
+                    $_SESSION['swal_title'] = "Email Error";
+                    $_SESSION['swal_msg']   = "Unable to send verification email. Please try again.";
+                    $_SESSION['swal_type']  = "error";
+                }
+            } else {
+                $_SESSION['swal_title'] = "Account Not Found";
+                $_SESSION['swal_msg']   = "Email and identification ID do not match our records.";
                 $_SESSION['swal_type']  = "error";
             }
 
-        } else {
-            $_SESSION['swal_title'] = "Verification Failed";
-            $_SESSION['swal_msg']   = "The Driver ID or email does not match our records.";
-            $_SESSION['swal_type']  = "error";
+            $stmt->close();
         }
     }
 }
+
+include "header.php";
 ?>
 
-<?php include "header.php"; ?>
-
 <style>
-    input[type="email"], input[type="text"], input[type="password"] {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 15px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-sizing: border-box;
-    }
+body { background:#f5f7fb; }
 
-    .password-wrapper {
-        position: relative;
-        width: 100%;
-    }
-    .password-wrapper input {
-        margin-bottom: 15px;
-        padding-right: 40px;
-    }
-    .toggle-password {
-        position: absolute;
-        right: 15px;
-        top: 35%;
-        transform: translateY(-50%);
-        cursor: pointer;
-        color: #7f8c8d;
-        z-index: 10;
-        font-size: 1.1rem;
-        user-select: none;
-    }
-    .toggle-password:hover { color: #005A9C; }
+.forgot-wrapper{
+    min-height:calc(100vh - 140px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:40px 15px;
+}
+.forgot-card{
+    background:#fff;
+    border-radius:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    max-width:420px;
+    width:100%;
+    padding:26px 24px 20px;
+}
+.forgot-header{text-align:center;margin-bottom:14px;}
+.forgot-icon{
+    width:52px;height:52px;border-radius:50%;
+    border:2px solid #f39c12;
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 8px;color:#f39c12;font-size:22px;
+}
+.forgot-header h2{margin:0;color:#005A9C;font-weight:700;}
+.forgot-subtitle{font-size:13px;color:#666;}
 
-    .form-card{
-        max-width: 420px;
-        margin: 30px auto;
-        padding: 20px;
-        border: 1px solid #eee;
-        border-radius: 10px;
-        background: #fff;
-    }
-    .muted { color:#666; font-size:13px; }
+.form-group{margin-bottom:14px;}
+.form-group label{font-size:13px;font-weight:500;}
+.form-group input{
+    width:100%;padding:8px 10px;
+    border-radius:8px;border:1px solid #ccc;font-size:13px;
+}
+.btn-reset{
+    width:100%;border:none;padding:10px;border-radius:999px;
+    background:linear-gradient(135deg,#f39c12,#e67e22);
+    color:#fff;font-weight:600;
+}
 </style>
 
-<div class="form-card">
-    <h2>Driver Forgot Password</h2>
-
-    <p class="muted" style="margin-bottom:6px;">Enter your Driver ID and new password.</p>
-    <p style="color:red;font-size:13px;margin-top:0;font-weight:500;">
-        * You will need to verify your email in the next step.
-    </p>
-
-    <form action="" method="POST">
-
-        <label>Driver ID</label>
-        <input type="text" name="driver_id" id="driverIDInput" required placeholder="e.g. DRV0001" maxlength="20">
-
-        <label>Email</label>
-        <input type="email" name="email" id="emailInput" required placeholder="Auto-filled email" readonly style="background:#f9f9f9; cursor:not-allowed;">
-
-        <label>New Password</label>
-        <div class="password-wrapper">
-            <input type="password" name="new_password" id="newPass" required placeholder="Create new password">
-            <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconNew"></i>
+<div class="forgot-wrapper">
+    <div class="forgot-card">
+        <div class="forgot-header">
+            <div class="forgot-icon"><i class="fa-solid fa-key"></i></div>
+            <h2>Driver Reset Password</h2>
+            <p class="forgot-subtitle">Verify your identity and receive an OTP.</p>
         </div>
 
-        <label>Confirm New Password</label>
-        <div class="password-wrapper">
-            <input type="password" name="confirm_password" id="confirmPass" required placeholder="Re-enter new password">
-            <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconConfirm"></i>
-        </div>
+        <form method="post">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" required>
+            </div>
 
-        <button type="submit" name="reset_password" style="font-size:15px;width:100%;">
-            Verify Email to Complete Reset Password
-        </button>
-    </form>
+            <div class="form-group">
+                <label>Identification ID</label>
+                <input type="text" name="identification_id" required>
+            </div>
 
-    <div style="margin-top: 15px; text-align: center;">
-        <a href="driver_login.php" style="color:#666;text-decoration:none;">&larr; Back to Driver Login</a>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" name="new_password" required>
+            </div>
+
+            <div class="form-group">
+                <label>Confirm Password</label>
+                <input type="password" name="confirm_password" required>
+            </div>
+
+            <button type="submit" name="reset_password" class="btn-reset">
+                Send OTP
+            </button>
+        </form>
     </div>
 </div>
-
-<script>
-    const driverIdInput = document.getElementById('driverIDInput');
-    const emailInput = document.getElementById('emailInput');
-
-    driverIdInput.addEventListener('input', function() {
-        const id = this.value.trim();
-        if (id.length > 0) {
-            emailInput.value = ""; 
-        } else {
-            emailInput.value = "";
-        }
-    });
-
-    function setupPasswordToggle(inputId, iconId) {
-        const input = document.getElementById(inputId);
-        const icon = document.getElementById(iconId);
-
-        function show() {
-            input.type = 'text';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-        function hide() {
-            input.type = 'password';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        }
-
-        icon.addEventListener('mousedown', show);
-        icon.addEventListener('mouseup', hide);
-        icon.addEventListener('mouseleave', hide);
-
-        icon.addEventListener('touchstart', function(e){ e.preventDefault(); show(); });
-        icon.addEventListener('touchend', hide);
-    }
-
-    setupPasswordToggle('newPass', 'eyeIconNew');
-    setupPasswordToggle('confirmPass', 'eyeIconConfirm');
-</script>
 
 <?php include "footer.php"; ?>
