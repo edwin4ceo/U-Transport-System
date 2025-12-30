@@ -14,7 +14,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $msg = "Please enter your email address.";
         $error = true;
     } else {
-        // Always return a generic message to prevent email enumeration
+        // Always respond with a generic message to prevent email enumeration
         $genericMsg = "If the email exists, a PIN has been sent. Please check your inbox and spam folder.";
 
         $stmt = $conn->prepare("
@@ -27,17 +27,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->execute();
         $res = $stmt->get_result();
 
-        if ($res->num_rows === 1) {
+        if ($res && $res->num_rows === 1) {
             $driver = $res->fetch_assoc();
             $driver_id = (int)$driver["driver_id"];
-            $name = $driver["full_name"] ?? "";
+            $name = $driver["full_name"] ?? "Driver";
 
             // Generate 4-digit OTP (valid for 10 minutes)
             $otp = str_pad((string)random_int(0, 9999), 4, "0", STR_PAD_LEFT);
             $otp_hash = hash("sha256", $otp);
             $expires_at = date("Y-m-d H:i:s", time() + 600);
 
-            // Remove any previous OTP for this driver
+            // Remove any previous OTP for this driver (keep only the newest OTP)
             $del = $conn->prepare("DELETE FROM driver_reset_otps WHERE driver_id = ?");
             $del->bind_param("i", $driver_id);
             $del->execute();
@@ -52,16 +52,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $ins->execute();
             $ins->close();
 
-            // Send OTP email
+            // Store the driver_id temporarily in session for verification step
+            $_SESSION["reset_driver_id"] = $driver_id;
+
+            // Send OTP email (do not reveal errors to the user)
             try {
                 sendDriverOtpEmail($email, $name, $otp);
             } catch (Exception $e) {
-                // Email failure should not expose system details
+                // Intentionally silent (security)
             }
         }
 
         $stmt->close();
 
+        // Always redirect to verification page (even if email doesn't exist)
         header("Location: driver_verify_pin.php?email=" . urlencode($email));
         exit;
     }
