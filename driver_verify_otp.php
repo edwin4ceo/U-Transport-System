@@ -1,157 +1,79 @@
 <?php
 session_start();
-
-require_once "db_connect.php";
-require_once "function.php";
+ob_start();
+require_once __DIR__ . "/db_connect.php";
 
 if (!isset($_SESSION['driver_reset'])) {
-    redirect("driver_forgot_password.php");
+    header("Location: driver_forgot_password.php");
     exit;
 }
 
-$data = $_SESSION['driver_reset'];
-
 if (isset($_POST['verify_otp'])) {
+    $input_otp = trim($_POST['otp_code']);
+    $session_otp = $_SESSION['driver_reset']['otp'];
+    $expires = $_SESSION['driver_reset']['expires'];
 
-    $inputOtp = trim($_POST['otp'] ?? "");
-
-    // 1. Empty OTP
-    if ($inputOtp === "") {
-        $_SESSION['swal_title'] = "Missing Code";
-        $_SESSION['swal_msg']   = "Please enter the verification code.";
-        $_SESSION['swal_type']  = "warning";
-    }
-    // 2. OTP expired
-    elseif (time() > $data['expires']) {
-        unset($_SESSION['driver_reset']);
-
-        $_SESSION['swal_title'] = "OTP Expired";
-        $_SESSION['swal_msg']   = "The verification code has expired. Please request a new one.";
+    if (time() > $expires) {
+        $_SESSION['swal_title'] = "Expired";
+        $_SESSION['swal_msg']   = "OTP has expired. Please try again.";
         $_SESSION['swal_type']  = "error";
-
-        redirect("driver_forgot_password.php");
+        unset($_SESSION['driver_reset']); // Clear Session
+        header("Location: driver_forgot_password.php");
         exit;
-    }
-    // 3. OTP mismatch
-    elseif ($inputOtp !== $data['otp']) {
-        $_SESSION['swal_title'] = "Invalid Code";
-        $_SESSION['swal_msg']   = "The verification code is incorrect.";
-        $_SESSION['swal_type']  = "error";
-    }
-    else {
-        // 4. OTP correct → update password
-        $stmt = $conn->prepare("
-            UPDATE drivers 
-            SET password = ?
-            WHERE driver_id = ?
-            LIMIT 1
-        ");
+    } elseif ($input_otp === $session_otp) {
+        $driver_id = $_SESSION['driver_reset']['driver_id'];
+        $new_hash  = $_SESSION['driver_reset']['pwd_hash']; 
 
-        if (!$stmt) {
-            $_SESSION['swal_title'] = "Error";
-            $_SESSION['swal_msg']   = "Database error. Please try again.";
-            $_SESSION['swal_type']  = "error";
+        $stmt = $conn->prepare("UPDATE drivers SET password = ? WHERE driver_id = ?");
+        $stmt->bind_param("si", $new_hash, $driver_id);
+
+        if ($stmt->execute()) {
+            unset($_SESSION['driver_reset']); // Reset Session
+            
+            $_SESSION['swal_title'] = "Success!";
+            $_SESSION['swal_msg']   = "Password updated. Please login.";
+            $_SESSION['swal_type']  = "success";
+            
+            header("Location: driver_login.php");
+            exit;
         } else {
-            $stmt->bind_param("si", $data['pwd_hash'], $data['driver_id']);
-
-            if ($stmt->execute()) {
-
-                // Clear reset session
-                unset($_SESSION['driver_reset']);
-
-                $_SESSION['swal_title'] = "Password Updated";
-                $_SESSION['swal_msg']   = "Your password has been reset successfully. Please login.";
-                $_SESSION['swal_type']  = "success";
-
-                redirect("driver_login.php");
-                exit;
-            } else {
-                $_SESSION['swal_title'] = "Error";
-                $_SESSION['swal_msg']   = "Failed to update password.";
-                $_SESSION['swal_type']  = "error";
-            }
-
-            $stmt->close();
+            $_SESSION['swal_title'] = "Database Error";
+            $_SESSION['swal_msg']   = "Could not update password.";
+            $_SESSION['swal_type']  = "error";
         }
+    } else {
+        $_SESSION['swal_title'] = "Invalid OTP";
+        $_SESSION['swal_msg']   = "The code you entered is incorrect.";
+        $_SESSION['swal_type']  = "error";
     }
 }
 
 include "header.php";
 ?>
 
-<style>
-body { background:#f5f7fb; }
-
-.verify-wrapper{
-    min-height:calc(100vh - 140px);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:40px 15px;
-}
-.verify-card{
-    background:#fff;
-    border-radius:16px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.08);
-    max-width:380px;
-    width:100%;
-    padding:26px 24px;
-}
-.verify-header{text-align:center;margin-bottom:14px;}
-.verify-icon{
-    width:52px;height:52px;border-radius:50%;
-    border:2px solid #005A9C;
-    display:flex;align-items:center;justify-content:center;
-    margin:0 auto 8px;color:#005A9C;font-size:22px;
-}
-.verify-header h2{margin:0;color:#005A9C;font-weight:700;}
-.verify-subtitle{font-size:13px;color:#666;text-align:center;}
-
-.form-group{margin-top:14px;}
-.form-group input{
-    width:100%;
-    padding:10px;
-    font-size:18px;
-    text-align:center;
-    letter-spacing:6px;
-    border-radius:10px;
-    border:1px solid #ccc;
-}
-.btn-verify{
-    width:100%;
-    margin-top:16px;
-    border:none;
-    padding:10px;
-    border-radius:999px;
-    background:linear-gradient(135deg,#005A9C,#007BFF);
-    color:#fff;
-    font-weight:600;
-}
-</style>
-
-<div class="verify-wrapper">
-    <div class="verify-card">
-        <div class="verify-header">
-            <div class="verify-icon">
-                <i class="fa-solid fa-shield-halved"></i>
-            </div>
-            <h2>Verify OTP</h2>
-            <p class="verify-subtitle">
-                Enter the 4-digit code sent to<br>
-                <b><?= htmlspecialchars($data['email']) ?></b>
-            </p>
-        </div>
-
-        <form method="post">
-            <div class="form-group">
-                <input type="text" name="otp" maxlength="4" placeholder="••••" required>
-            </div>
-
-            <button type="submit" name="verify_otp" class="btn-verify">
-                Verify & Reset Password
-            </button>
-        </form>
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <h2>Security Verification</h2>
+      <p class="auth-subtitle">Enter the 4-digit code sent to <b><?= htmlspecialchars($_SESSION['driver_reset']['email']) ?></b></p>
     </div>
+
+    <form method="post">
+      <div class="form-group" style="text-align:center;">
+        <label>Enter OTP Code</label>
+        <input type="text" name="otp_code" maxlength="4" required 
+               style="text-align:center; font-size:24px; letter-spacing: 10px; font-weight:bold; width: 60%; margin: 0 auto; display:block;"
+               placeholder="0 0 0 0">
+      </div>
+
+      <button type="submit" name="verify_otp" class="btn-auth">Verify & Change Password</button>
+    </form>
+
+    <div class="auth-footer">
+      <a href="driver_forgot_password.php" style="color:#999;">Resend / Start Over</a>
+    </div>
+  </div>
 </div>
 
 <?php include "footer.php"; ?>
