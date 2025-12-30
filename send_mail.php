@@ -19,13 +19,13 @@ use PHPMailer\PHPMailer\Exception;
 const MAIL_DEBUG = true;
 
 /**
- * Load SMTP config from mail_config.php (same directory as this file).
+ * Load SMTP config from d_mail_config.php (same directory as this file).
  */
 function mailConfig(): array
 {
-    $path = __DIR__ . "/mail_config.php";
+    $path = __DIR__ . "/d_mail_config.php";
     if (!is_file($path)) {
-        throw new Exception("Missing mail_config.php in: " . __DIR__);
+        throw new Exception("Missing d_mail_config.php in: " . __DIR__);
     }
 
     $cfg = require $path;
@@ -33,7 +33,7 @@ function mailConfig(): array
     $required = ["host", "port", "username", "password", "from_name"];
     foreach ($required as $k) {
         if (!isset($cfg[$k]) || trim((string)$cfg[$k]) === "") {
-            throw new Exception("mail_config.php is missing/empty: " . $k);
+            throw new Exception("d_mail_config.php is missing/empty: " . $k);
         }
     }
 
