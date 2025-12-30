@@ -53,8 +53,13 @@ function buildMailer(): PHPMailer
     $mail = new PHPMailer(true);
 
     if (MAIL_DEBUG) {
-        $mail->SMTPDebug  = 2;
-        $mail->Debugoutput = 'html';
+            // ===== SMTP DEBUG (write to error.log) =====
+    $mail->SMTPDebug = 2;
+    $mail->Debugoutput = function ($str, $level) {
+        error_log("SMTP[$level]: $str");
+    };
+    // ==========================================
+
     }
 
     $mail->isSMTP();
