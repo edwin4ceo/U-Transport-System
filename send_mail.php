@@ -1,7 +1,4 @@
 <?php
-// send_mail.php
-
-// Include PHPMailer classes manually
 require 'PHPMailer/Exception.php';
 require 'PHPMailer/PHPMailer.php';
 require 'PHPMailer/SMTP.php';
@@ -13,29 +10,24 @@ function sendDriverOtpEmail($toEmail, $driverName, $otp) {
     $mail = new PHPMailer(true);
 
     try {
-        // --- Core Configuration ---
-        // 🔴 Critical: Set to 0 for production to hide debug info from users
         $mail->SMTPDebug = 0; 
         
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com'; 
         $mail->SMTPAuth   = true;
         
-        // Use your App Password here
-        $mail->Username   = 'your_email@gmail.com'; 
-        $mail->Password   = 'your_16_digit_app_password';
+        $mail->Username   = 'kelvinng051129@gmail.com'; 
+        $mail->Password   = 'szvd kjeo jwfx bxnh';
         
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        // --- Content Settings ---
         $mail->setFrom('no-reply@u-transport.com', 'U-Transport Admin');
         $mail->addAddress($toEmail, $driverName);
 
         $mail->isHTML(true);
         $mail->Subject = 'Reset Password Verification';
         
-        // HTML Styling for the email
         $mail->Body    = "
             <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
                 <h2 style='color: #005A9C; text-align: center;'>Password Reset Request</h2>
@@ -54,16 +46,13 @@ function sendDriverOtpEmail($toEmail, $driverName, $otp) {
             </div>
         ";
         
-        // Plain text alternative (for email clients that don't support HTML)
         $mail->AltBody = "Hello $driverName, your OTP code is: $otp";
 
         $mail->send();
         return true;
 
     } catch (Exception $e) {
-        // Log errors to server file, but don't show to user
         error_log("Mailer Error: " . $mail->ErrorInfo);
-        // Throw exception so main program knows sending failed
         throw new Exception("Email sending failed");
     }
 }
