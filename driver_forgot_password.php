@@ -1,9 +1,9 @@
 <?php
 session_start();
 
-require_once "db_connect.php";
-require_once "function.php";
-require_once "send_mail.php"; 
+require_once __DIR__ . "/db_connect.php";
+require_once __DIR__ . "/function.php";
+require_once __DIR__ . "/send_mail.php";
 
 // if (isset($_SESSION['driver_id'])) {
 //     redirect("driver_dashboard.php");
