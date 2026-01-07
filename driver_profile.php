@@ -401,7 +401,7 @@ include "header.php";
                     </div>
 
                     <div class="form-group">
-                        <label for="identification_id">Identification / Matric ID</label>
+                        <label for="identification_id">Identification / Student ID</label>
                         <input type="text" id="identification_id" name="identification_id"
                                value="<?php echo htmlspecialchars($identification_id); ?>" required>
                     </div>
