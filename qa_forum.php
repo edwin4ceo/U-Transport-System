@@ -173,7 +173,7 @@ include "header.php";
             <p>
                 No, the system does not support real-time GPS tracking. However, once a booking is confirmed, 
                 you will receive the driver's contact number to coordinate the pickup location directly.
-            </p> 吗你 
+            </p> 
         </div> 
     </div>
 

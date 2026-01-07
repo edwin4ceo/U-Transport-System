@@ -43,6 +43,7 @@ if (isset($_SESSION['student_id'])) {
                     ?>
                     <li><a href="search_transport.php">Search Rides</a></li>
                     <li><a href="passanger_request_transport.php">Request Ride</a></li>
+                    <li><a href="passanger_rides.php">My Rides</a></li>
                     <li><a href="passanger_booking_history.php">My History</a></li>
                     <li><a href="qa_forum.php">Q&amp;A</a></li>
                     <li><a href="passanger_profile.php">Profile</a></li>
