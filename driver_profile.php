@@ -362,7 +362,7 @@ include "header.php";
             </div>
 
             <div class="summary-row">
-                <div class="summary-label">Identification / Matric ID</div>
+                <div class="summary-label">Identification / Student ID</div>
                 <div class="summary-value"><?php echo htmlspecialchars($identification_id); ?></div>
             </div>
 
