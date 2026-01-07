@@ -21,30 +21,30 @@ if(isset($_POST['request'])){
     
     $datetime     = $_POST['date_time'];
     $passengers   = $_POST['passengers'];
-    $vehicle_type = $_POST['vehicle_type']; // New Field
+    $vehicle_type = $_POST['vehicle_type']; // Capture the vehicle type
     $pickup       = $_POST['pickup'];
     $remark       = $_POST['remark'];
 
     // Basic Validation
     if(empty($state) || empty($region) || empty($address) || empty($datetime) || empty($pickup) || empty($passengers) || empty($vehicle_type)){
-        alert("Please fill in all required fields.");
+        echo "<script>alert('Please fill in all required fields.');</script>";
     } else {
-        // 3. Insert into Database (Updated to include vehicle_type)
-        // Ensure you ran the ALTER TABLE SQL command first!
-        $sql = "INSERT INTO bookings (student_id, destination, date_time, passengers, vehicle_type, pickup_point, remark, status)
-                VALUES ('$student_id', '$destination', '$datetime', '$passengers', '$vehicle_type', '$pickup', '$remark', 'Pending')";
+        // 3. Insert into Database
+        // Note: Ensure the 'vehicle_type' column exists in your 'bookings' table
+        $stmt = $conn->prepare("INSERT INTO bookings (student_id, destination, date_time, passengers, vehicle_type, pickup_point, remark, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')");
+        $stmt->bind_param("sssisss", $student_id, $destination, $datetime, $passengers, $vehicle_type, $pickup, $remark);
 
-        if($conn->query($sql)){
-            alert("Transport request submitted successfully!");
-            redirect("passanger_booking_history.php"); 
+        if($stmt->execute()){
+            echo "<script>alert('Transport request submitted successfully!'); window.location.href='passanger_booking_history.php';</script>"; 
         } else {
-            alert("Error submitting request: " . $conn->error);
+            echo "<script>alert('Error submitting request: " . $conn->error . "');</script>";
         }
+        $stmt->close();
     }
 }
-?>
 
-<?php include "header.php"; ?>
+include "header.php"; 
+?>
 
 <h2>Request Transport</h2>
 
