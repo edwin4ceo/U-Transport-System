@@ -23,7 +23,9 @@ if (isset($_POST['login'])) {
         $_SESSION['swal_type']  = "warning";
     } else {
         // Check driver from DB
-        $stmt = $conn->prepare("SELECT driver_id, password FROM drivers WHERE email = ?");
+        // [UPDATED] We now select 'verification_status' as well
+        $stmt = $conn->prepare("SELECT driver_id, password, verification_status FROM drivers WHERE email = ?");
+        
         if ($stmt) {
             $stmt->bind_param("s", $email);
             $stmt->execute();
@@ -33,15 +35,44 @@ if (isset($_POST['login'])) {
                 $row = $result->fetch_assoc();
 
                 if (password_verify($password, $row['password'])) {
-                    // Login success
-                    $_SESSION['driver_id'] = $row['driver_id'];
+                    
+                    // ---------------------------------------------------------
+                    // [NEW] Check Verification Status
+                    // ---------------------------------------------------------
+                    $status = $row['verification_status'];
 
-                    $_SESSION['swal_title'] = "Login Successful";
-                    $_SESSION['swal_msg']   = "Welcome back, driver!";
-                    $_SESSION['swal_type']  = "success";
+                    if ($status === 'pending') {
+                        // Case 1: Pending Approval
+                        $_SESSION['swal_title'] = "Account Pending";
+                        $_SESSION['swal_msg']   = "Your account is currently awaiting Admin approval. Please try again later.";
+                        $_SESSION['swal_type']  = "info"; // or warning
+                        
+                        // Stop execution and refresh page to show alert
+                        header("Location: driver_login.php");
+                        exit;
 
-                    header("Location: driver_dashboard.php");
-                    exit;
+                    } elseif ($status === 'rejected') {
+                        // Case 2: Rejected
+                        $_SESSION['swal_title'] = "Account Rejected";
+                        $_SESSION['swal_msg']   = "Your driver application has been rejected by the administrator.";
+                        $_SESSION['swal_type']  = "error";
+                        
+                        header("Location: driver_login.php");
+                        exit;
+
+                    } else {
+                        // Case 3: Verified / Active -> Allow Login
+                        $_SESSION['driver_id'] = $row['driver_id'];
+
+                        $_SESSION['swal_title'] = "Login Successful";
+                        $_SESSION['swal_msg']   = "Welcome back, driver!";
+                        $_SESSION['swal_type']  = "success";
+
+                        header("Location: driver_dashboard.php");
+                        exit;
+                    }
+                    // ---------------------------------------------------------
+
                 } else {
                     // Wrong password
                     $_SESSION['swal_title'] = "Login Failed";

@@ -180,6 +180,12 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
                             <i class="fa-solid fa-list-check"></i> View Recent Bookings
                         </a>
                     </li>
+                    
+                    <li style="margin-bottom: 15px;">
+                        <a href="admin_vehicle_requests.php" style="text-decoration:none; font-weight:bold; color:#2980b9;">
+                            <i class="fa-solid fa-car-side"></i> Manage Vehicle Requests
+                        </a>
+                    </li>
                     <li>
                         <a href="verify_drivers.php" style="text-decoration:none; font-weight:bold; color:#2980b9;">
                             <i class="fa-solid fa-id-card"></i> Verify New Drivers

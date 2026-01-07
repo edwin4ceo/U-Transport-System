@@ -13,38 +13,55 @@ if (!isset($_SESSION['driver_id'])) {
 $driver_id = $_SESSION['driver_id'];
 
 /* ----------------------------------------
-   Handle profile update (name, ID, license)
+   Handle profile update (name, ID, phone, license)
 ----------------------------------------- */
 if (isset($_POST['save_profile'])) {
 
-    $full_name              = trim($_POST['full_name']);
-    $identification_id      = trim($_POST['identification_id']);
-    $driver_license_number  = trim($_POST['driver_license_number']);
-    $driver_license_expiry  = trim($_POST['driver_license_expiry']);  // format: YYYY-MM-DD
+    $full_name             = trim($_POST['full_name']);
+    $identification_id     = trim($_POST['identification_id']);
+    $phone_number          = trim($_POST['phone_number']);
+    $driver_license_number = trim($_POST['driver_license_number']);
+    $driver_license_expiry = trim($_POST['driver_license_expiry']);  // format: YYYY-MM-DD
 
-    if ($full_name === "" || $identification_id === "" ||
+    // 1. Basic Validation: Check for empty fields
+    if ($full_name === "" || $identification_id === "" || $phone_number === "" ||
         $driver_license_number === "" || $driver_license_expiry === "") {
 
         $_SESSION['swal_title'] = "Missing Fields";
         $_SESSION['swal_msg']   = "Please fill in all personal and license fields.";
         $_SESSION['swal_type']  = "warning";
 
-    } else {
+    } 
+    // ---------------------------------------------------------
+    // [NEW] 2. Date Validation: Check if license is expired
+    // ---------------------------------------------------------
+    elseif ($driver_license_expiry < date('Y-m-d')) {
+        
+        $_SESSION['swal_title'] = "License Expired";
+        $_SESSION['swal_msg']   = "Your driving license is expired. Please renew it before updating.";
+        $_SESSION['swal_type']  = "warning";
 
+    } 
+    // ---------------------------------------------------------
+    else {
+
+        // 3. Update Database
         $stmt = $conn->prepare("
             UPDATE drivers
             SET full_name = ?, 
                 identification_id = ?, 
-                driver_license_number = ?, 
-                driver_license_expiry = ?
+                phone_number = ?,
+                license_number = ?, 
+                license_expiry = ?
             WHERE driver_id = ?
         ");
-
+        
         if ($stmt) {
             $stmt->bind_param(
-                "ssssi",
+                "sssssi",
                 $full_name,
                 $identification_id,
+                $phone_number,
                 $driver_license_number,
                 $driver_license_expiry,
                 $driver_id
@@ -56,7 +73,7 @@ if (isset($_POST['save_profile'])) {
                 $_SESSION['swal_type']  = "success";
             } else {
                 $_SESSION['swal_title'] = "Error";
-                $_SESSION['swal_msg']   = "Failed to update profile. Please try again.";
+                $_SESSION['swal_msg']   = "Failed to update profile: " . $stmt->error;
                 $_SESSION['swal_type']  = "error";
             }
 
@@ -153,16 +170,17 @@ if (isset($_POST['change_password'])) {
 /* ----------------------------------------
    Fetch latest driver info for display
 ----------------------------------------- */
-$full_name              = "";
-$email                  = "";
-$identification_id      = "";
-$driver_license_number  = "";
-$driver_license_expiry  = "";
-$created_at             = "";
+$full_name             = "";
+$email                 = "";
+$identification_id     = "";
+$phone_number          = "";
+$driver_license_number = "";
+$driver_license_expiry = "";
+$created_at            = "";
 
 $stmt = $conn->prepare("
-    SELECT full_name, email, identification_id, 
-           driver_license_number, driver_license_expiry, created_at
+    SELECT full_name, email, identification_id, phone_number,
+           license_number, license_expiry, created_at
     FROM drivers
     WHERE driver_id = ?
 ");
@@ -173,13 +191,14 @@ if ($stmt) {
     $result = $stmt->get_result();
 
     if ($result && $result->num_rows === 1) {
-        $row                  = $result->fetch_assoc();
-        $full_name            = $row['full_name'];
-        $email                = $row['email'];
-        $identification_id    = $row['identification_id'];
-        $driver_license_number= $row['driver_license_number'];
-        $driver_license_expiry= $row['driver_license_expiry'];
-        $created_at           = $row['created_at'];
+        $row                   = $result->fetch_assoc();
+        $full_name             = $row['full_name'];
+        $email                 = $row['email'];
+        $identification_id     = $row['identification_id'];
+        $phone_number          = $row['phone_number'];
+        $driver_license_number = $row['license_number'];
+        $driver_license_expiry = $row['license_expiry'];
+        $created_at            = $row['created_at'];
     }
     $stmt->close();
 }
@@ -347,7 +366,6 @@ include "header.php";
     </div>
 
     <div class="profile-grid">
-        <!-- Left: Summary -->
         <div class="profile-card">
             <div class="profile-card-title">Profile Summary</div>
 
@@ -359,6 +377,13 @@ include "header.php";
             <div class="summary-row">
                 <div class="summary-label">Email (MMU)</div>
                 <div class="summary-value"><?php echo htmlspecialchars($email); ?></div>
+            </div>
+
+            <div class="summary-row">
+                <div class="summary-label">Phone Number</div>
+                <div class="summary-value">
+                    <?php echo $phone_number ? htmlspecialchars($phone_number) : "Not set"; ?>
+                </div>
             </div>
 
             <div class="summary-row">
@@ -388,9 +413,7 @@ include "header.php";
             <?php endif; ?>
         </div>
 
-        <!-- Right: Forms -->
         <div class="form-card">
-            <!-- Profile form -->
             <div class="form-section-title">Personal & License Information</div>
             <form method="post" action="">
                 <div class="form-grid">
@@ -413,6 +436,12 @@ include "header.php";
                     </div>
 
                     <div class="form-group">
+                        <label for="phone_number">Phone Number</label>
+                        <input type="tel" id="phone_number" name="phone_number"
+                               value="<?php echo htmlspecialchars($phone_number); ?>" required>
+                    </div>
+
+                    <div class="form-group">
                         <label for="driver_license_number">Driving License Number</label>
                         <input type="text" id="driver_license_number" name="driver_license_number"
                                value="<?php echo htmlspecialchars($driver_license_number); ?>" required>
@@ -421,7 +450,8 @@ include "header.php";
                     <div class="form-group">
                         <label for="driver_license_expiry">License Expiry Date</label>
                         <input type="date" id="driver_license_expiry" name="driver_license_expiry"
-                               value="<?php echo htmlspecialchars($driver_license_expiry); ?>" required>
+                               value="<?php echo htmlspecialchars($driver_license_expiry); ?>" 
+                               min="<?php echo date('Y-m-d'); ?>" required>
                     </div>
                 </div>
 
@@ -432,7 +462,6 @@ include "header.php";
                 </div>
             </form>
 
-            <!-- Password change form -->
             <div class="password-section">
                 <div class="form-section-title">Change Password</div>
                 <form method="post" action="">

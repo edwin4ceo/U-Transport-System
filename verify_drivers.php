@@ -3,7 +3,6 @@ session_start();
 require_once 'db_connect.php';
 
 // --- 1. SECURITY CHECK ---
-// Ensure only logged-in Admins can access this page
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: admin_login.php");
     exit();
@@ -17,13 +16,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         $new_status = '';
         if ($action === 'approve') {
-            $new_status = 'verified';
+            $new_status = 'verified'; // Check if your ENUM allows 'verified'
         } elseif ($action === 'reject') {
             $new_status = 'rejected';
         }
 
         if ($new_status) {
-            $update_sql = "UPDATE users SET verification_status = '$new_status' WHERE user_id = $driver_id";
+            // UPDATED: Update 'drivers' table instead of 'users'
+            $update_sql = "UPDATE drivers SET verification_status = '$new_status' WHERE driver_id = $driver_id";
+            
             if (mysqli_query($conn, $update_sql)) {
                 $success_msg = "Driver status updated to " . ucfirst($new_status) . "!";
             } else {
@@ -34,8 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // --- 3. FETCH PENDING DRIVERS ---
-// Select only users who are 'driver' AND have status 'pending'
-$sql = "SELECT * FROM users WHERE role = 'driver' AND verification_status = 'pending'";
+// UPDATED: Select from 'drivers' table where status is 'pending'
+$sql = "SELECT * FROM drivers WHERE verification_status = 'pending' ORDER BY created_at ASC";
 $result = mysqli_query($conn, $sql);
 ?>
 
@@ -68,7 +69,7 @@ $result = mysqli_query($conn, $sql);
                 <h1><i class="fa-solid fa-user-check"></i> Verify Drivers</h1>
                 <nav>
                     <a href="admin_dashboard.php" style="color: white; margin-right: 15px;">Dashboard</a>
-                    <a href="logout.php" style="color: #e74c3c;">Logout</a>
+                    <a href="admin_login.php" style="color: #e74c3c;">Logout</a>
                 </nav>
             </div>
         </div>
@@ -87,8 +88,9 @@ $result = mysqli_query($conn, $sql);
                         <th>ID</th>
                         <th>Full Name</th>
                         <th>Email</th>
-                        <th>License ID</th>
-                        <th>Vehicle Details</th>
+                        <th>IC / ID</th>
+                        <th>License No.</th>
+                        <th>Reg Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -96,18 +98,21 @@ $result = mysqli_query($conn, $sql);
                     <?php if (mysqli_num_rows($result) > 0): ?>
                         <?php while($row = mysqli_fetch_assoc($result)): ?>
                             <tr>
-                                <td><?php echo $row['user_id']; ?></td>
+                                <td><?php echo $row['driver_id']; ?></td>
                                 <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                 <td><?php echo htmlspecialchars($row['email']); ?></td>
-                                <td><?php echo htmlspecialchars($row['driver_license_id']); ?></td>
-                                <td><?php echo htmlspecialchars($row['vehicle_details']); ?></td>
+                                <td><?php echo htmlspecialchars($row['identification_id']); ?></td>
+                                <td><?php echo htmlspecialchars($row['license_number']); ?></td>
+                                <td><?php echo date("d M Y", strtotime($row['created_at'])); ?></td>
                                 <td>
                                     <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="driver_id" value="<?php echo $row['user_id']; ?>">
-                                        <button type="submit" name="action" value="approve" class="btn-action btn-approve">
+                                        <input type="hidden" name="driver_id" value="<?php echo $row['driver_id']; ?>">
+                                        
+                                        <button type="submit" name="action" value="approve" class="btn-action btn-approve" onclick="return confirm('Approve this driver?');">
                                             <i class="fa-solid fa-check"></i> Approve
                                         </button>
-                                        <button type="submit" name="action" value="reject" class="btn-action btn-reject" onclick="return confirm('Are you sure you want to reject this driver?');">
+                                        
+                                        <button type="submit" name="action" value="reject" class="btn-action btn-reject" onclick="return confirm('Reject this driver?');">
                                             <i class="fa-solid fa-xmark"></i> Reject
                                         </button>
                                     </form>
@@ -116,7 +121,7 @@ $result = mysqli_query($conn, $sql);
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="6" class="no-data">No pending driver applications found.</td>
+                            <td colspan="7" class="no-data">No pending driver applications found.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
