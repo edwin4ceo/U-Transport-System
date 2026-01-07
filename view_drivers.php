@@ -9,14 +9,14 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $search = "";
-// CHANGE: Select directly from the 'drivers' table
-// Ordered by newest driver first
-$sql = "SELECT * FROM drivers WHERE 1=1";
+
+// CHANGE: Filter to show ONLY 'verified' drivers to match the Dashboard count
+$sql = "SELECT * FROM drivers WHERE verification_status = 'verified'";
 
 // Search Logic
 if (isset($_GET['search']) && !empty($_GET['search'])) {
     $search = mysqli_real_escape_string($conn, $_GET['search']);
-    // CHANGE: Searching columns that actually exist in your drivers table
+    // Append search condition to the existing WHERE clause
     $sql .= " AND (full_name LIKE '%$search%' OR email LIKE '%$search%' OR identification_id LIKE '%$search%' OR phone_number LIKE '%$search%')";
 }
 
@@ -99,7 +99,7 @@ $result = mysqli_query($conn, $sql);
                 </form>
 
                 <div class="count-label">
-                    Total Drivers: <strong><?php echo mysqli_num_rows($result); ?></strong>
+                    Verified Drivers: <strong><?php echo mysqli_num_rows($result); ?></strong>
                 </div>
             </div>
 
@@ -114,6 +114,7 @@ $result = mysqli_query($conn, $sql);
                             <th>IC Number</th>
                             <th>License No.</th>
                             <th>Registered Date</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -127,10 +128,11 @@ $result = mysqli_query($conn, $sql);
                                     <td><?php echo htmlspecialchars($row['identification_id']); ?></td>
                                     <td><?php echo htmlspecialchars($row['license_number']); ?></td>
                                     <td><?php echo date("d M Y", strtotime($row['created_at'])); ?></td>
+                                    <td><span class="status-active">Verified</span></td>
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <tr><td colspan="7" style="text-align:center; padding: 30px; color: #999;">No drivers found in database.</td></tr>
+                            <tr><td colspan="8" style="text-align:center; padding: 30px; color: #999;">No verified drivers found.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
