@@ -39,9 +39,15 @@ $history_sql = "SELECT * FROM bookings WHERE student_id = '$student_id' ORDER BY
 $history_result = $conn->query($history_sql);
 
 // Retrieve favourite drivers
-$fav_sql = "SELECT f.id as fav_record_id, f.*, d.name, d.car_model FROM favourite_drivers f 
-            JOIN drivers d ON f.driver_id = d.id 
-            WHERE f.student_id = '$student_id'";
+$fav_sql = "SELECT 
+                f.id as fav_record_id, 
+                f.*, 
+                d.full_name as name,    
+                v.vehicle_model as car_model 
+            FROM favourite_drivers f 
+            JOIN drivers d ON f.driver_id = d.driver_id 
+            LEFT JOIN vehicles v ON d.driver_id = v.driver_id
+            WHERE f.student_id = '$student_id'";    
 $fav_result = false; 
 if($conn->query("SHOW TABLES LIKE 'drivers'")->num_rows > 0) {
     $fav_result = $conn->query($fav_sql);
