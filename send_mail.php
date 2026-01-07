@@ -1,107 +1,59 @@
 <?php
-// send_mail.php
-
-// 1) Try Composer autoload first
-$autoload = __DIR__ . "/vendor/autoload.php";
-if (file_exists($autoload)) {
-    require_once $autoload;
-} else {
-    // 2) Fallback: support BOTH old-style and new-style PHPMailer folder structures
-
-    // Old-style (your current structure):
-    // /PHPMailer/Exception.php, /PHPMailer/PHPMailer.php, /PHPMailer/SMTP.php
-    $oldBase = __DIR__ . "/PHPMailer";
-    $oldEx   = $oldBase . "/Exception.php";
-    $oldPm   = $oldBase . "/PHPMailer.php";
-    $oldSm   = $oldBase . "/SMTP.php";
-
-    // New-style:
-    // /PHPMailer/src/Exception.php, /PHPMailer/src/PHPMailer.php, /PHPMailer/src/SMTP.php
-    $newBase = __DIR__ . "/PHPMailer/src";
-    $newEx   = $newBase . "/Exception.php";
-    $newPm   = $newBase . "/PHPMailer.php";
-    $newSm   = $newBase . "/SMTP.php";
-
-    if (file_exists($oldEx) && file_exists($oldPm) && file_exists($oldSm)) {
-        require_once $oldEx;
-        require_once $oldPm;
-        require_once $oldSm;
-    } elseif (file_exists($newEx) && file_exists($newPm) && file_exists($newSm)) {
-        require_once $newEx;
-        require_once $newPm;
-        require_once $newSm;
-    } else {
-        die("PHPMailer files not found. Please ensure PHPMailer is placed correctly in your project.");
-    }
-}
+require 'PHPMailer/Exception.php';
+require 'PHPMailer/PHPMailer.php';
+require 'PHPMailer/SMTP.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-/**
- * SMTP configuration
- * NOTE: Use an App Password if your provider requires it (recommended).
- */
-const SMTP_HOST       = "smtp.gmail.com";
-const SMTP_PORT       = 587; // 587 for STARTTLS, 465 for SMTPS
-const SMTP_USER       = "YOUR_EMAIL@gmail.com";
-const SMTP_PASS       = "YOUR_APP_PASSWORD";  // Gmail App Password
-const SMTP_FROM_EMAIL = "YOUR_EMAIL@gmail.com";
-const SMTP_FROM_NAME  = "U-Transport System";
-
-/**
- * Send password reset OTP email to driver.
- */
-function sendDriverOtpEmail(string $toEmail, string $name, string $otp): void
-{
+function sendDriverOtpEmail($toEmail, $driverName, $otp) {
     $mail = new PHPMailer(true);
 
     try {
-        // Server settings
+        $mail->SMTPDebug = 0; 
+        
         $mail->isSMTP();
-        $mail->Host       = SMTP_HOST;
+        $mail->Host       = 'smtp.gmail.com'; 
         $mail->SMTPAuth   = true;
-        $mail->Username   = SMTP_USER;
-        $mail->Password   = SMTP_PASS;
+        
+        $mail->Username   = 'kelvinng051129@gmail.com'; 
+        $mail->Password   = 'szvd kjeo jwfx bxnh';
+        
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
 
-        // Encryption
-        if (SMTP_PORT === 465) {
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        } else {
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        }
+        $mail->setFrom('no-reply@u-transport.com', 'U-Transport Admin');
+        $mail->addAddress($toEmail, $driverName);
 
-        $mail->Port = SMTP_PORT;
-
-        // Sender & recipient
-        $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
-        $mail->addAddress($toEmail, $name ?: "Driver");
-
-        // Content
         $mail->isHTML(true);
-        $mail->Subject = "Your Password Reset PIN";
-
-        $safeName = htmlspecialchars($name ?: "Driver", ENT_QUOTES, "UTF-8");
-        $safeOtp  = htmlspecialchars($otp, ENT_QUOTES, "UTF-8");
-
-        $mail->Body = "
-            <p>Hi {$safeName},</p>
-            <p>Your password reset PIN is:</p>
-            <div style='font-size:28px;font-weight:700;letter-spacing:4px;margin:10px 0;'>{$safeOtp}</div>
-            <p>This PIN will expire in 10 minutes.</p>
-            <p>If you did not request this, you can ignore this email.</p>
+        $mail->Subject = 'Reset Password Verification';
+        
+        $mail->Body    = "
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
+                <h2 style='color: #005A9C; text-align: center;'>Password Reset Request</h2>
+                <p>Hello <strong>$driverName</strong>,</p>
+                <p>We received a request to reset your driver account password. Please use the following OTP code to proceed:</p>
+                
+                <div style='text-align: center; margin: 30px 0;'>
+                    <span style='font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #f39c12; background: #f9f9f9; padding: 10px 20px; border-radius: 5px; border: 1px dashed #f39c12;'>
+                        $otp
+                    </span>
+                </div>
+                
+                <p style='color: #666; font-size: 14px;'>This code is valid for 10 minutes. If you did not request this change, please ignore this email.</p>
+                <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                <p style='text-align: center; color: #999; font-size: 12px;'>&copy; 2024 U-Transport System</p>
+            </div>
         ";
-
-        $mail->AltBody =
-            "Hi {$name},\n\n"
-            . "Your password reset PIN is: {$otp}\n\n"
-            . "This PIN will expire in 10 minutes.\n"
-            . "If you did not request this, you can ignore this email.\n";
+        
+        $mail->AltBody = "Hello $driverName, your OTP code is: $otp";
 
         $mail->send();
+        return true;
+
     } catch (Exception $e) {
-        // Optional debug:
-        // error_log("Mailer Error: " . $mail->ErrorInfo);
-        throw $e;
+        error_log("Mailer Error: " . $mail->ErrorInfo);
+        throw new Exception("Email sending failed");
     }
 }
+?>

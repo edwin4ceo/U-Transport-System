@@ -123,6 +123,7 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
 
         <div class="stats-grid">
             
+        <a href="view_drivers.php" style="text-decoration:none; color:inherit;">
             <div class="stat-card">
                 <div class="stat-info">
                     <h3><?php echo $total_drivers; ?></h3>
@@ -130,6 +131,7 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
                 </div>
                 <div class="stat-icon bg-blue"><i class="fa-solid fa-car"></i></div>
             </div>
+        </a>
 
             <a href="verify_drivers.php" style="text-decoration:none; color:inherit;">
                 <div class="stat-card">
@@ -141,6 +143,7 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
                 </div>
             </a>
 
+            <a href="view_passengers.php" style="text-decoration:none; color:inherit;">
             <div class="stat-card">
                 <div class="stat-info">
                     <h3><?php echo $total_passengers; ?></h3>
@@ -148,7 +151,9 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
                 </div>
                 <div class="stat-icon bg-purple"><i class="fa-solid fa-users"></i></div>
             </div>
+            </a>
 
+            <a href="view_bookings.php" style="text-decoration:none; color:inherit;">
             <div class="stat-card">
                 <div class="stat-info">
                     <h3><?php echo $total_bookings; ?></h3>
@@ -156,6 +161,7 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
                 </div>
                 <div class="stat-icon bg-green"><i class="fa-solid fa-calendar-check"></i></div>
             </div>
+            </a>
 
         </div>
 
@@ -172,6 +178,12 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
                     <li style="margin-bottom: 15px;">
                         <a href="view_bookings.php" style="text-decoration:none; font-weight:bold; color:#2980b9;">
                             <i class="fa-solid fa-list-check"></i> View Recent Bookings
+                        </a>
+                    </li>
+                    
+                    <li style="margin-bottom: 15px;">
+                        <a href="admin_vehicle_requests.php" style="text-decoration:none; font-weight:bold; color:#2980b9;">
+                            <i class="fa-solid fa-car-side"></i> Manage Vehicle Requests
                         </a>
                     </li>
                     <li>

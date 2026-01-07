@@ -9,12 +9,19 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $search = "";
-$sql = "SELECT * FROM users WHERE role='driver'";
+// CHANGE: Select directly from the 'drivers' table
+// Ordered by newest driver first
+$sql = "SELECT * FROM drivers WHERE 1=1";
 
+// Search Logic
 if (isset($_GET['search']) && !empty($_GET['search'])) {
     $search = mysqli_real_escape_string($conn, $_GET['search']);
-    $sql .= " AND (full_name LIKE '%$search%' OR email LIKE '%$search%' OR driver_license_id LIKE '%$search%')";
+    // CHANGE: Searching columns that actually exist in your drivers table
+    $sql .= " AND (full_name LIKE '%$search%' OR email LIKE '%$search%' OR identification_id LIKE '%$search%' OR phone_number LIKE '%$search%')";
 }
+
+$sql .= " ORDER BY created_at DESC";
+
 $result = mysqli_query($conn, $sql);
 ?>
 
@@ -32,81 +39,41 @@ $result = mysqli_query($conn, $sql);
         th { background-color: #2c3e50; color: white; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
         tr:hover { background-color: #f9f9f9; }
         
-        /* --- FIXED LAYOUT STYLES --- */
+        /* Toolbar Styles */
         .admin-toolbar {
-            background: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            background: #ffffff; padding: 20px; border-radius: 8px; margin-bottom: 20px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            
-            /* Master Flex Container: Left = Form, Right = Text */
-            display: flex !important;
-            flex-direction: row !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            width: 100%;
-            box-sizing: border-box;
+            display: flex !important; flex-direction: row !important;
+            justify-content: space-between !important; align-items: center !important;
+            width: 100%; box-sizing: border-box;
         }
 
         .unique-search-form {
-            /* Force horizontal layout for input + button */
-            display: flex !important; 
-            flex-direction: row !important;
-            align-items: center !important; 
-            gap: 0 !important; /* Remove gap, we handle it with border-radius */
-            margin: 0 !important;
-            padding: 0 !important;
+            display: flex !important; flex-direction: row !important;
+            align-items: center !important; gap: 0 !important; margin: 0 !important; padding: 0 !important;
         }
 
         .unique-input {
-            width: 300px !important;
-            height: 40px !important;
-            padding: 0 15px !important;
-            border: 1px solid #ccc !important;
-            border-right: none !important; /* Merge with button */
-            border-radius: 5px 0 0 5px !important;
-            outline: none !important;
-            margin: 0 !important;
-            display: inline-block !important;
-            box-sizing: border-box !important;
+            width: 300px !important; height: 40px !important; padding: 0 15px !important;
+            border: 1px solid #ccc !important; border-right: none !important;
+            border-radius: 5px 0 0 5px !important; outline: none !important;
+            margin: 0 !important; display: inline-block !important; box-sizing: border-box !important;
         }
 
         .unique-btn {
-            width: 50px !important;
-            height: 40px !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background-color: #0056b3 !important; 
-            color: white !important;
-            border: 1px solid #0056b3 !important;
-            border-radius: 0 5px 5px 0 !important;
-            cursor: pointer !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+            width: 50px !important; height: 40px !important; margin: 0 !important; padding: 0 !important;
+            background-color: #0056b3 !important; color: white !important;
+            border: 1px solid #0056b3 !important; border-radius: 0 5px 5px 0 !important;
+            cursor: pointer !important; display: flex !important;
+            align-items: center !important; justify-content: center !important;
             box-sizing: border-box !important;
         }
-        
         .unique-btn:hover { background-color: #004494 !important; }
 
-        .reset-link {
-            color: #666;
-            text-decoration: none;
-            font-size: 0.9rem;
-            margin-left: 15px;
-            white-space: nowrap;
-        }
+        .reset-link { color: #666; text-decoration: none; font-size: 0.9rem; margin-left: 15px; white-space: nowrap; }
+        .count-label { font-size: 0.9rem; color: #7f8c8d; white-space: nowrap; }
 
-        .count-label {
-            font-size: 0.9rem; 
-            color: #7f8c8d; 
-            white-space: nowrap;
-        }
-
-        .status-verified { color: #27ae60; font-weight: bold; background: #eafaf1; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
-        .status-pending { color: #d35400; font-weight: bold; background: #fdebd0; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
-        .status-rejected { color: #c0392b; font-weight: bold; background: #fadbd8; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .status-active { color: #27ae60; font-weight: bold; background: #eafaf1; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -122,7 +89,7 @@ $result = mysqli_query($conn, $sql);
             
             <div class="admin-toolbar">
                 <form method="GET" class="unique-search-form">
-                    <input type="text" name="search" class="unique-input" placeholder="Search name, email..." value="<?php echo htmlspecialchars($search); ?>">
+                    <input type="text" name="search" class="unique-input" placeholder="Name, Email, Phone..." value="<?php echo htmlspecialchars($search); ?>">
                     <button type="submit" class="unique-btn">
                         <i class="fa-solid fa-magnifying-glass"></i>
                     </button>
@@ -143,33 +110,27 @@ $result = mysqli_query($conn, $sql);
                             <th>ID</th>
                             <th>Full Name</th>
                             <th>Email</th>
-                            <th>Phone</th>
-                            <th>Vehicle</th>
-                            <th>License ID</th>
-                            <th>Status</th>
+                            <th>Phone Number</th>
+                            <th>IC Number</th>
+                            <th>License No.</th>
+                            <th>Registered Date</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (mysqli_num_rows($result) > 0): ?>
                             <?php while($row = mysqli_fetch_assoc($result)): ?>
                                 <tr>
-                                    <td><?php echo $row['user_id']; ?></td>
+                                    <td><?php echo $row['driver_id']; ?></td>
                                     <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['email']); ?></td>
                                     <td><?php echo htmlspecialchars($row['phone_number']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['vehicle_details']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['driver_license_id']); ?></td>
-                                    <td>
-                                        <?php 
-                                            $status = strtolower($row['verification_status']);
-                                            $class = 'status-' . $status; 
-                                        ?>
-                                        <span class="<?php echo $class; ?>"><?php echo ucfirst($status); ?></span>
-                                    </td>
+                                    <td><?php echo htmlspecialchars($row['identification_id']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['license_number']); ?></td>
+                                    <td><?php echo date("d M Y", strtotime($row['created_at'])); ?></td>
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <tr><td colspan="7" style="text-align:center; padding: 30px; color: #999;">No drivers found.</td></tr>
+                            <tr><td colspan="7" style="text-align:center; padding: 30px; color: #999;">No drivers found in database.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

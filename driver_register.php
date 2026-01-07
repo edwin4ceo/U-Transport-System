@@ -10,6 +10,9 @@ if (isset($_POST['register'])) {
     $full_name         = trim($_POST['full_name'] ?? "");
     $identification_id = trim($_POST['identification_id'] ?? "");
     $email             = trim($_POST['email'] ?? "");
+    $phone_number      = trim($_POST['phone_number'] ?? "");
+    $license_number    = trim($_POST['license_number'] ?? "");
+    $license_expiry    = trim($_POST['license_expiry'] ?? "");
     $password_plain    = $_POST['password'] ?? "";
 
     // 1b. Get form values (vehicle)
@@ -28,6 +31,9 @@ if (isset($_POST['register'])) {
         $full_name === "" ||
         $identification_id === "" ||
         $email === "" ||
+        $phone_number === "" ||    
+        $license_number === "" ||  
+        $license_expiry === "" ||  
         $password_plain === "" ||
         $car_model === "" ||
         $car_plate_number === "" ||
@@ -42,6 +48,15 @@ if (isset($_POST['register'])) {
         exit;
     }
 
+    // Check license expiry
+    if ($license_expiry < date('Y-m-d')) {
+        $_SESSION['swal_title'] = "License Expired";
+        $_SESSION['swal_msg']   = "Your driving license has expired. You cannot register.";
+        $_SESSION['swal_type']  = "error";
+        redirect("driver_register.php");
+        exit;
+    }
+
     // Optional: require MMU email
     if (!str_contains($email, "@student.mmu.edu.my")) {
         $_SESSION['swal_title'] = "Invalid Email";
@@ -51,7 +66,7 @@ if (isset($_POST['register'])) {
         exit;
     }
 
-    // 3. Check duplicate email in drivers table
+    // 3. Check duplicate email
     $check = $conn->prepare("SELECT driver_id FROM drivers WHERE email = ?");
     if (!$check) {
         $_SESSION['swal_title'] = "Error";
@@ -66,7 +81,6 @@ if (isset($_POST['register'])) {
     $result = $check->get_result();
 
     if ($result && $result->num_rows > 0) {
-        // Email already used
         $_SESSION['swal_title'] = "Email Exists";
         $_SESSION['swal_msg']   = "This email is already registered as a driver.";
         $_SESSION['swal_type']  = "warning";
@@ -76,10 +90,19 @@ if (isset($_POST['register'])) {
     }
     $check->close();
 
-    // 4. Insert into drivers table (WITHOUT vehicle columns)
+    // 4. Insert into drivers table (UPDATED)
+    // We explicitly set verification_status to 'pending' here
     $insert_driver = $conn->prepare("
-        INSERT INTO drivers (full_name, identification_id, email, password)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO drivers (
+            full_name, 
+            identification_id, 
+            email, 
+            phone_number, 
+            license_number, 
+            license_expiry, 
+            password,
+            verification_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
     ");
 
     if (!$insert_driver) {
@@ -91,27 +114,29 @@ if (isset($_POST['register'])) {
     }
 
     $insert_driver->bind_param(
-        "ssss",
+        "sssssss",
         $full_name,
         $identification_id,
         $email,
+        $phone_number, 
+        $license_number, 
+        $license_expiry, 
         $password_hash
     );
 
     if (!$insert_driver->execute()) {
         $_SESSION['swal_title'] = "Error";
-        $_SESSION['swal_msg']   = "Failed to create driver account.";
+        $_SESSION['swal_msg']   = "Failed to create driver account: " . $conn->error;
         $_SESSION['swal_type']  = "error";
         $insert_driver->close();
         redirect("driver_register.php");
         exit;
     }
 
-    // Get new driver_id
     $driver_id = $conn->insert_id;
     $insert_driver->close();
 
-    // 5. Insert vehicle record (one vehicle per driver)
+    // 5. Insert vehicle record
     $insert_vehicle = $conn->prepare("
         INSERT INTO vehicles (
             driver_id,
@@ -134,20 +159,20 @@ if (isset($_POST['register'])) {
             $vehicle_type,
             $seat_count
         );
-        $insert_vehicle->execute();  // even if this fails, driver account is already created
+        $insert_vehicle->execute(); 
         $insert_vehicle->close();
     }
 
-    // 6. Success message
+    // 6. Success message (UPDATED)
+    // Inform user they need approval
     $_SESSION['swal_title'] = "Registration Successful";
-    $_SESSION['swal_msg']   = "Your driver account has been created. You can now log in.";
-    $_SESSION['swal_type']  = "success";
+    $_SESSION['swal_msg']   = "Account created! Please wait for Admin approval before logging in.";
+    $_SESSION['swal_type']  = "info"; // Use info or success
 
     redirect("driver_login.php");
     exit;
 }
 
-// ---------- Show registration form ----------
 include "header.php";
 ?>
 
@@ -248,18 +273,17 @@ include "header.php";
         </p>
 
         <form method="post" action="driver_register.php">
-            <!-- Driver info -->
             <h3 style="font-size:14px;font-weight:600;color:#004b82;margin-bottom:6px;">
                 Driver Information
             </h3>
             <div class="form-grid-2" style="margin-bottom:12px;">
-                <div class="form-group" style="grid-column:1/3;">
+                <div class="form-group">
                     <label for="full_name">Full Name</label>
                     <input type="text" id="full_name" name="full_name" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="identification_id">Identification / Matric ID</label>
+                    <label for="identification_id">Identification / Student ID</label>
                     <input type="text" id="identification_id" name="identification_id" required>
                 </div>
 
@@ -270,12 +294,29 @@ include "header.php";
                 </div>
 
                 <div class="form-group">
+                    <label for="phone_number">Phone Number</label>
+                    <input type="tel" id="phone_number" name="phone_number" 
+                           placeholder="e.g. 012-3456789" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="license_number">Driving License Number</label>
+                    <input type="text" id="license_number" name="license_number"
+                           placeholder="e.g. D 23456789" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="license_expiry">License Expiry Date</label>
+                    <input type="date" id="license_expiry" name="license_expiry" 
+                           min="<?php echo date('Y-m-d'); ?>" required>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="password">Password (min 6 characters)</label>
                     <input type="password" id="password" name="password" minlength="6" required>
                 </div>
             </div>
 
-            <!-- Vehicle info -->
             <h3 style="font-size:14px;font-weight:600;color:#004b82;margin:8px 0 6px;">
                 Vehicle Information
             </h3>
@@ -325,6 +366,3 @@ include "header.php";
 <?php
 include "footer.php";
 ?>
----
-
-
