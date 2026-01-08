@@ -23,7 +23,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($booking_id > 0 && in_array($action, ['accept', 'reject'], true)) {
 
         if ($action === 'accept') {
-            // --- [MODIFIED START] Auto-send System Message Logic ---
+            
+            // =================================================================
+            // [NEW LOGIC START] Prevent Driver from accepting their own request
+            // =================================================================
+            
+            // 1. Get current Driver's Email
+            $stmt_d = $conn->prepare("SELECT email FROM drivers WHERE driver_id = ?");
+            $stmt_d->bind_param("i", $driver_id);
+            $stmt_d->execute();
+            $res_d = $stmt_d->get_result();
+            $driver_email = ($res_d->num_rows > 0) ? $res_d->fetch_assoc()['email'] : '';
+            $stmt_d->close();
+
+            // 2. Get the Passenger's Email for this specific booking
+            // We join bookings table with students table
+            $stmt_p = $conn->prepare("
+                SELECT s.email 
+                FROM bookings b 
+                JOIN students s ON b.student_id = s.student_id 
+                WHERE b.id = ?
+            ");
+            $stmt_p->bind_param("i", $booking_id);
+            $stmt_p->execute();
+            $res_p = $stmt_p->get_result();
+            $passenger_email = ($res_p->num_rows > 0) ? $res_p->fetch_assoc()['email'] : '';
+            $stmt_p->close();
+
+            // 3. Compare Emails
+            // If both exist and are identical, block the action.
+            if (!empty($driver_email) && !empty($passenger_email) && $driver_email === $passenger_email) {
+                echo "<script>
+                        alert('Error: You cannot accept your own ride request!');
+                        window.location.href='driver_booking_requests.php';
+                      </script>";
+                exit; // Stop executing the rest of the code
+            }
+            // =================================================================
+            // [NEW LOGIC END]
+            // =================================================================
+
+
+            // --- [EXISTING LOGIC] Auto-send System Message & Assign Driver ---
             
             // 1. Get the ride date_time BEFORE assigning, to generate Chat Key
             $get_date = $conn->prepare("SELECT date_time FROM bookings WHERE id = ?");
@@ -68,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt->close();
             }
-            // --- [MODIFIED END] ---
+            // --- [EXISTING LOGIC END] ---
 
         } elseif ($action === 'reject') {
             $stmt = $conn->prepare("
