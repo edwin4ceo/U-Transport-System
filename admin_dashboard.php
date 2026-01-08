@@ -10,15 +10,18 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // 2. FETCH SUMMARY STATISTICS
 
-// Count Total Drivers
-$driver_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM users WHERE role = 'driver'");
+// --- FIX: Count from the 'drivers' table, not 'users' ---
+// Count Total VERIFIED Drivers
+$driver_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM drivers WHERE verification_status = 'verified'");
 $total_drivers = mysqli_fetch_assoc($driver_query)['total'];
 
+// --- FIX: Count from the 'drivers' table ---
 // Count Pending Approvals
-$pending_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM users WHERE role = 'driver' AND verification_status = 'pending'");
+$pending_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM drivers WHERE verification_status = 'pending'");
 $total_pending = mysqli_fetch_assoc($pending_query)['total'];
 
-// Count Total Passengers
+// Count Total Passengers (Passengers usually stay in the 'users' table or 'students' table depending on your setup)
+// Based on your schema, 'users' with role='passenger' seems correct for now.
 $passenger_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM users WHERE role = 'passenger'");
 $total_passengers = mysqli_fetch_assoc($passenger_query)['total'];
 
