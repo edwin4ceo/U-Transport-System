@@ -3,14 +3,9 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
-// 1. Check if user is logged in
-if(!isset($_SESSION['student_id'])){
-    redirect("passanger_login.php");
-}
-
+if(!isset($_SESSION['student_id'])) redirect("passanger_login.php");
 $student_id = $_SESSION['student_id'];
 
-// 2. Fetch bookings for the logged-in student, ordered by newest first
 $rides = [];
 $stmt = $conn->prepare("
     SELECT 
@@ -32,9 +27,7 @@ if ($stmt) {
     $stmt->bind_param("s", $student_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $rides[] = $row;
-    }
+    while ($row = $result->fetch_assoc()) $rides[] = $row;
     $stmt->close();
 }
 
@@ -42,6 +35,8 @@ include "header.php";
 ?>
 
 <style>
+/* --- ADJUSTED LAYOUT: Centered Header & Compact Card --- */
+
 .history-wrapper {
     min-height: calc(100vh - 160px);
     padding: 30px 10px 40px;
@@ -49,23 +44,74 @@ include "header.php";
     margin: 0 auto;
     background: #f5f7fb;
 }
-.history-header-title h1 { margin: 0; font-size: 22px; font-weight: 700; color: #004b82; }
-.history-header-title p { margin: 0; font-size: 13px; color: #666; }
-.history-card { background: #ffffff; border-radius: 16px; border: 1px solid #e3e6ea; box-shadow: 0 8px 24px rgba(0,0,0,0.06); padding: 18px 18px 16px; margin-top: 20px; }
-.history-item { border-bottom: 1px dashed #e0e0e0; padding: 15px 0; }
+
+/* Header Container */
+.history-header {
+    position: relative; /* Allows absolute positioning of children */
+    display: flex;
+    justify-content: center; /* Center the title content */
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 0 10px;
+}
+
+/* Centered Title */
+.history-header-title {
+    text-align: center;
+}
+
+.history-header-title h1 { margin: 0; font-size: 24px; font-weight: 700; color: #004b82; }
+.history-header-title p { margin: 6px 0 0; font-size: 14px; color: #666; }
+
+/* Back Button - Pinned to the Left */
+.btn-back {
+    position: absolute;
+    left: 0; /* Stick to the left side */
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; /* Slightly smaller button */
+    background: white; border-radius: 50%; color: #004b82;
+    text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: all 0.2s; font-size: 16px;
+}
+.btn-back:hover { background: #004b82; color: white; transform: translateX(-3px); }
+
+/* Card - Made Compact */
+.history-card { 
+    background: #ffffff; 
+    border-radius: 16px; 
+    border: 1px solid #e3e6ea; 
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06); 
+    padding: 15px 20px; /* Reduced Padding (Was 25px) */
+    margin-top: 15px; 
+}
+
+/* Rows - Made Compact */
+.history-item { 
+    border-bottom: 1px dashed #e0e0e0; 
+    padding: 15px 0; /* Reduced Padding (Was 18px) */
+}
 .history-item:last-child { border-bottom: none; }
-.history-route { font-size: 15px; font-weight: 700; color: #004b82; margin-bottom: 5px; }
-.history-date { font-size: 12px; color: #888; }
-.badge-status { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+
+.history-route { font-size: 16px; font-weight: 700; color: #004b82; margin-bottom: 6px; } 
+.history-date { font-size: 13px; color: #888; } 
+
+.badge-status { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .badge-pending { background: #fff8e6; color: #d35400; border: 1px solid #f8d49a; }
 .badge-completed { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 .badge-cancelled { background: #fdecea; color: #e74c3c; border: 1px solid #f5b7b1; }
-.info-pill { padding: 3px 9px; border-radius: 999px; background: #eef4ff; color: #2c3e50; font-size: 11px; font-weight: 600; }
-.empty-state { text-align: center; padding: 30px; font-size: 13px; color: #777; }
+
+.info-pill { padding: 4px 10px; border-radius: 999px; background: #eef4ff; color: #2c3e50; font-size: 12px; font-weight: 600; }
+
+.empty-state { text-align: center; padding: 40px; font-size: 15px; color: #777; }
 </style>
 
 <div class="history-wrapper">
+    
     <div class="history-header">
+        <a href="passanger_profile.php" class="btn-back" title="Back to Profile">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        
         <div class="history-header-title">
             <h1>Ride History</h1>
             <p>View your full list of past transport requests.</p>
@@ -75,7 +121,7 @@ include "header.php";
     <div class="history-card">
         <?php if (count($rides) === 0): ?>
             <div class="empty-state">
-                <i class="fa-regular fa-clock" style="font-size:28px; margin-bottom:10px;"></i>
+                <i class="fa-regular fa-clock" style="font-size:32px; margin-bottom:15px;"></i>
                 <div>You do not have any trip history yet.</div>
             </div>
         <?php else: ?>
@@ -87,7 +133,6 @@ include "header.php";
                     $datetime    = date("d M Y, h:i A", strtotime($row['date_time']));
                     $statusRaw   = strtoupper(trim($row['status'] ?? ''));
                     
-                    // Status Badge Logic
                     $badgeClass = "badge-status badge-pending";
                     if ($statusRaw === 'COMPLETED') $badgeClass = "badge-status badge-completed";
                     if ($statusRaw === 'CANCELLED' || $statusRaw === 'REJECTED') $badgeClass = "badge-status badge-cancelled";
@@ -101,7 +146,7 @@ include "header.php";
                         <div class="history-date"><?php echo $datetime; ?></div>
                     </div>
 
-                    <div style="display:flex; justify-content:space-between; font-size:13px; color:#555; margin-bottom:8px;">
+                    <div style="display:flex; justify-content:space-between; font-size:15px; color:#555; margin-bottom:10px;">
                         <div>
                             Driver: <strong><?php echo $driverName; ?></strong>
                         </div>
@@ -111,7 +156,7 @@ include "header.php";
                     </div>
 
                     <?php if (!empty($row['remark'])): ?>
-                        <div style="font-size:12px; color:#777; margin-bottom:8px; font-style:italic;">
+                        <div style="font-size:14px; color:#777; margin-bottom:10px; font-style:italic;">
                             Note: <?php echo htmlspecialchars($row['remark']); ?>
                         </div>
                     <?php endif; ?>

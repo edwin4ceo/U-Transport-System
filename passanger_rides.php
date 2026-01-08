@@ -17,7 +17,7 @@ $stmt = $conn->prepare("
         b.passengers,
         b.remark,
         b.status,
-        b.driver_id, /* Need this for chat */
+        b.driver_id, 
         d.full_name AS driver_name,
         v.vehicle_model,
         v.plate_number
@@ -52,19 +52,40 @@ include "header.php";
 ?>
 
 <style>
-/* CSS Styles */
+/* --- RE-ADJUSTED SIZES (Balanced Mode) --- */
 .rides-wrapper { min-height: calc(100vh - 160px); padding: 30px 10px; max-width: 1100px; margin: 0 auto; background: #f5f7fb; }
-.section-title { font-size: 15px; font-weight: 600; color: #2c3e50; margin: 20px 0 8px; }
-.ride-card { background: #fff; border-radius: 16px; border: 1px solid #e3e6ea; padding: 18px; margin-bottom: 15px; }
+
+/* 1. Main Page Title - Made slightly bigger to dominate */
+.rides-header-title h1 { margin: 0; font-size: 26px; font-weight: 700; color: #004b82; }
+.rides-header-title p { margin: 4px 0 0; font-size: 13px; color: #666; }
+
+/* 2. Section Titles - Slightly smaller than before */
+.section-title { font-size: 16px; font-weight: 600; color: #2c3e50; margin: 25px 0 10px; }
+
+/* 3. Card Container - Reduced padding to fix "too big" feel */
+.ride-card { background: #fff; border-radius: 16px; border: 1px solid #e3e6ea; padding: 15px 18px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+
+/* Ride Item Rows */
 .ride-item { border-bottom: 1px dashed #e0e0e0; padding: 15px 0; }
 .ride-item:last-child { border-bottom: none; }
+
+/* 4. Route Text - Balanced size (15px) */
 .ride-route { font-size: 15px; font-weight: 700; color: #004b82; }
-.status-badge { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: bold; }
+.ride-date { font-size: 12px; color: #888; }
+
+/* 5. Middle Info - Balanced size (13.5px) */
+.ride-middle-row { display: flex; justify-content: space-between; font-size: 13.5px; color: #555; margin-top: 6px; gap: 10px; flex-wrap: wrap; }
+
+/* Badges & Pills - Kept compact */
+.status-badge { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: bold; }
 .st-pending { background: #fff8e6; color: #d35400; }
 .st-active { background: #e8f8ec; color: #27ae60; }
 .st-past { background: #f0f0f0; color: #777; }
+
+.info-pill { padding: 3px 8px; border-radius: 999px; background: #eef4ff; color: #2c3e50; font-size: 11px; font-weight: 600; }
+
 .btn-chat { 
-    background: #0084ff; color: white; border: none; padding: 5px 12px; 
+    background: #0084ff; color: white; border: none; padding: 5px 14px; 
     border-radius: 20px; font-size: 12px; cursor: pointer; text-decoration: none; 
     display: inline-flex; align-items: center; gap: 5px;
 }
@@ -72,12 +93,15 @@ include "header.php";
 </style>
 
 <div class="rides-wrapper">
-    <h1>My Rides</h1>
+    <div class="rides-header-title">
+        <h1>My Rides</h1>
+        <p>View your upcoming trips and ride status.</p>
+    </div>
 
     <h2 class="section-title">Upcoming rides</h2>
     <div class="ride-card">
         <?php if (empty($upcoming)): ?>
-            <p style="text-align:center; color:#999;">No upcoming rides.</p>
+            <p style="text-align:center; color:#999; font-size:14px; padding:15px;">No upcoming rides.</p>
         <?php else: ?>
             <?php foreach ($upcoming as $row): renderRide($row); endforeach; ?>
         <?php endif; ?>
@@ -86,7 +110,7 @@ include "header.php";
     <h2 class="section-title">Past rides</h2>
     <div class="ride-card">
         <?php if (empty($past)): ?>
-            <p style="text-align:center; color:#999;">No past history.</p>
+            <p style="text-align:center; color:#999; font-size:14px; padding:15px;">No past history.</p>
         <?php else: ?>
             <?php foreach ($past as $row): renderRide($row); endforeach; ?>
         <?php endif; ?>
@@ -103,20 +127,18 @@ function renderRide($row) {
     if (in_array($status, ['COMPLETED', 'CANCELLED'])) $badge = "status-badge st-past";
 
     $driver = $row['driver_name'] ?: "Pending Driver";
-    
-    // Create Unique Chat Key: DriverID_DateTime
-    // Example: 3_2025-12-30 14:00:00
-    // We encode it to pass in URL
     $chatKey = $row['driver_id'] . '_' . $row['date_time'];
     ?>
     <div class="ride-item">
-        <div style="display:flex; justify-content:space-between;">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
             <div class="ride-route"><?php echo htmlspecialchars($row['pickup_point'] . ' → ' . $row['destination']); ?></div>
-            <div style="font-size:12px; color:#888;"><?php echo $date; ?></div>
+            <div class="ride-date"><?php echo $date; ?></div>
         </div>
         
-        <div style="font-size:13px; color:#555; margin-top:5px; display:flex; justify-content:space-between; align-items:center;">
-            <div>Driver: <b><?php echo htmlspecialchars($driver); ?></b></div>
+        <div class="ride-middle-row">
+            <div style="display:flex; align-items:center; gap:5px;">
+                <i class="fa-solid fa-user-tie"></i> Driver: <b><?php echo htmlspecialchars($driver); ?></b>
+            </div>
             
             <?php if($status == 'ACCEPTED'): ?>
                 <a href="ride_chat.php?room=<?php echo urlencode($chatKey); ?>" class="btn-chat">
@@ -125,8 +147,18 @@ function renderRide($row) {
             <?php endif; ?>
         </div>
 
-        <div style="margin-top:8px;">
+        <?php if(!empty($row['remark'])): ?>
+            <div class="ride-middle-row" style="color:#777; font-style:italic; font-size:12.5px;">
+                Remark: <?php echo htmlspecialchars($row['remark']); ?>
+            </div>
+        <?php endif; ?>
+
+        <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
             <span class="<?php echo $badge; ?>"><?php echo $status; ?></span>
+            <div style="display:flex; gap:8px;">
+                <span class="info-pill"><?php echo $row['passengers']; ?> Pax</span>
+                <span class="info-pill">#<?php echo $row['booking_id']; ?></span>
+            </div>
         </div>
     </div>
     <?php
