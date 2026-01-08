@@ -65,6 +65,22 @@ include "header.php";
 .message { max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 14px; position: relative; }
 .msg-mine { align-self: flex-end; background: #d1e8ff; color: #004b82; border-bottom-right-radius: 2px; }
 .msg-other { align-self: flex-start; background: white; border: 1px solid #e0e0e0; border-bottom-left-radius: 2px; }
+
+/* --- [ADDED STYLE FOR SYSTEM MESSAGE] --- */
+.msg-system {
+    align-self: center;
+    background-color: #f0f0f0;
+    color: #555;
+    font-size: 11px;
+    padding: 5px 15px;
+    border-radius: 20px;
+    margin: 10px 0;
+    text-align: center;
+    border: 1px solid #ddd;
+    max-width: 90%;
+}
+/* ---------------------------------------- */
+
 .msg-info { font-size: 11px; color: #888; margin-bottom: 2px; }
 .chat-input-area { padding: 15px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px; }
 .chat-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
@@ -83,18 +99,30 @@ include "header.php";
         <?php else: ?>
             <?php foreach ($chat_history as $c): ?>
                 <?php 
-                    $is_me = ($c['sender_type'] == $sender_type && $c['sender_id'] == $sender_id); 
-                    $cls = $is_me ? "msg-mine" : "msg-other";
+                    // --- [MODIFIED] Check for System Message ---
+                    if ($c['sender_type'] === 'system') {
+                        ?>
+                        <div class="msg-system">
+                            <i class="fa-solid fa-circle-info"></i> <?php echo htmlspecialchars($c['message']); ?>
+                        </div>
+                        <?php
+                    } else {
+                        // Regular user message
+                        $is_me = ($c['sender_type'] == $sender_type && $c['sender_id'] == $sender_id); 
+                        $cls = $is_me ? "msg-mine" : "msg-other";
+                        ?>
+                        <div class="message <?php echo $cls; ?>">
+                            <?php if (!$is_me): ?>
+                                <div class="msg-info"><?php echo htmlspecialchars($c['sender_name']); ?> (<?php echo ucfirst($c['sender_type']); ?>)</div>
+                            <?php endif; ?>
+                            <div><?php echo htmlspecialchars($c['message']); ?></div>
+                            <div style="font-size:10px; text-align:right; opacity:0.6; margin-top:4px;">
+                                <?php echo date("h:i A", strtotime($c['created_at'])); ?>
+                            </div>
+                        </div>
+                        <?php
+                    }
                 ?>
-                <div class="message <?php echo $cls; ?>">
-                    <?php if (!$is_me): ?>
-                        <div class="msg-info"><?php echo htmlspecialchars($c['sender_name']); ?> (<?php echo ucfirst($c['sender_type']); ?>)</div>
-                    <?php endif; ?>
-                    <div><?php echo htmlspecialchars($c['message']); ?></div>
-                    <div style="font-size:10px; text-align:right; opacity:0.6; margin-top:4px;">
-                        <?php echo date("h:i A", strtotime($c['created_at'])); ?>
-                    </div>
-                </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>

@@ -23,6 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($booking_id > 0 && in_array($action, ['accept', 'reject'], true)) {
 
         if ($action === 'accept') {
+            // --- [MODIFIED START] Auto-send System Message Logic ---
+            
+            // 1. Get the ride date_time BEFORE assigning, to generate Chat Key
+            $get_date = $conn->prepare("SELECT date_time FROM bookings WHERE id = ?");
+            $get_date->bind_param("i", $booking_id);
+            $get_date->execute();
+            $res_date = $get_date->get_result();
+            $row_date = $res_date->fetch_assoc();
+            $ride_datetime = $row_date['date_time'] ?? '';
+            $get_date->close();
+
+            // 2. Assign Driver
             $stmt = $conn->prepare("
                 UPDATE bookings
                 SET driver_id = ?, status = 'Accepted'
@@ -30,11 +42,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 AND (driver_id IS NULL OR driver_id = 0)
                 AND (status = 'Pending' OR status = '' OR status IS NULL)
             ");
+            
             if ($stmt) {
                 $stmt->bind_param("ii", $driver_id, $booking_id);
                 $stmt->execute();
+                
+                // 3. If assignment successful, insert System Message
+                if ($stmt->affected_rows > 0 && !empty($ride_datetime)) {
+                    $chat_ref = $driver_id . '_' . $ride_datetime;
+                    $sys_msg  = "Please be ready 10-15 minutes before the departure time to avoid unnecessary delays.";
+                    
+                    // Check duplicate to prevent spamming if re-accepted
+                    $chk = $conn->prepare("SELECT id FROM ride_chat_messages WHERE booking_ref = ? AND sender_type = 'system'");
+                    $chk->bind_param("s", $chat_ref);
+                    $chk->execute();
+                    
+                    if ($chk->get_result()->num_rows == 0) {
+                        $ins = $conn->prepare("INSERT INTO ride_chat_messages (booking_ref, sender_type, sender_id, sender_name, message) VALUES (?, 'system', '0', 'System', ?)");
+                        $ins->bind_param("ss", $chat_ref, $sys_msg);
+                        $ins->execute();
+                        $ins->close();
+                    }
+                    $chk->close();
+                }
+                
                 $stmt->close();
             }
+            // --- [MODIFIED END] ---
 
         } elseif ($action === 'reject') {
             $stmt = $conn->prepare("
@@ -253,14 +287,12 @@ include "header.php";
                         <span class="badge-status">Pending</span>
 
                         <div class="request-actions">
-                            <!-- Accept -->
                             <form method="post" style="margin:0;">
                                 <input type="hidden" name="booking_id" value="<?php echo $row['booking_id']; ?>">
                                 <input type="hidden" name="action" value="accept">
                                 <button type="submit" class="btn-pill btn-accept">Accept</button>
                             </form>
 
-                            <!-- Reject -->
                             <form method="post" style="margin:0;">
                                 <input type="hidden" name="booking_id" value="<?php echo $row['booking_id']; ?>">
                                 <input type="hidden" name="action" value="reject">
