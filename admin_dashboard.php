@@ -197,6 +197,39 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
         </div>
 
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let lastUnreadCount = 0;
+    
+    // Initial Check
+    fetch('check_notifications.php')
+        .then(r => r.json())
+        .then(d => lastUnreadCount = d.unread_count);
+
+    // Poll every 5 seconds
+    setInterval(() => {
+        fetch('check_notifications.php')
+            .then(response => response.json())
+            .then(data => {
+                if (data.unread_count > lastUnreadCount) {
+                     Swal.fire({
+                        position: 'top-end',
+                        icon: 'info',
+                        title: 'New Driver Message',
+                        text: 'Go to Driver Support Chat to view.',
+                        showConfirmButton: true,
+                        confirmButtonText: 'Go to Chat',
+                        toast: true
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'admin_driver_chat.php';
+                        }
+                    });
+                }
+                lastUnreadCount = data.unread_count;
+            });
+    }, 5000);
+</script>
 
 </body>
 </html>
