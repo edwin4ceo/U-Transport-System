@@ -83,7 +83,7 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
 
                     <li class="nav-divider"></li>
                     <li><a href="admin_profile.php"><i class="fa-solid fa-user-circle"></i> Profile</a></li>
-                    <li><a href="logout.php" style="color:#e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></a></li>
+                    <li><a href="admin_login.php" style="color:#e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></a></li>
                 </ul>
             </nav>
         </div>
