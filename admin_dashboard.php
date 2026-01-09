@@ -19,6 +19,10 @@ $total_passengers = mysqli_fetch_assoc($passenger_query)['total'];
 
 $booking_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM bookings");
 $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
+
+// Count Pending Vehicle Requests (For the badge/alert)
+$veh_req_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM vehicle_change_requests WHERE status = 'pending'");
+$total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
 ?>
 
 <!DOCTYPE html>
@@ -31,15 +35,16 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
     <style>
         body { background-color: #f4f6f9; }
         .admin-header { background-color: #2c3e50; color: white; height: 70px; display: flex; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .admin-header .container { display: flex; justify-content: space-between; align-items: center; width: 90%; margin: 0 auto; }
-        .admin-nav ul { list-style: none; display: flex; gap: 20px; padding: 0; margin: 0; }
-        .admin-nav a { color: #bdc3c7; text-decoration: none; font-weight: 600; transition: 0.3s; }
+        .admin-header .container { display: flex; justify-content: space-between; align-items: center; width: 95%; margin: 0 auto; }
+        .admin-nav ul { list-style: none; display: flex; gap: 15px; padding: 0; margin: 0; align-items: center; }
+        .admin-nav a { color: #bdc3c7; text-decoration: none; font-weight: 600; transition: 0.3s; font-size: 0.9rem; }
         .admin-nav a:hover { color: white; }
-        .nav-divider { width: 1px; background: rgba(255,255,255,0.2); height: 25px; margin: 0 10px; }
+        .nav-divider { width: 1px; background: rgba(255,255,255,0.2); height: 25px; margin: 0 5px; }
         
         .dashboard-container { margin-top: 30px; width: 90%; margin-left: auto; margin-right: auto; }
         .welcome-banner { background: white; padding: 25px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #2c3e50; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
         .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s; }
         .stat-card:hover { transform: translateY(-5px); }
         .stat-info h3 { font-size: 2rem; margin: 0; color: #2c3e50; }
@@ -50,6 +55,16 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
         .bg-orange { background: #fff3e0; color: #ff9800; }
         .bg-green { background: #e8f5e9; color: #4caf50; }
         .bg-purple { background: #f3e5f5; color: #9c27b0; }
+        .bg-red { background: #fadbd8; color: #e74c3c; }
+
+        /* Action Section Split */
+        .actions-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 40px; }
+        .action-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .action-box h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        .action-list { list-style: none; padding: 0; }
+        .action-list li { margin-bottom: 15px; }
+        .action-list a { text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
+        .action-list a:hover { padding-left: 5px; }
     </style>
 </head>
 <body>
@@ -61,13 +76,11 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
                 <ul>
                     <li><a href="admin_dashboard.php" style="color:white;">Home</a></li>
                     <li><a href="verify_drivers.php">Approve</a></li>
-                    <li><a href="view_drivers.php">Drivers</a></li>
-                    <li><a href="view_passengers.php">Passengers</a></li>
                     <li><a href="view_bookings.php">Bookings</a></li>
                     
-                    <li><a href="admin_driver_chat.php">Driver Chat</a></li>
-                    <li><a href="admin_student_chat.php">Student Chat</a></li>
-                    
+                    <li><a href="admin_vehicle_requests.php">Vehicles</a></li>
+                    <li><a href="manage_reviews.php">Reviews</a></li>
+
                     <li class="nav-divider"></li>
                     <li><a href="admin_profile.php"><i class="fa-solid fa-user-circle"></i> Profile</a></li>
                     <li><a href="logout.php" style="color:#e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></a></li>
@@ -90,18 +103,28 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
                     <div class="stat-icon bg-blue"><i class="fa-solid fa-car"></i></div>
                 </div>
             </a>
+            
             <a href="verify_drivers.php" style="text-decoration:none; color:inherit;">
                 <div class="stat-card">
-                    <div class="stat-info"><h3><?php echo $total_pending; ?></h3><p>Pending Approvals</p></div>
+                    <div class="stat-info"><h3><?php echo $total_pending; ?></h3><p>New Drivers</p></div>
                     <div class="stat-icon bg-orange"><i class="fa-solid fa-user-clock"></i></div>
                 </div>
             </a>
+            
+            <a href="admin_vehicle_requests.php" style="text-decoration:none; color:inherit;">
+                <div class="stat-card">
+                    <div class="stat-info"><h3><?php echo $total_veh_requests; ?></h3><p>Vehicle Requests</p></div>
+                    <div class="stat-icon bg-red"><i class="fa-solid fa-car-side"></i></div>
+                </div>
+            </a>
+
             <a href="view_passengers.php" style="text-decoration:none; color:inherit;">
                 <div class="stat-card">
-                    <div class="stat-info"><h3><?php echo $total_passengers; ?></h3><p>Total Passengers</p></div>
+                    <div class="stat-info"><h3><?php echo $total_passengers; ?></h3><p>Passengers</p></div>
                     <div class="stat-icon bg-purple"><i class="fa-solid fa-users"></i></div>
                 </div>
             </a>
+            
             <a href="view_bookings.php" style="text-decoration:none; color:inherit;">
                 <div class="stat-card">
                     <div class="stat-info"><h3><?php echo $total_bookings; ?></h3><p>Total Bookings</p></div>
@@ -110,22 +133,62 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
             </a>
         </div>
 
-        <div style="margin-top: 40px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 500px;">
-            <h3 style="margin-top:0;"><i class="fa-solid fa-bolt" style="color:#f1c40f;"></i> Support Center</h3>
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-            <ul style="list-style: none; padding: 0;">
-                <li style="margin-bottom: 15px;">
-                    <a href="admin_driver_chat.php" style="text-decoration:none; font-weight:bold; color:#2980b9;">
-                        <i class="fa-solid fa-comments"></i> Open Driver Support Chat
-                    </a>
-                </li>
-                <li style="margin-bottom: 15px;">
-                    <a href="admin_student_chat.php" style="text-decoration:none; font-weight:bold; color:#8e44ad;">
-                        <i class="fa-solid fa-user-graduate"></i> Open Student Support Chat
-                    </a>
-                </li>
-            </ul>
+        <div class="actions-section">
+            
+            <div class="action-box">
+                <h3 style="color:#2c3e50;"><i class="fa-solid fa-layer-group"></i> Management</h3>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+                <ul class="action-list">
+                    <li>
+                        <a href="admin_vehicle_requests.php" style="color:#c0392b;">
+                            <i class="fa-solid fa-car-side"></i> Manage Vehicle Requests
+                            <?php if($total_veh_requests > 0): ?> 
+                                <span style="background:red; color:white; font-size:10px; padding:2px 6px; border-radius:10px;"><?php echo $total_veh_requests; ?> New</span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="verify_drivers.php" style="color:#d35400;">
+                            <i class="fa-solid fa-id-card"></i> Approve New Drivers
+                        </a>
+                    </li>
+                    <li>
+                        <a href="manage_reviews.php" style="color:#f39c12;">
+                            <i class="fa-solid fa-star"></i> Manage Reviews & Ratings
+                        </a>
+                    </li>
+                    <li>
+                        <a href="view_bookings.php" style="color:#27ae60;">
+                            <i class="fa-solid fa-list-check"></i> View All Bookings
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="action-box">
+                <h3 style="color:#2c3e50;"><i class="fa-solid fa-headset"></i> Support Center</h3>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+                <ul class="action-list">
+                    <li>
+                        <a href="admin_driver_chat.php" style="color:#2980b9;">
+                            <i class="fa-solid fa-comments"></i> Driver Support Chat
+                        </a>
+                    </li>
+                    <li>
+                        <a href="admin_student_chat.php" style="color:#8e44ad;">
+                            <i class="fa-solid fa-user-graduate"></i> Student Support Chat
+                        </a>
+                    </li>
+                    <li>
+                        <a href="view_passengers.php" style="color:#7f8c8d;">
+                            <i class="fa-solid fa-users-viewfinder"></i> View Passenger List
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
         </div>
+
     </main>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
