@@ -162,6 +162,11 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
                             <i class="fa-solid fa-list-check"></i> View All Bookings
                         </a>
                     </li>
+                    <li>
+                        <a href="view_passengers.php" style="color:#7f8c8d;">
+                            <i class="fa-solid fa-users-viewfinder"></i> View Passenger List
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -177,11 +182,6 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
                     <li>
                         <a href="admin_student_chat.php" style="color:#8e44ad;">
                             <i class="fa-solid fa-user-graduate"></i> Student Support Chat
-                        </a>
-                    </li>
-                    <li>
-                        <a href="view_passengers.php" style="color:#7f8c8d;">
-                            <i class="fa-solid fa-users-viewfinder"></i> View Passenger List
                         </a>
                     </li>
                 </ul>
