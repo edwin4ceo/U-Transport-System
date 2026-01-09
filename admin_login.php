@@ -8,23 +8,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = $_POST['password'];
 
-    // 1. Validate Email Format First (Supervisor Requirement)
+    // 1. Validate Email Format First
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
          $alert_script = "
             Swal.fire({
                 icon: 'error',
                 title: 'Invalid Email',
-                text: 'Please enter a valid email address (e.g. admin@mmu.edu.my).',
+                text: 'Please enter a valid email address.',
                 confirmButtonColor: '#2c3e50'
             });";
-    } else {
+    } 
+    // 2. Validate Domain (@mmu.edu.my ONLY)
+    elseif (!preg_match('/@mmu\.edu\.my$/i', $email)) {
+        $alert_script = "
+           Swal.fire({
+               icon: 'warning',
+               title: 'Restricted Domain',
+               text: 'Admin login is restricted to @mmu.edu.my accounts only.',
+               confirmButtonColor: '#f39c12'
+           });";
+   }
+    else {
         $sql = "SELECT * FROM Users WHERE email = '$email' AND role = 'admin'";
         $result = mysqli_query($conn, $sql);
 
         if (mysqli_num_rows($result) == 1) {
             $user = mysqli_fetch_assoc($result);
             
-            // Checking password (Plain text as per your current Dev environment)
+            // Checking password
             if ($password === $user['password_hash']) {
                 $_SESSION['user_id'] = $user['user_id'];
                 $_SESSION['full_name'] = $user['full_name'];
@@ -44,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 });";
             }
         } else {
-            // Wrong Email/User Not Found Pop-up
+            // User Not Found Pop-up
             $alert_script = "
             Swal.fire({
                 icon: 'error',
