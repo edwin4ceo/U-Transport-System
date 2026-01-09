@@ -2,11 +2,6 @@
 session_start();
 require_once 'db_connect.php';
 
-// --- DEBUG: PROOF THIS FILE IS UPDATED ---
-// If you do not see "File Loaded" at the very top of your screen, 
-// you are editing the wrong file!
-// echo ""; 
-
 $alert_script = ""; 
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -26,13 +21,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $sql = "SELECT * FROM admins WHERE email = '$email'";
         $result = mysqli_query($conn, $sql);
 
-        // --- ERROR TRAP: If the query fails, STOP and show why ---
         if (!$result) {
-            die("<div style='background:red; color:white; padding:20px;'>
-                    <strong>CRITICAL DATABASE ERROR:</strong><br>" 
-                    . mysqli_error($conn) . 
-                    "<br><br>The query was: $sql
-                 </div>");
+            die("<div style='background:red; color:white; padding:20px;'><strong>CRITICAL DATABASE ERROR:</strong><br>" . mysqli_error($conn) . "</div>");
         }
 
         if (mysqli_num_rows($result) == 1) {
@@ -116,8 +106,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </form>
         
         <div style="text-align: center; margin-top: 15px; display: flex; justify-content: space-between; font-size: 0.85rem;">
-            <a href="forgot_password.php" style="color: #3498db;">Forgot Password?</a>
-            <a href="index.php" style="color: #7f8c8d;">Back to Main Site</a>
+            <a href="admin_forgot_password.php" style="color: #3498db;">Forgot Password?</a>
+            <a href="admin_register.php" style="color: #7f8c8d;"><i class="fa-solid fa-user-plus"></i> Add Staff</a>
         </div>
     </div>
 

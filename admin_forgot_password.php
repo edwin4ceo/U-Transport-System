@@ -7,42 +7,41 @@ $alert_script = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
 
-    // 1. Check if Email Exists in Admins Table
+    // 1. Check if Email Exists
     $check_sql = "SELECT * FROM admins WHERE email = '$email'";
     $result = mysqli_query($conn, $check_sql);
 
     if (mysqli_num_rows($result) > 0) {
-        // 2. Generate Token & Expiry (1 Hour)
-        $token = bin2hex(random_bytes(16));
-        $expiry = date("Y-m-d H:i:s", strtotime('+1 hour'));
+        
+        // --- NEW: Generate a simple 6-digit code ---
+        $token = rand(100000, 999999); 
 
-        // 3. Save Token to Database
-        // First, delete any old tokens for this email to keep it clean
+        // 2. Save Code to Database
+        // Delete old codes for this email first
         mysqli_query($conn, "DELETE FROM admin_password_resets WHERE email='$email'");
         
-        $insert_sql = "INSERT INTO admin_password_resets (email, token, expires_at) VALUES ('$email', '$token', '$expiry')";
+        $insert_sql = "INSERT INTO admin_password_resets (email, token, expires_at) 
+                       VALUES ('$email', '$token', DATE_ADD(NOW(), INTERVAL 1 HOUR))";
         
         if (mysqli_query($conn, $insert_sql)) {
-            // 4. GENERATE LINK
-            // NOTE: Change 'localhost' to your actual domain if live.
-            $reset_link = "http://localhost/U-Transport-System/admin_reset_password.php?token=" . $token;
+            // 3. GENERATE SHORT LINK
+            $folder_name = basename(__DIR__); 
+            $reset_link = "http://localhost/$folder_name/admin_reset_password.php?token=" . $token;
 
-            // --- SIMULATION MODE (For Localhost) ---
-            // Instead of mailing, we show the link in the alert so you can click it.
+            // Show Simple Alert
             $alert_script = "
                 Swal.fire({
                     icon: 'success',
-                    title: 'Reset Link Generated!',
-                    html: 'Since this is localhost, copy this link:<br><a href=\"$reset_link\" style=\"color:blue; font-weight:bold;\">Click Here to Reset</a>',
-                    footer: 'In a real site, this would be sent to your email.'
+                    title: 'Reset Code Generated',
+                    html: '<h3>Code: $token</h3><br>Click below to reset:<br><a href=\"$reset_link\" class=\"btn-link\">Reset Password</a>',
+                    showConfirmButton: false,
                 });
             ";
         } else {
-            $alert_script = "Swal.fire({ icon: 'error', title: 'Error', text: 'Could not generate token.' });";
+            $alert_script = "Swal.fire({ icon: 'error', title: 'Error', text: 'Database error.' });";
         }
     } else {
-        // Security: Don't reveal if email exists, but for admin panel it's usually okay to be specific
-        $alert_script = "Swal.fire({ icon: 'error', title: 'Not Found', text: 'No admin account found with that email.' });";
+        $alert_script = "Swal.fire({ icon: 'error', title: 'Not Found', text: 'No admin account found.' });";
     }
 }
 ?>
@@ -65,6 +64,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .btn-reset { background-color: #e67e22; color: white; width: 100%; padding: 10px; border:none; border-radius:4px; cursor:pointer; font-size:16px;}
         .btn-reset:hover { background-color: #d35400; }
         input[type="email"] { width: 100%; padding: 10px; margin: 10px 0 20px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        
+        /* Style for the link inside SweetAlert */
+        .btn-link {
+            background-color: #27ae60; color: white; padding: 10px 20px; 
+            text-decoration: none; border-radius: 5px; display: inline-block; 
+            margin-top: 10px; font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -72,11 +78,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="reset-container">
         <i class="fa-solid fa-lock fa-3x" style="color: #2c3e50; margin-bottom: 10px;"></i>
         <h2 style="color: #2c3e50;">Admin Password Reset</h2>
-        <p style="color: #666; font-size: 0.9rem;">Enter your admin email to receive a reset link.</p>
+        <p style="color: #666; font-size: 0.9rem;">Enter your email to get a reset code.</p>
 
         <form method="POST">
             <input type="email" name="email" required placeholder="admin@mmu.edu.my">
-            <button type="submit" class="btn-reset">Send Reset Link</button>
+            <button type="submit" class="btn-reset">Get Reset Code</button>
         </form>
 
         <div style="margin-top: 20px;">
