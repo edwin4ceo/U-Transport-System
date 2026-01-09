@@ -2,6 +2,11 @@
 session_start();
 require_once 'db_connect.php';
 
+// --- DEBUG: PROOF THIS FILE IS UPDATED ---
+// If you do not see "File Loaded" at the very top of your screen, 
+// you are editing the wrong file!
+// echo ""; 
+
 $alert_script = ""; 
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -21,16 +26,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $sql = "SELECT * FROM admins WHERE email = '$email'";
         $result = mysqli_query($conn, $sql);
 
-        // --- DEBUGGING BLOCK: IF THIS RUNS, THE SQL IS WRONG ---
+        // --- ERROR TRAP: If the query fails, STOP and show why ---
         if (!$result) {
-            // This stops the script and shows the exact SQL error
-            die("<strong>CRITICAL DATABASE ERROR:</strong> " . mysqli_error($conn) . "<br>Please run the SQL command provided in the chat.");
+            die("<div style='background:red; color:white; padding:20px;'>
+                    <strong>CRITICAL DATABASE ERROR:</strong><br>" 
+                    . mysqli_error($conn) . 
+                    "<br><br>The query was: $sql
+                 </div>");
         }
 
         if (mysqli_num_rows($result) == 1) {
             $user = mysqli_fetch_assoc($result);
             
-            // Check password (plain text comparison based on your DB)
+            // Check password
             if ($password === $user['password']) {
                 $_SESSION['user_id'] = $user['id']; 
                 $_SESSION['full_name'] = $user['full_name'];
