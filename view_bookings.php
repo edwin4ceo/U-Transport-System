@@ -9,14 +9,13 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 // 2. Fetch Bookings
-// We join 'users' to get Student Name
-// We LEFT JOIN 'drivers' to get Driver Name (LEFT JOIN is used because driver_id might be NULL if pending)
+// --- UPDATED SQL: Join 'students' instead of 'users' ---
 $sql = "SELECT b.*, 
-               u.full_name AS student_name, 
+               s.name AS student_name,    
                d.full_name AS driver_name,
                d.driver_id
         FROM bookings b 
-        JOIN users u ON b.student_id = u.user_id 
+        JOIN students s ON b.student_id = s.student_id 
         LEFT JOIN drivers d ON b.driver_id = d.driver_id
         ORDER BY b.created_at DESC";
 
@@ -41,7 +40,7 @@ if (!$result) {
         th { background-color: #2c3e50; color: white; }
         .status-pending { color: orange; font-weight: bold; }
         .status-confirmed { color: green; font-weight: bold; }
-        .status-completed { color: #27ae60; font-weight: bold; } /* Added for completed status */
+        .status-completed { color: #27ae60; font-weight: bold; }
         .status-cancelled { color: red; font-weight: bold; }
         
         .unassigned { color: #999; font-style: italic; }

@@ -9,13 +9,27 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $search = "";
-$sql = "SELECT * FROM users WHERE role='passenger'";
+
+// --- UPDATE: Select from 'students' table instead of 'users' ---
+$sql = "SELECT * FROM students";
+$where_clauses = [];
 
 if (isset($_GET['search']) && !empty($_GET['search'])) {
     $search = mysqli_real_escape_string($conn, $_GET['search']);
-    $sql .= " AND (full_name LIKE '%$search%' OR email LIKE '%$search%')";
+    // --- UPDATE: Use 'name' and 'student_id' columns ---
+    $where_clauses[] = "(name LIKE '%$search%' OR email LIKE '%$search%' OR student_id LIKE '%$search%')";
 }
+
+if (!empty($where_clauses)) {
+    $sql .= " WHERE " . implode(' AND ', $where_clauses);
+}
+
 $result = mysqli_query($conn, $sql);
+
+// --- ADDED: Error handling to prevent crash if table is missing ---
+if (!$result) {
+    die("Database Error: " . mysqli_error($conn));
+}
 ?>
 
 <!DOCTYPE html>
@@ -39,8 +53,6 @@ $result = mysqli_query($conn, $sql);
             border-radius: 8px;
             margin-bottom: 20px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            
-            /* Master Flex Container */
             display: flex !important;
             flex-direction: row !important;
             justify-content: space-between !important;
@@ -50,7 +62,6 @@ $result = mysqli_query($conn, $sql);
         }
 
         .unique-search-form {
-            /* Force horizontal layout */
             display: flex !important; 
             flex-direction: row !important;
             align-items: center !important; 
@@ -77,7 +88,7 @@ $result = mysqli_query($conn, $sql);
             height: 40px !important;
             margin: 0 !important;
             padding: 0 !important;
-            background-color: #8e44ad !important; /* Purple for passengers */
+            background-color: #8e44ad !important;
             color: white !important;
             border: 1px solid #8e44ad !important;
             border-radius: 0 5px 5px 0 !important;
@@ -90,19 +101,8 @@ $result = mysqli_query($conn, $sql);
         
         .unique-btn:hover { background-color: #732d91 !important; }
 
-        .reset-link {
-            color: #666;
-            text-decoration: none;
-            font-size: 0.9rem;
-            margin-left: 15px;
-            white-space: nowrap;
-        }
-
-        .count-label {
-            font-size: 0.9rem; 
-            color: #7f8c8d; 
-            white-space: nowrap;
-        }
+        .reset-link { color: #666; text-decoration: none; font-size: 0.9rem; margin-left: 15px; white-space: nowrap; }
+        .count-label { font-size: 0.9rem; color: #7f8c8d; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -118,7 +118,7 @@ $result = mysqli_query($conn, $sql);
             
             <div class="admin-toolbar">
                 <form method="GET" class="unique-search-form">
-                    <input type="text" name="search" class="unique-input" placeholder="Search name or email..." value="<?php echo htmlspecialchars($search); ?>">
+                    <input type="text" name="search" class="unique-input" placeholder="Search name, ID or email..." value="<?php echo htmlspecialchars($search); ?>">
                     <button type="submit" class="unique-btn">
                         <i class="fa-solid fa-magnifying-glass"></i>
                     </button>
@@ -136,26 +136,24 @@ $result = mysqli_query($conn, $sql);
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Student ID</th>
                             <th>Full Name</th>
                             <th>Email</th>
                             <th>Phone</th>
-                            <th>Join Date</th>
-                        </tr>
+                            </tr>
                     </thead>
                     <tbody>
                         <?php if (mysqli_num_rows($result) > 0): ?>
                             <?php while($row = mysqli_fetch_assoc($result)): ?>
                                 <tr>
-                                    <td><?php echo $row['user_id']; ?></td>
-                                    <td><?php echo htmlspecialchars($row['full_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['student_id']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['email']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['phone_number']); ?></td>
-                                    <td><?php echo date('d M Y', strtotime($row['created_at'])); ?></td>
+                                    <td><?php echo htmlspecialchars($row['phone']); ?></td>
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <tr><td colspan="5" style="text-align:center; padding: 30px; color: #999;">No passengers found.</td></tr>
+                            <tr><td colspan="4" style="text-align:center; padding: 30px; color: #999;">No passengers found.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
