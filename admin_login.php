@@ -2,67 +2,47 @@
 session_start();
 require_once 'db_connect.php';
 
-$alert_script = ""; // Variable to hold our SweetAlert script
+$alert_script = ""; 
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = $_POST['password'];
 
-    // 1. Validate Email Format First
+    // 1. Validate Email Format
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-         $alert_script = "
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid Email',
-                text: 'Please enter a valid email address.',
-                confirmButtonColor: '#2c3e50'
-            });";
+         $alert_script = "Swal.fire({ icon: 'error', title: 'Invalid Email', text: 'Please enter a valid email.', confirmButtonColor: '#2c3e50' });";
     } 
-    // 2. Validate Domain (@mmu.edu.my ONLY)
+    // 2. Validate Domain
     elseif (!preg_match('/@mmu\.edu\.my$/i', $email)) {
-        $alert_script = "
-           Swal.fire({
-               icon: 'warning',
-               title: 'Restricted Domain',
-               text: 'Admin login is restricted to @mmu.edu.my accounts only.',
-               confirmButtonColor: '#f39c12'
-           });";
+        $alert_script = "Swal.fire({ icon: 'warning', title: 'Restricted Domain', text: 'Admin login is restricted to @mmu.edu.my accounts only.', confirmButtonColor: '#f39c12' });";
    }
     else {
-        $sql = "SELECT * FROM Users WHERE email = '$email' AND role = 'admin'";
+        // QUERY: Select from 'admins' table
+        $sql = "SELECT * FROM admins WHERE email = '$email'";
         $result = mysqli_query($conn, $sql);
+
+        // --- DEBUGGING BLOCK: IF THIS RUNS, THE SQL IS WRONG ---
+        if (!$result) {
+            // This stops the script and shows the exact SQL error
+            die("<strong>CRITICAL DATABASE ERROR:</strong> " . mysqli_error($conn) . "<br>Please run the SQL command provided in the chat.");
+        }
 
         if (mysqli_num_rows($result) == 1) {
             $user = mysqli_fetch_assoc($result);
             
-            // Checking password
-            if ($password === $user['password_hash']) {
-                $_SESSION['user_id'] = $user['user_id'];
+            // Check password (plain text comparison based on your DB)
+            if ($password === $user['password']) {
+                $_SESSION['user_id'] = $user['id']; 
                 $_SESSION['full_name'] = $user['full_name'];
                 $_SESSION['role'] = 'admin';
                 
-                // Success Login
                 header("Location: admin_dashboard.php");
                 exit();
             } else {
-                // Wrong Password Pop-up
-                $alert_script = "
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Login Failed',
-                    text: 'Incorrect password. Please try again.',
-                    confirmButtonColor: '#c0392b'
-                });";
+                $alert_script = "Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Incorrect password.', confirmButtonColor: '#c0392b' });";
             }
         } else {
-            // User Not Found Pop-up
-            $alert_script = "
-            Swal.fire({
-                icon: 'error',
-                title: 'Access Denied',
-                text: 'No admin account found with that email.',
-                confirmButtonColor: '#c0392b'
-            });";
+            $alert_script = "Swal.fire({ icon: 'error', title: 'Access Denied', text: 'No admin account found with that email.', confirmButtonColor: '#c0392b' });";
         }
     }
 }

@@ -2,7 +2,11 @@
 session_start();
 require_once 'db_connect.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') { header("Location: admin_login.php"); exit(); }
+// Check if user is logged in as admin
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') { 
+    header("Location: admin_login.php"); 
+    exit(); 
+}
 
 $user_id = $_SESSION['user_id'];
 $alert_script = "";
@@ -23,12 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $alert_script = "Swal.fire({ icon: 'error', title: 'Password Error', text: 'New password and confirm password do not match.' });";
     } 
     else {
-        // Update Logic
+        // --- UPDATE: Update 'admins' table instead of 'users' ---
         if (!empty($new_pass)) {
-            // NOTE: Using plain text based on your current DB. Change to password_hash() for production.
-            $sql = "UPDATE users SET full_name='$full_name', phone_number='$phone', password_hash='$new_pass' WHERE user_id='$user_id'";
+            // NOTE: Updating 'password' column (plain text based on your DB). 
+            $sql = "UPDATE admins SET full_name='$full_name', phone_number='$phone', password='$new_pass' WHERE id='$user_id'";
         } else {
-            $sql = "UPDATE users SET full_name='$full_name', phone_number='$phone' WHERE user_id='$user_id'";
+            $sql = "UPDATE admins SET full_name='$full_name', phone_number='$phone' WHERE id='$user_id'";
         }
 
         if (mysqli_query($conn, $sql)) {
@@ -41,10 +45,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Fetch Data
-$query = "SELECT * FROM users WHERE user_id='$user_id'";
+// --- UPDATE: Fetch from 'admins' table using 'id' ---
+$query = "SELECT * FROM admins WHERE id='$user_id'";
 $result = mysqli_query($conn, $query);
-$admin = mysqli_fetch_assoc($result);
+
+// Check if admin exists to avoid errors
+if($result && mysqli_num_rows($result) > 0){
+    $admin = mysqli_fetch_assoc($result);
+} else {
+    // Fallback if something is wrong with session/db
+    echo "Error: Admin profile not found.";
+    exit();
+}
 ?>
 
 <!DOCTYPE html>

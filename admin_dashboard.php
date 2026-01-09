@@ -10,19 +10,16 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // 2. FETCH SUMMARY STATISTICS
 
-// --- FIX: Count from the 'drivers' table, not 'users' ---
 // Count Total VERIFIED Drivers
 $driver_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM drivers WHERE verification_status = 'verified'");
 $total_drivers = mysqli_fetch_assoc($driver_query)['total'];
 
-// --- FIX: Count from the 'drivers' table ---
 // Count Pending Approvals
 $pending_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM drivers WHERE verification_status = 'pending'");
 $total_pending = mysqli_fetch_assoc($pending_query)['total'];
 
-// Count Total Passengers (Passengers usually stay in the 'users' table or 'students' table depending on your setup)
-// Based on your schema, 'users' with role='passenger' seems correct for now.
-$passenger_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM users WHERE role = 'passenger'");
+// --- UPDATE: Count from 'students' table instead of 'users' ---
+$passenger_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM students");
 $total_passengers = mysqli_fetch_assoc($passenger_query)['total'];
 
 // Count Total Bookings
@@ -40,7 +37,7 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
     <style>
         body { background-color: #f4f6f9; }
 
-        /* --- Reuse the Header Style from your current files --- */
+        /* --- Admin Header Style --- */
         .admin-header {
             background-color: #2c3e50;
             color: white;
@@ -55,6 +52,7 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
             justify-content: space-between;
             align-items: center;
             height: 100%;
+            width: 90%; margin: 0 auto;
         }
         .logo-section h1 { font-size: 1.5rem; margin: 0; }
         .admin-nav ul { list-style: none; display: flex; gap: 20px; padding: 0; margin: 0; }
@@ -63,7 +61,7 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
         .nav-divider { width: 1px; background: rgba(255,255,255,0.2); height: 25px; margin: 0 10px; }
         
         /* --- Dashboard Specific Styles --- */
-        .dashboard-container { margin-top: 30px; }
+        .dashboard-container { margin-top: 30px; width: 90%; margin-left: auto; margin-right: auto; }
         .welcome-banner {
             background: white; padding: 25px; border-radius: 12px; margin-bottom: 30px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #2c3e50;
@@ -111,13 +109,13 @@ $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
                     
                     <li class="nav-divider"></li>
                     <li><a href="admin_profile.php"><i class="fa-solid fa-user-circle"></i> Profile</a></li>
-                    <li><a href="admin_login.php" style="color:#e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></a></li>
+                    <li><a href="logout.php" style="color:#e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></a></li>
                 </ul>
             </nav>
         </div>
     </header>
 
-    <main class="container dashboard-container">
+    <main class="dashboard-container">
         
         <div class="welcome-banner">
             <h2 style="margin:0;">Welcome back, Admin!</h2>
