@@ -17,13 +17,21 @@ if (isset($_POST['delete_review_id'])) {
     }
 }
 
-// Fetch Reviews (Joining with Users table to get names)
-$sql = "SELECT r.*, p.full_name AS passenger_name, d.full_name AS driver_name 
+// --- UPDATED SQL: Join 'students' and 'drivers' instead of 'users' ---
+$sql = "SELECT r.*, 
+               s.name AS passenger_name, 
+               d.full_name AS driver_name 
         FROM reviews r 
-        JOIN users p ON r.passenger_id = p.user_id 
-        JOIN users d ON r.driver_id = d.user_id 
+        JOIN students s ON r.passenger_id = s.student_id 
+        JOIN drivers d ON r.driver_id = d.driver_id 
         ORDER BY r.created_at DESC";
+
 $result = mysqli_query($conn, $sql);
+
+// --- ADDED: Error handling to prevent crash ---
+if (!$result) {
+    die("Database Error: " . mysqli_error($conn));
+}
 ?>
 
 <!DOCTYPE html>
