@@ -10,7 +10,7 @@ if(!isset($_SESSION['student_id'])){
 
 $student_id = $_SESSION['student_id'];
 
-// --- [KEEPING FUNCTIONALITY] Handle Delete Favourite Driver Logic ---
+// --- Handle Delete Favourite Driver Logic ---
 if(isset($_POST['delete_fav_id'])){
     $fav_id_to_delete = $_POST['delete_fav_id'];
     $del_stmt = $conn->prepare("DELETE FROM favourite_drivers WHERE id = ? AND student_id = ?");
@@ -38,7 +38,7 @@ $review_count = $review_count_query ? $review_count_query->fetch_assoc()['total'
 $history_sql = "SELECT * FROM bookings WHERE student_id = '$student_id' ORDER BY date_time DESC LIMIT 3";
 $history_result = $conn->query($history_sql);
 
-// --- [FIXED SQL QUERY] ---
+// Retrieve Favourite Drivers
 $fav_sql = "SELECT 
                 f.id as fav_record_id, 
                 f.*, 
@@ -58,7 +58,7 @@ include "header.php";
 ?>
 
 <style>
-    /* --- FORCE OVERRIDE STYLES (Using !important) --- */
+    /* --- Styles for Profile --- */
     
     .profile-container {
         max-width: 850px; 
@@ -82,197 +82,114 @@ include "header.php";
         border: 1px solid #f9f9f9;
     }
 
-    /* Left: Avatar & Info */
-    .header-left {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-    }
+    .header-left { display: flex; align-items: center; gap: 20px; }
 
     .avatar-circle {
-        width: 70px; 
-        height: 70px;
+        width: 70px; height: 70px;
         background-color: #e0f2f1; 
         border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #009688; 
-        font-size: 2rem; 
-        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        color: #009688; font-size: 2rem; flex-shrink: 0;
     }
 
-    .user-info {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
+    .user-info { display: flex; flex-direction: column; justify-content: center; }
 
-    /* --- [UPDATED SIZE AS REQUESTED] --- */
     .profile-name {
-        font-size: 2rem !important; /* Huge Size */
-        font-weight: 780 !important; /* Extra Bold */
-        color: #222;
-        margin: 0 0 3px 0;
-        line-height: 1.2;
+        font-size: 2rem !important; 
+        font-weight: 780 !important; 
+        color: #222; margin: 0 0 3px 0; line-height: 1.2;
     }
 
     .profile-phone {
-        color: #666;
-        font-size: 14px !important; 
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        color: #666; font-size: 14px !important; 
+        display: flex; align-items: center; gap: 8px;
     }
     
-    /* [NEW] Profile Gender Style */
     .profile-gender {
-        color: #666;
-        font-size: 14px !important; 
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 4px;
+        color: #666; font-size: 14px !important; 
+        display: flex; align-items: center; gap: 8px; margin-top: 4px;
     }
-    /* ----------------------------------- */
     
     .phone-edit-icon {
-        color: #999;
-        font-size: 12px; 
-        cursor: pointer;
-        transition: color 0.2s;
+        color: #999; font-size: 12px; cursor: pointer; transition: color 0.2s;
     }
     .phone-edit-icon:hover { color: #009688; }
 
-    /* Right: Stats & Button */
-    .header-right {
-        display: flex;
-        align-items: center;
-        gap: 25px; 
-    }
+    .header-right { display: flex; align-items: center; gap: 25px; }
 
-    .stats-row {
-        display: flex;
-        gap: 30px; 
-        text-align: center;
-    }
-
+    .stats-row { display: flex; gap: 30px; text-align: center; }
     .stat-item { display: flex; flex-direction: column; align-items: center; }
-    
     .stat-num { font-weight: 800; font-size: 20px !important; color: #222; } 
     .stat-label { font-size: 11px !important; color: #999; letter-spacing: 0.5px; margin-top: 2px; }
 
-    /* Vertical Divider Line */
-    .divider-line {
-        width: 1px;
-        height: 40px;
-        background-color: #eee;
-    }
+    .divider-line { width: 1px; height: 40px; background-color: #eee; }
 
-    /* Edit Button */
     .btn-edit-pill {
-        border: 2px solid #00bfa5; 
-        color: #009688;
-        background: transparent;
-        padding: 6px 25px;
-        border-radius: 30px;
-        font-weight: 700;
-        font-size: 14px;
-        text-decoration: none;
-        transition: all 0.2s;
+        border: 2px solid #00bfa5; color: #009688; background: transparent;
+        padding: 6px 25px; border-radius: 30px; font-weight: 700; font-size: 14px;
+        text-decoration: none; transition: all 0.2s;
     }
-    .btn-edit-pill:hover {
-        background-color: #e0f2f1;
-    }
+    .btn-edit-pill:hover { background-color: #e0f2f1; }
 
-    /* --- Section Headers --- */
+    /* --- Section Headers (Clickable) --- */
     .section-header-blue {
         background-color: #005A9C; 
         color: white;
-        padding: 10px 25px; 
+        padding: 12px 25px; 
         border-radius: 50px; 
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        display: flex; justify-content: space-between; align-items: center;
         margin: 35px 0 15px 0; 
-        font-weight: bold;
-        font-size: 16px;
+        font-weight: bold; font-size: 16px;
         box-shadow: 0 3px 8px rgba(0, 90, 156, 0.2); 
         text-decoration: none; 
+        cursor: pointer;
     }
     .section-header-blue:hover {
         transform: scale(1.01);
         transition: all 0.2s ease;
+        background-color: #004b82;
     }
 
     /* --- Scroll Container --- */
     .favorites-scroll {
-        display: flex;
-        overflow-x: auto;
-        gap: 15px; 
-        padding-bottom: 10px;
-        margin-bottom: 10px;
+        display: flex; overflow-x: auto; gap: 15px; 
+        padding-bottom: 10px; margin-bottom: 10px;
     }
     .favorites-scroll::-webkit-scrollbar { display: none; }
 
     .fav-card {
-        min-width: 130px; 
-        background: white;
-        border-radius: 14px;
-        padding: 15px; 
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        text-align: center;
-        border: 1px solid #f0f0f0;
-        position: relative;
-        transition: transform 0.2s;
+        min-width: 130px; background: white; border-radius: 14px;
+        padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        text-align: center; border: 1px solid #f0f0f0;
+        position: relative; transition: transform 0.2s;
     }
     .fav-card:hover { transform: translateY(-3px); }
 
     .fav-card img {
-        width: 50px !important; 
-        height: 50px !important;
-        margin-bottom: 10px !important;
-        border-radius: 50%;
+        width: 50px !important; height: 50px !important;
+        margin-bottom: 10px !important; border-radius: 50%;
     }
 
     .btn-delete-fav {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        background: rgba(254, 226, 226, 0.8);
-        color: #ef4444;
-        border: none;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 12px;
+        position: absolute; top: 8px; right: 8px;
+        background: rgba(254, 226, 226, 0.8); color: #ef4444; border: none;
+        width: 26px; height: 26px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; font-size: 12px;
     }
 
     /* --- History List --- */
     .history-list { margin-bottom: 30px; }
-
     .history-item {
-        background: white;
-        border-radius: 14px;
-        padding: 18px;
-        margin-bottom: 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        background: white; border-radius: 14px; padding: 18px;
+        margin-bottom: 15px; display: flex; justify-content: space-between;
+        align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         border-left: 5px solid #eee;
     }
     .history-item:hover { border-left-color: #005A9C; }
 
     .status-badge {
-        font-size: 13px;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-weight: bold;
+        font-size: 13px; padding: 4px 10px; border-radius: 20px; font-weight: bold;
     }
     .status-Pending { background: #fff3cd; color: #856404; }
     .status-Completed { background: #d4edda; color: #155724; }
@@ -306,7 +223,6 @@ include "header.php";
 
                 <div class="profile-gender">
                     <?php 
-                        // Logic to choose icon and color
                         $g_icon = ($student['gender'] == 'Female') ? 'fa-venus' : 'fa-mars';
                         $g_color = ($student['gender'] == 'Female') ? '#e91e63' : '#2196F3';
                     ?>
@@ -394,15 +310,13 @@ include "header.php";
             <?php endif; ?>
         </div>
         
-        <div class="section-header-blue">
+        <a href="passanger_reviews.php" class="section-header-blue">
             <span>My Reviews</span>
-            <i class="fa-regular fa-star"></i>
-        </div>
+            <i class="fa-solid fa-chevron-right" style="font-size:12px;"></i> </a>
         
-        <div style="text-align: center; color: #999; padding: 25px; background: white; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            <i class="fa-regular fa-comment-dots" style="font-size: 2rem; margin-bottom: 12px; color: #ccc;"></i>
-            <p style="margin: 0; font-size: 14px;">Your feedback helps the community!</p>
-        </div>
+        <p style="text-align:center; color:#999; font-size:13px; margin-top:5px;">
+            Click above to view all your past ratings
+        </p>
 
     </div>
 </div>
