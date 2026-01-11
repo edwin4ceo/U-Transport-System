@@ -71,7 +71,7 @@ include "header.php";
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-/* --- STYLES: Centered Address & Left Aligned Driver --- */
+/* --- STYLES --- */
 
 .rides-wrapper { 
     min-height: calc(100vh - 160px); 
@@ -110,7 +110,7 @@ include "header.php";
     transform: translateY(-2px);
 }
 
-/* --- Address Grid --- */
+/* Address Grid */
 .card-top-grid {
     display: grid;
     grid-template-columns: 1fr 24px 1fr; 
@@ -119,7 +119,7 @@ include "header.php";
     margin-bottom: 16px;
 }
 
-/* Address Box - Centered */
+/* Address Box */
 .address-box {
     background-color: #eff3f6; 
     border: 1px solid #dce2e8; 
@@ -184,20 +184,20 @@ include "header.php";
     padding-bottom: 14px; border-bottom: 1px solid #edf2f7; margin-bottom: 14px;
 }
 
-/* --- [UPDATED] Driver Info Left Aligned --- */
+/* Driver Info Left Aligned */
 .driver-info {
     display: flex; 
-    align-items: center; /* Center avatar vertically */
+    align-items: center; 
     gap: 12px; 
     font-size: 14px; 
     color: #4a5568;
-    text-align: left; /* Ensure text is left aligned */
+    text-align: left; 
 }
 
 .driver-text-block {
     display: flex; 
     flex-direction: column;
-    align-items: flex-start; /* Force items to start from left */
+    align-items: flex-start; 
     justify-content: center;
 }
 
@@ -207,9 +207,8 @@ include "header.php";
     display: flex; align-items: center; justify-content: center; 
     color: #718096; 
     font-size: 18px;
-    flex-shrink: 0; /* Prevent avatar from shrinking */
+    flex-shrink: 0; 
 }
-/* ------------------------------------------ */
 
 /* Buttons */
 .action-buttons { display: flex; gap: 9px; align-items: center; }
@@ -231,6 +230,18 @@ include "header.php";
     background-color: #fff5f5; color: #c53030; border: 1px solid #feb2b2;
 }
 .btn-cancel:hover { background-color: #fee2e2; }
+
+/* [NEW] Rate Button Style (Amber/Gold) */
+.btn-rate {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+    color: white; 
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+.btn-rate:hover { 
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3); 
+    transform: translateY(-1px); 
+}
+/* ------------------------------------- */
 
 /* Bottom Row */
 .card-bottom { display: flex; justify-content: space-between; align-items: center; }
@@ -332,6 +343,9 @@ function renderRideCard($row) {
     
     $can_cancel = in_array($status, ['PENDING', 'ACCEPTED']);
     $can_chat = ($status == 'ACCEPTED');
+    
+    // [NEW] Logic: Can Rate if Completed
+    $can_rate = ($status == 'COMPLETED');
     ?>
     
     <div class="ride-item-card">
@@ -367,7 +381,6 @@ function renderRideCard($row) {
                 <div class="driver-avatar">
                     <i class="fa-solid fa-user-tie"></i>
                 </div>
-                
                 <div class="driver-text-block">
                     <span style="font-size:10px; color:#a0aec0; font-weight:700; text-transform:uppercase; line-height:1.2; letter-spacing:0.5px;">Driver</span>
                     <span style="font-weight:600; font-size:14px; color:#2d3748;"><?php echo htmlspecialchars($driver); ?></span>
@@ -392,6 +405,13 @@ function renderRideCard($row) {
                         </button>
                     </form>
                 <?php endif; ?>
+
+                <?php if($can_rate): ?>
+                    <a href="passanger_rate.php?booking_id=<?php echo $row['booking_id']; ?>" class="btn-common btn-rate">
+                        <i class="fa-solid fa-star"></i> Rate
+                    </a>
+                <?php endif; ?>
+
             </div>
         </div>
 
