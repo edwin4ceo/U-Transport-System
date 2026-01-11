@@ -46,7 +46,7 @@ function sendDriverOtpEmail($toEmail, $driverName, $otp) {
             </div>
         ";
         
-        $mail->AltBody = "Hello $driverName, your OTP code is: $otp";
+        $mail->AltBody = "HI $driverName, your OTP code is: $otp";
 
         $mail->send();
         return true;
