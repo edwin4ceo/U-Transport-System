@@ -39,9 +39,6 @@ $history_sql = "SELECT * FROM bookings WHERE student_id = '$student_id' ORDER BY
 $history_result = $conn->query($history_sql);
 
 // --- [FIXED SQL QUERY] ---
-// 1. Changed 'd.name' to 'd.full_name as name' to match your database structure.
-// 2. Changed 'd.id' to 'd.driver_id' (based on your drivers table).
-// 3. Added LEFT JOIN vehicles to get the 'vehicle_model'.
 $fav_sql = "SELECT 
                 f.id as fav_record_id, 
                 f.*, 
@@ -61,18 +58,20 @@ include "header.php";
 ?>
 
 <style>
+    /* --- FORCE OVERRIDE STYLES (Using !important) --- */
+    
     .profile-container {
         max-width: 850px; 
         margin: 0 auto;   
-        padding-bottom: 30px; /* Footer padding kept small as requested */
+        padding-bottom: 30px; 
     }
 
-    /* --- [IMAGE MATCHED DESIGN] Profile Header --- */
+    /* --- Profile Header --- */
     .profile-header {
         background: white;
         padding: 25px 30px;
-        border-radius: 15px; 
-        box-shadow: 0 2px 15px rgba(0,0,0,0.03); 
+        border-radius: 16px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
         margin-bottom: 30px;
         
         display: flex;
@@ -109,25 +108,27 @@ include "header.php";
         justify-content: center;
     }
 
+    /* --- [UPDATED SIZE AS REQUESTED] --- */
     .profile-name {
-        font-size: 1rem; 
-        font-weight: 800;
+        font-size: 2rem !important; /* Huge Size */
+        font-weight: 780 !important; /* Extra Bold */
         color: #222;
-        margin: 0 0 5px 0;
-        line-height: 1;
+        margin: 0 0 3px 0;
+        line-height: 1.2;
     }
 
     .profile-phone {
-        color: #777;
-        font-size: 1rem; 
+        color: #666;
+        font-size: 14px !important; 
         display: flex;
         align-items: center;
         gap: 8px;
     }
+    /* ----------------------------------- */
     
     .phone-edit-icon {
         color: #999;
-        font-size: 0.9rem; 
+        font-size: 12px; 
         cursor: pointer;
         transition: color 0.2s;
     }
@@ -147,8 +148,9 @@ include "header.php";
     }
 
     .stat-item { display: flex; flex-direction: column; align-items: center; }
-    .stat-num { font-weight: 800; font-size: 1.2rem; color: #222; }
-    .stat-label { font-size: 0.75rem; color: #999; letter-spacing: 0.5px; margin-top: 2px; }
+    
+    .stat-num { font-weight: 800; font-size: 20px !important; color: #222; } 
+    .stat-label { font-size: 11px !important; color: #999; letter-spacing: 0.5px; margin-top: 2px; }
 
     /* Vertical Divider Line */
     .divider-line {
@@ -157,15 +159,15 @@ include "header.php";
         background-color: #eee;
     }
 
-    /* Edit Button (Oval Outline) */
+    /* Edit Button */
     .btn-edit-pill {
         border: 2px solid #00bfa5; 
         color: #009688;
         background: transparent;
-        padding: 8px 30px;
+        padding: 6px 25px;
         border-radius: 30px;
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 14px;
         text-decoration: none;
         transition: all 0.2s;
     }
@@ -177,22 +179,18 @@ include "header.php";
     .section-header-blue {
         background-color: #005A9C; 
         color: white;
-        padding: 8px 20px; 
+        padding: 10px 25px; 
         border-radius: 50px; 
         display: flex;
         justify-content: space-between;
         align-items: center;
-        
-        /* Consistent Top Spacing for all headers */
-        margin: 40px 0 15px 0; 
-        
+        margin: 35px 0 15px 0; 
         font-weight: bold;
-        font-size: 1rem;
+        font-size: 16px;
         box-shadow: 0 3px 8px rgba(0, 90, 156, 0.2); 
         text-decoration: none; 
     }
     .section-header-blue:hover {
-        background-color: #004a80; 
         transform: scale(1.01);
         transition: all 0.2s ease;
     }
@@ -201,19 +199,18 @@ include "header.php";
     .favorites-scroll {
         display: flex;
         overflow-x: auto;
-        gap: 12px; 
+        gap: 15px; 
         padding-bottom: 10px;
-        scrollbar-width: none;
         margin-bottom: 10px;
     }
     .favorites-scroll::-webkit-scrollbar { display: none; }
 
     .fav-card {
-        min-width: 120px; 
+        min-width: 130px; 
         background: white;
-        border-radius: 12px;
-        padding: 12px; 
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        border-radius: 14px;
+        padding: 15px; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         text-align: center;
         border: 1px solid #f0f0f0;
         position: relative;
@@ -222,50 +219,48 @@ include "header.php";
     .fav-card:hover { transform: translateY(-3px); }
 
     .fav-card img {
-        width: 45px !important; 
-        height: 45px !important;
-        margin-bottom: 8px !important;
+        width: 50px !important; 
+        height: 50px !important;
+        margin-bottom: 10px !important;
+        border-radius: 50%;
     }
 
     .btn-delete-fav {
         position: absolute;
-        top: 5px;
-        right: 5px;
+        top: 8px;
+        right: 8px;
         background: rgba(254, 226, 226, 0.8);
         color: #ef4444;
         border: none;
-        width: 24px;
-        height: 24px;
+        width: 26px;
+        height: 26px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        font-size: 0.7rem;
+        font-size: 12px;
     }
 
-    /* --- [MODIFIED] History List Spacing Fix --- */
-    .history-list {
-        /* Changed from 10px to 30px to match the upper gap */
-        margin-bottom: 30px;
-    }
+    /* --- History List --- */
+    .history-list { margin-bottom: 30px; }
 
     .history-item {
         background: white;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 12px;
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 15px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        border-left: 4px solid #eee;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border-left: 5px solid #eee;
     }
     .history-item:hover { border-left-color: #005A9C; }
 
     .status-badge {
-        font-size: 0.75rem;
-        padding: 3px 8px;
+        font-size: 13px;
+        padding: 4px 10px;
         border-radius: 20px;
         font-weight: bold;
     }
@@ -286,7 +281,7 @@ include "header.php";
                 <h2 class="profile-name"><?php echo htmlspecialchars($student['name']); ?></h2>
                 <div class="profile-phone">
                     <?php if (!empty($student['phone'])): ?>
-                        <i class="fa-solid fa-phone" style="font-size: 0.8rem; margin-right: 5px;"></i>
+                        <i class="fa-solid fa-phone" style="font-size: 12px !important; margin-right: 5px;"></i>
                         <span><?php echo htmlspecialchars($student['phone']); ?></span>
                         <a href="passanger_profile_edit.php" class="phone-edit-icon">
                             <i class="fa-solid fa-pen"></i>
@@ -339,12 +334,12 @@ include "header.php";
                         </form>
 
                         <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($fav['name']); ?>&background=random" alt="Driver">
-                        <div style="font-weight:bold; font-size:0.85rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><?php echo $fav['name']; ?></div>
-                        <div style="color:#888; font-size:0.75rem;"><?php echo $fav['car_model']; ?></div>
+                        <div style="font-weight:bold; font-size:14px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><?php echo $fav['name']; ?></div>
+                        <div style="color:#888; font-size:12px;"><?php echo $fav['car_model']; ?></div>
                     </div>
                 <?php endwhile; ?>
             <?php else: ?>
-                <div style="color: #999; font-style: italic; width: 100%; text-align: center; padding: 15px; font-size: 0.85rem;">
+                <div style="color: #999; font-style: italic; width: 100%; text-align: center; padding: 15px; font-size: 14px;">
                     No favourite drivers.
                 </div>
             <?php endif; ?>
@@ -360,8 +355,8 @@ include "header.php";
                 <?php while($row = $history_result->fetch_assoc()): ?>
                     <div class="history-item">
                         <div>
-                            <div style="font-weight: bold; font-size: 0.95rem;"><?php echo $row['destination']; ?></div>
-                            <div style="color: #888; font-size: 0.75rem; margin-top: 3px;">
+                            <div style="font-weight: bold; font-size: 16px;"><?php echo $row['destination']; ?></div>
+                            <div style="color: #888; font-size: 13px; margin-top: 4px;">
                                 <i class="fa-regular fa-calendar"></i> <?php echo date("d M, h:i A", strtotime($row['date_time'])); ?>
                             </div>
                         </div>
@@ -373,7 +368,7 @@ include "header.php";
                     </div>
                 <?php endwhile; ?>
             <?php else: ?>
-                <p style="color: #999; text-align: center; padding: 15px; font-size: 0.85rem;">No ride history found.</p>
+                <p style="color: #999; text-align: center; padding: 15px; font-size: 14px;">No ride history found.</p>
             <?php endif; ?>
         </div>
         
@@ -382,9 +377,9 @@ include "header.php";
             <i class="fa-regular fa-star"></i>
         </div>
         
-        <div style="text-align: center; color: #999; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-            <i class="fa-regular fa-comment-dots" style="font-size: 2rem; margin-bottom: 10px; color: #ccc;"></i>
-            <p style="margin: 0; font-size: 0.85rem;">Your feedback helps the community!</p>
+        <div style="text-align: center; color: #999; padding: 25px; background: white; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+            <i class="fa-regular fa-comment-dots" style="font-size: 2rem; margin-bottom: 12px; color: #ccc;"></i>
+            <p style="margin: 0; font-size: 14px;">Your feedback helps the community!</p>
         </div>
 
     </div>
