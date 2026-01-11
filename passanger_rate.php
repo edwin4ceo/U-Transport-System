@@ -16,8 +16,8 @@ if(!isset($_GET['booking_id'])){
 }
 $booking_id = $_GET['booking_id'];
 
-// 3. Robust Data Fetching (Matches the logic that worked in Debug mode)
-// Step A: Fetch basic booking info to verify ownership and status
+// 3. Fetch Data
+// Step A: Verify ownership
 $stmt = $conn->prepare("SELECT status, driver_id FROM bookings WHERE id = ? AND student_id = ?");
 $stmt->bind_param("is", $booking_id, $student_id);
 $stmt->execute();
@@ -33,7 +33,7 @@ if (strtoupper($check_basic['status']) !== 'COMPLETED') {
     exit;
 }
 
-// Step B: Fetch Driver & Vehicle Info (Using LEFT JOIN to prevent crashes if data is missing)
+// Step B: Fetch Driver Details
 $stmt = $conn->prepare("
     SELECT 
         b.id, 
@@ -50,21 +50,21 @@ $stmt->bind_param("i", $booking_id);
 $stmt->execute();
 $booking_data = $stmt->get_result()->fetch_assoc();
 
-// Fallback if driver deleted
 $driver_name = $booking_data['driver_name'] ?? "Unknown Driver";
 $car_info = ($booking_data['vehicle_model'] ?? 'Car') . ' • ' . ($booking_data['plate_number'] ?? 'No Plate');
+$driver_id = $booking_data['driver_id'];
 
 
 // 4. Handle Form Submission
 if(isset($_POST['submit_review'])){
     $rating = $_POST['rating'] ?? 0;
     $comment = trim($_POST['comment']);
-    $driver_id = $booking_data['driver_id'];
+    $add_to_fav = isset($_POST['add_to_fav']); // Check if checkbox is ticked
 
     if(empty($rating)){
         echo "<script>alert('Please select a star rating.');</script>";
     } else {
-        // Double check: Prevent duplicate reviews
+        // A. Check duplicate review
         $check = $conn->prepare("SELECT review_id FROM reviews WHERE booking_id = ?");
         $check->bind_param("i", $booking_id);
         $check->execute();
@@ -73,11 +73,27 @@ if(isset($_POST['submit_review'])){
              exit;
         }
 
-        // Save Review
+        // B. Save Review
         $ins = $conn->prepare("INSERT INTO reviews (booking_id, passenger_id, driver_id, rating, comment) VALUES (?, ?, ?, ?, ?)");
         $ins->bind_param("isiis", $booking_id, $student_id, $driver_id, $rating, $comment);
         
         if($ins->execute()){
+            
+            // C. [NEW LOGIC] Handle Favourite Driver
+            if($add_to_fav){
+                // Check if already in favourites to prevent duplicates
+                $check_fav = $conn->prepare("SELECT id FROM favourite_drivers WHERE student_id = ? AND driver_id = ?");
+                $check_fav->bind_param("si", $student_id, $driver_id);
+                $check_fav->execute();
+                
+                if($check_fav->get_result()->num_rows == 0){
+                    // Not in favourites yet, so add it
+                    $ins_fav = $conn->prepare("INSERT INTO favourite_drivers (student_id, driver_id) VALUES (?, ?)");
+                    $ins_fav->bind_param("si", $student_id, $driver_id);
+                    $ins_fav->execute();
+                }
+            }
+
             $success = true; // Trigger SweetAlert
         } else {
             $error = "System Error: " . $conn->error;
@@ -115,107 +131,65 @@ include "header.php";
 
 /* Driver Profile */
 .driver-avatar-large {
-    width: 72px; 
-    height: 72px;
-    background: #edf2f7;
-    border-radius: 50%;
-    margin: 0 auto 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-    color: #718096;
+    width: 72px; height: 72px;
+    background: #edf2f7; border-radius: 50%; margin: 0 auto 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; color: #718096;
 }
 
-.driver-name {
-    font-size: 18px;
-    font-weight: 700;
-    color: #2d3748;
-    margin-bottom: 4px;
-}
+.driver-name { font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 4px; }
 
 .car-info {
-    font-size: 13px;
-    color: #718096;
-    margin-bottom: 30px;
-    background: #f7fafc;
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    border: 1px solid #edf2f7;
+    font-size: 13px; color: #718096; margin-bottom: 30px;
+    background: #f7fafc; display: inline-block; padding: 4px 12px;
+    border-radius: 20px; border: 1px solid #edf2f7;
 }
 
-/* Star Rating System */
+/* Star Rating */
 .star-rating {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 25px;
-    flex-direction: row-reverse; /* Trick for hover effect */
+    display: flex; justify-content: center; gap: 8px; margin-bottom: 25px;
+    flex-direction: row-reverse; 
 }
-
 .star-rating input { display: none; }
-
-.star-rating label {
-    font-size: 34px;
-    color: #e2e8f0; /* Gray inactive */
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-/* Hover & Checked Logic */
+.star-rating label { font-size: 34px; color: #e2e8f0; cursor: pointer; transition: all 0.2s; }
 .star-rating input:checked ~ label,
 .star-rating label:hover,
-.star-rating label:hover ~ label {
-    color: #f59e0b; /* Gold active */
-    transform: scale(1.1);
-}
+.star-rating label:hover ~ label { color: #f59e0b; transform: scale(1.1); }
 
 /* Textarea */
 textarea {
-    width: 100%;
-    padding: 15px;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    resize: none;
-    font-family: inherit;
-    font-size: 14px;
-    margin-bottom: 20px;
-    background: #fff;
-    transition: border 0.2s;
+    width: 100%; padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px;
+    resize: none; font-family: inherit; font-size: 14px; margin-bottom: 15px;
+    background: #fff; transition: border 0.2s;
 }
-textarea:focus {
-    outline: none;
-    border-color: #3182ce;
-    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+textarea:focus { outline: none; border-color: #3182ce; box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1); }
+
+/* [NEW] Favourite Checkbox Styling */
+.fav-option {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; margin-bottom: 25px; cursor: pointer;
+    padding: 10px; border-radius: 8px; transition: background 0.2s;
 }
+.fav-option:hover { background: #fff5f5; }
+.fav-option input[type="checkbox"] {
+    accent-color: #e53e3e; transform: scale(1.2); cursor: pointer;
+}
+.fav-text { font-size: 14px; color: #4a5568; font-weight: 500; }
+.fav-icon { color: #e53e3e; }
 
 /* Buttons */
 .btn-submit {
-    width: 100%;
-    padding: 12px;
+    width: 100%; padding: 12px;
     background: linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%);
-    color: white;
-    border: none;
-    border-radius: 50px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s;
-    box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
+    color: white; border: none; border-radius: 50px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: transform 0.2s; box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
 }
-.btn-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(49, 130, 206, 0.3);
-}
+.btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(49, 130, 206, 0.3); }
 
 .btn-back {
-    display: block;
-    margin-top: 18px;
-    color: #718096;
-    font-size: 13px;
-    text-decoration: none;
-    font-weight: 500;
+    display: block; margin-top: 18px; color: #718096;
+    font-size: 13px; text-decoration: none; font-weight: 500;
 }
 .btn-back:hover { color: #2d3748; }
 
@@ -244,6 +218,12 @@ textarea:focus {
 
             <textarea name="comment" rows="4" placeholder="Share your experience (optional)..."></textarea>
             
+            <label class="fav-option">
+                <input type="checkbox" name="add_to_fav" value="1">
+                <i class="fa-solid fa-heart fav-icon"></i>
+                <span class="fav-text">Add driver to Favourites</span>
+            </label>
+
             <button type="submit" name="submit_review" class="btn-submit">Submit Review</button>
             <a href="passanger_rides.php" class="btn-back">Cancel</a>
 
