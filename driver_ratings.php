@@ -11,14 +11,22 @@ if (!isset($_SESSION['driver_id'])) {
 
 $driver_id = $_SESSION['driver_id'];
 
-// Fetch ratings for this driver
+// --- [FIXED] Fetch ratings from 'reviews' table instead of 'driver_ratings' ---
+// We also JOIN with the 'students' table to show the passenger's name.
 $ratings = [];
 $stmt = $conn->prepare("
-    SELECT rating_id, rating, review_text, created_at
-    FROM driver_ratings
-    WHERE driver_id = ?
-    ORDER BY created_at DESC
+    SELECT 
+        r.review_id, 
+        r.rating, 
+        r.comment, 
+        r.created_at,
+        s.name AS passenger_name
+    FROM reviews r
+    LEFT JOIN students s ON r.passenger_id = s.student_id
+    WHERE r.driver_id = ?
+    ORDER BY r.created_at DESC
 ");
+
 if ($stmt) {
     $stmt->bind_param("i", $driver_id);
     $stmt->execute();
@@ -41,6 +49,7 @@ include "header.php";
     max-width: 1100px;
     margin: 0 auto;
     background: #f5f7fb;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 .ratings-header {
@@ -82,7 +91,7 @@ include "header.php";
 /* Single rating item */
 .rating-item {
     border-bottom: 1px dashed #e0e0e0;
-    padding: 10px 0;
+    padding: 15px 0;
 }
 
 .rating-item:last-child {
@@ -93,38 +102,61 @@ include "header.php";
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+}
+
+/* Passenger Name Styling */
+.passenger-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.passenger-icon {
+    color: #bdc3c7;
+    font-size: 14px;
 }
 
 .rating-stars {
-    font-size: 15px;
+    font-size: 14px;
     color: #f1c40f;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 2px;
 }
 
 .rating-date {
     font-size: 11px;
-    color: #888;
+    color: #95a5a6;
+    margin-top: 2px;
 }
 
 .rating-text {
-    font-size: 13px;
+    font-size: 14px;
     color: #444;
-    margin-top: 4px;
+    margin-top: 8px;
+    line-height: 1.5;
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 8px;
 }
 
 /* Empty state */
 .empty-state {
     text-align: center;
-    padding: 30px 10px;
-    font-size: 13px;
-    color: #777;
+    padding: 40px 10px;
+    font-size: 14px;
+    color: #7f8c8d;
 }
 
 .empty-state i {
-    font-size: 28px;
-    color: #cccccc;
-    margin-bottom: 8px;
+    font-size: 32px;
+    color: #bdc3c7;
+    margin-bottom: 10px;
+    display: block;
 }
 
 /* Average rating badge */
@@ -132,12 +164,13 @@ include "header.php";
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
+    padding: 6px 14px;
     border-radius: 999px;
     background: #fff8e6;
     color: #d35400;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 2px 5px rgba(241, 196, 15, 0.2);
 }
 
 .avg-rating-badge i {
@@ -154,7 +187,7 @@ include "header.php";
 
         <?php if (count($ratings) > 0): ?>
             <?php
-            // Calculate simple average rating
+            // Calculate average rating
             $total = 0;
             foreach ($ratings as $r) {
                 $total += (int)$r['rating'];
@@ -163,8 +196,8 @@ include "header.php";
             ?>
             <div class="avg-rating-badge">
                 <i class="fa-solid fa-star"></i>
-                <span><?php echo number_format($avg, 1); ?> / 5.0</span>
-                <span style="font-weight:400;">(<?php echo count($ratings); ?> reviews)</span>
+                <span><?php echo number_format($avg, 1); ?></span>
+                <span style="font-weight:400; color:#e67e22; margin-left:4px;">(<?php echo count($ratings); ?> reviews)</span>
             </div>
         <?php endif; ?>
     </div>
@@ -172,40 +205,43 @@ include "header.php";
     <div class="ratings-card">
         <?php if (count($ratings) === 0): ?>
             <div class="empty-state">
-                <i class="fa-regular fa-face-smile"></i>
-                <div>You do not have any ratings yet. Once passengers rate your trips, they will appear here.</div>
+                <i class="fa-regular fa-comment-dots"></i>
+                <div>You do not have any ratings yet.</div>
             </div>
         <?php else: ?>
             <?php foreach ($ratings as $row): ?>
                 <div class="rating-item">
+                    
                     <div class="rating-header-row">
+                        <div>
+                            <div class="passenger-name">
+                                <i class="fa-solid fa-user passenger-icon"></i> 
+                                <?php echo htmlspecialchars($row['passenger_name'] ?? 'Passenger'); ?>
+                            </div>
+                            <div class="rating-date">
+                                <?php echo htmlspecialchars(date("d M Y, h:i A", strtotime($row['created_at']))); ?>
+                            </div>
+                        </div>
+
                         <div class="rating-stars">
                             <?php
                             $stars = (int)$row['rating'];
-                            for ($i = 0; $i < $stars; $i++) {
-                                echo "★";
-                            }
-                            for ($i = $stars; $i < 5; $i++) {
-                                echo "☆";
-                            }
+                            for ($i = 0; $i < $stars; $i++) echo '<i class="fa-solid fa-star"></i>';
+                            for ($i = $stars; $i < 5; $i++) echo '<i class="fa-regular fa-star" style="color:#e0e0e0;"></i>';
                             ?>
-                            <span style="font-size:12px;color:#555;margin-left:4px;">
-                                <?php echo (int)$row['rating']; ?>/5
-                            </span>
-                        </div>
-                        <div class="rating-date">
-                            <?php echo htmlspecialchars(date("d M Y, h:i A", strtotime($row['created_at']))); ?>
                         </div>
                     </div>
-                    <?php if (!empty($row['review_text'])): ?>
+
+                    <?php if (!empty($row['comment'])): ?>
                         <div class="rating-text">
-                            <?php echo nl2br(htmlspecialchars($row['review_text'])); ?>
+                            "<?php echo nl2br(htmlspecialchars($row['comment'])); ?>"
                         </div>
                     <?php else: ?>
-                        <div class="rating-text" style="color:#999;">
-                            (No written review)
+                        <div class="rating-text" style="color:#999; font-style:italic; background:none; padding-left:0;">
+                            No written review.
                         </div>
                     <?php endif; ?>
+                    
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
