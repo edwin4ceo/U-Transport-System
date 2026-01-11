@@ -15,10 +15,13 @@ if(isset($_POST['update'])){
     $name  = $_POST['name'];
     $phone = $_POST['phone'];
     
-    // Update database
-    $sql = "UPDATE students SET name=?, phone=? WHERE student_id=?";
+    // [NEW] Get Gender from form
+    $gender = $_POST['gender']; 
+    
+    // Update database (Including gender)
+    $sql = "UPDATE students SET name=?, phone=?, gender=? WHERE student_id=?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sss", $name, $phone, $student_id);
+    $stmt->bind_param("ssss", $name, $phone, $gender, $student_id);
     
     if($stmt->execute()){
         // Update session name
@@ -80,6 +83,16 @@ include "header.php";
     .btn-back i {
         margin-right: 8px;
     }
+
+    /* Style for dropdown to match inputs */
+    select {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
 </style>
 
 <div class="edit-container">
@@ -97,6 +110,12 @@ include "header.php";
 
         <label>Phone Number</label>
         <input type="text" name="phone" value="<?php echo htmlspecialchars(!empty($row['phone']) ? $row['phone'] : '+60'); ?>" placeholder="+60123456789">
+
+        <label>Gender</label>
+        <select name="gender" required>
+            <option value="Male" <?php if($row['gender'] == 'Male') echo 'selected'; ?>>Male</option>
+            <option value="Female" <?php if($row['gender'] == 'Female') echo 'selected'; ?>>Female</option>
+        </select>
 
         <button type="submit" name="update">Save Changes</button>
     </form>

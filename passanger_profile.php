@@ -124,6 +124,16 @@ include "header.php";
         align-items: center;
         gap: 8px;
     }
+    
+    /* [NEW] Profile Gender Style */
+    .profile-gender {
+        color: #666;
+        font-size: 14px !important; 
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+    }
     /* ----------------------------------- */
     
     .phone-edit-icon {
@@ -279,6 +289,7 @@ include "header.php";
             </div>
             <div class="user-info">
                 <h2 class="profile-name"><?php echo htmlspecialchars($student['name']); ?></h2>
+                
                 <div class="profile-phone">
                     <?php if (!empty($student['phone'])): ?>
                         <i class="fa-solid fa-phone" style="font-size: 12px !important; margin-right: 5px;"></i>
@@ -292,6 +303,17 @@ include "header.php";
                         </a>
                     <?php endif; ?>
                 </div>
+
+                <div class="profile-gender">
+                    <?php 
+                        // Logic to choose icon and color
+                        $g_icon = ($student['gender'] == 'Female') ? 'fa-venus' : 'fa-mars';
+                        $g_color = ($student['gender'] == 'Female') ? '#e91e63' : '#2196F3';
+                    ?>
+                    <i class="fa-solid <?php echo $g_icon; ?>" style="font-size: 14px; width: 14px; text-align: center; color: <?php echo $g_color; ?>;"></i>
+                    <span><?php echo htmlspecialchars($student['gender'] ?? 'Not Specified'); ?></span>
+                </div>
+
             </div>
         </div>
 

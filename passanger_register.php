@@ -18,6 +18,7 @@ use PHPMailer\PHPMailer\Exception;
 $name = "";
 $student_id = "";
 $email = "";
+$gender_selection = ""; // Store selected gender
 
 // Process the registration form when submitted
 if(isset($_POST['register'])){
@@ -28,6 +29,9 @@ if(isset($_POST['register'])){
     $email            = $_POST['email'];
     $password         = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
+    
+    // [NEW] Get Gender
+    $gender           = $_POST['gender']; 
 
     // --- 1. VALIDATION CHECKS ---
 
@@ -90,9 +94,10 @@ if(isset($_POST['register'])){
                 'student_id' => $student_id,
                 'email' => $email,
                 'password_hash' => $password_hash,
+                'gender' => $gender, // <--- [NEW] Storing Gender here
                 'otp_code' => $otp_code,
                 'otp_timestamp' => time(), // Save current time
-                'resend_count' => 0 // <--- NEW: Initialize resend counter
+                'resend_count' => 0 // Initialize resend counter
             ];
 
             // Setup PHPMailer
@@ -179,6 +184,17 @@ if(isset($_POST['register'])){
     .toggle-password:hover {
         color: #005A9C;
     }
+    
+    /* [NEW] Style for Select Dropdown to match inputs */
+    select {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 14px; /* Match typical input font size */
+    }
 </style>
 
 <h2>Register (MMU Student)</h2>
@@ -193,6 +209,13 @@ if(isset($_POST['register'])){
 
     <label>MMU Email (@student.mmu.edu.my)</label>
     <input type="email" name="email" id="emailInput" value="<?php echo htmlspecialchars($email); ?>" required placeholder="ID@student.mmu.edu.my" readonly style="background-color: #f9f9f9; cursor: not-allowed;">
+
+    <label>Gender</label>
+    <select name="gender" required>
+        <option value="" disabled selected hidden>Select Gender</option>
+        <option value="Male" <?php if($gender_selection == 'Male') echo 'selected'; ?>>Male</option>
+        <option value="Female" <?php if($gender_selection == 'Female') echo 'selected'; ?>>Female</option>
+    </select>
 
     <label>Password</label>
     <div class="password-wrapper">
