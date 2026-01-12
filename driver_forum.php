@@ -106,8 +106,8 @@ include "header.php";
                   </span>
               </td>
               <td style="padding:12px;">
-                <a href="ride_chat.php?room=<?php echo (int)$row['booking_id']; ?>"
-                   style="display:inline-block; padding:8px 14px; border-radius:8px; background:#005a9c; color:#fff; text-decoration:none; font-size:13px;">
+                <a href="chat/open_room.php?booking_id=<?php echo (int)$row['booking_id']; ?>"
+                   style="display:inline-block; padding:8px 12px; border-radius:10px; background:#005a9c; color:#fff; text-decoration:none;">
                   Open Chat
                   
                   <?php if ($row['unread_count'] > 0): ?>
