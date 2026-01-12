@@ -86,35 +86,51 @@ include "header.php";
 .request-header-title p { margin: 6px 0 0; font-size: 14px; color: #666; text-align: center; }
 .request-card { background: #ffffff; border-radius: 16px; border: 1px solid #e3e6ea; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px 30px; margin-top: 20px; margin-bottom: 30px; }
 
-/* --- RECOVERED STYLES & COMPACT SPACING --- */
-label { display: block; margin-bottom: 8px; font-size: 15px; font-weight: 600; color: #333; margin-top: 5px; } /* Only margin-top is reduced */
-label:first-of-type { margin-top: 0; }
-
-input[type="text"], select { width: 100%; padding: 12px 14px; font-size: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #fff; transition: border-color 0.2s; box-sizing: border-box; }
-input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
-
-.btn-submit { width: 100%; padding: 14px; background-color: #004b82; color: white; border: none; border-radius: 50px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 25px; transition: background 0.2s; }
-.btn-submit:hover { background-color: #003660; }
-.reset-link { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; font-size: 14px; }
-.reset-link:hover { text-decoration: underline; color: #004b82; }
-
-/* Result Cards */
-.results-header { font-size: 18px; font-weight: 700; color: #333; margin-bottom: 15px; margin-left: 5px; }
-.ride-card { background: #ffffff; border-radius: 16px; border: 1px solid #e3e6ea; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; margin-bottom: 15px; transition: transform 0.2s; }
-.ride-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
-.route-text { font-size: 17px; font-weight: 700; color: #004b82; margin-bottom: 8px; }
-.info-row { display: flex; gap: 15px; font-size: 15px; color: #555; margin-bottom: 12px; align-items: center; }
-.seat-badge { background-color: #e8f5e9; color: #2e7d32; padding: 5px 12px; border-radius: 6px; font-weight: bold; font-size: 13px; }
-
-/* --- CUSTOM DATE PICKER STYLES --- */
-.date-picker-container { position: relative; width: 100%; }
-.date-input-field {
-    width: 100%; padding: 12px 14px;
-    border: 1px solid #ddd; border-radius: 8px;
-    background: #fff; cursor: pointer;
-    font-size: 15px; display: flex;
-    justify-content: space-between; align-items: center;
+/* --- FORCED UNIFIED SPACING --- */
+/* Use more specific selector to bypass any header.php styles */
+.request-card form label { 
+    display: block !important; 
+    margin-bottom: 8px !important; 
+    font-size: 15px !important; 
+    font-weight: 600 !important; 
+    color: #333 !important; 
+    margin-top: 18px !important; /* Force the gap to 18px */
 }
+.request-card form label:first-of-type { 
+    margin-top: 0 !important; 
+}
+
+/* Ensure fillboxes themselves match Request page */
+.request-card form input[type="text"], 
+.request-card form select,
+.request-card form .date-input-field { 
+    width: 100% !important; 
+    padding: 12px 14px !important; 
+    font-size: 15px !important; 
+    border: 1px solid #ddd !important; 
+    border-radius: 8px !important; 
+    background-color: #fff !important; 
+    box-sizing: border-box !important;
+    height: auto !important;
+}
+
+.btn-submit { 
+    width: 100%; 
+    padding: 14px; 
+    background-color: #004b82; 
+    color: white; 
+    border: none; 
+    border-radius: 50px; 
+    font-size: 16px; 
+    font-weight: 600; 
+    cursor: pointer; 
+    margin-top: 30px !important; 
+    transition: background 0.2s; 
+}
+.btn-submit:hover { background-color: #003660; }
+
+/* --- Date Picker Popup Sync --- */
+.date-picker-container { position: relative; width: 100%; }
 .calendar-popup {
     display: none; position: absolute;
     top: 100%; left: 0; width: 320px;
@@ -126,31 +142,14 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
     padding-bottom: 15px;
 }
 .calendar-popup.active { display: block; }
-.calendar-header {
-    background-color: #004b82; color: #fff;
-    padding: 15px; display: flex;
-    justify-content: space-between; align-items: center;
-}
+.calendar-header { background-color: #004b82; color: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
 .calendar-nav { cursor: pointer; font-size: 18px; padding: 5px 10px; user-select: none; }
 .current-date { font-size: 16px; font-weight: 700; display: flex; align-items: center; }
-.current-date .year-text { margin-left: 15px; margin-right: 15px; font-weight: 700; }
-.calendar-weekdays {
-    display: grid; grid-template-columns: repeat(7, 1fr);
-    padding: 10px 15px 5px; text-align: center;
-    color: #888; font-weight: 600; font-size: 13px;
-}
-.calendar-days {
-    display: grid; grid-template-columns: repeat(7, 1fr);
-    padding: 0 15px;
-    grid-auto-rows: 38px; 
-}
-.calendar-days div {
-    display: flex; justify-content: center; align-items: center;
-    cursor: pointer; border-radius: 50%;
-    font-size: 14px; color: #333; margin: 2px;
-}
+.calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 10px 15px 5px; text-align: center; color: #888; font-weight: 600; font-size: 13px; }
+.calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 15px; grid-auto-rows: 38px; }
+.calendar-days div { display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 50%; font-size: 14px; color: #333; margin: 2px; }
 .calendar-days div:hover { background-color: #f0f0f0; }
-.calendar-days div.selected, .calendar-days div.today { background-color: #004b82; color: #fff; font-weight: bold; }
+.calendar-days div.selected, .calendar-days div.today { background-color: #004b82 !important; color: #fff !important; font-weight: bold; }
 .calendar-days div.inactive { visibility: hidden; pointer-events: none; }
 .calendar-days div.disabled { color: #d0d0d0 !important; pointer-events: none; }
 </style>
@@ -195,7 +194,7 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
                         <span class="calendar-nav" onclick="changeMonth(-1)">&#10094;</span>
                         <div class="current-date">
                             <span id="month-display">Month</span>
-                            <span class="year-text" id="year-display">Year</span>
+                            <span class="year-text" id="year-display" style="margin-left: 10px;">Year</span>
                         </div>
                         <span class="calendar-nav" onclick="changeMonth(1)">&#10095;</span>
                     </div>
@@ -215,7 +214,7 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
     </div>
 
     <?php if (empty($available_rides)): ?>
-        <div class="empty-state">
+        <div class="empty-state" style="text-align: center; padding: 40px; color: #777;">
             <i class="fa-solid fa-car-side" style="font-size: 48px; margin-bottom: 15px; color: #ccc;"></i>
             <p>No available carpool rides found matching your criteria.</p>
         </div>
@@ -245,9 +244,9 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
                             <?php endif; ?>
                         </div>
                         <?php if ($ride['is_joined']): ?>
-                            <div class="btn-joined"><i class="fa-solid fa-check"></i> Joined</div>
+                            <div class="btn-joined" style="background-color: #cfd8dc; color: #546e7a; padding: 10px 24px; border-radius: 50px; font-weight: 600;"><i class="fa-solid fa-check"></i> Joined</div>
                         <?php elseif ($ride['remaining_seats'] > 0): ?>
-                            <a href="passanger_request_transport.php?join_driver=<?php echo $ride['driver_id']; ?>&join_date=<?php echo urlencode($ride['date_time']); ?>&join_dest=<?php echo urlencode($ride['destination']); ?>" class="btn-join">
+                            <a href="passanger_request_transport.php?join_driver=<?php echo $ride['driver_id']; ?>&join_date=<?php echo urlencode($ride['date_time']); ?>&join_dest=<?php echo urlencode($ride['destination']); ?>" style="background-color: #009688; color: white; padding: 10px 24px; border-radius: 50px; text-decoration: none; font-weight: 600;">
                                 Join Ride <i class="fa-solid fa-arrow-right"></i>
                             </a>
                         <?php endif; ?>
@@ -259,24 +258,17 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
 </div>
 
 <script>
-    /* --- FILTER FORM VALIDATION --- */
+    // Region and Calendar Logic (Unchanged to keep functionality)
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         const state = document.getElementById('stateSelect').value;
         const region = document.getElementById('regionSelect').value;
         const date = document.getElementById('real_date_input').value;
-
         if (state === "" && region === "" && date === "") {
             e.preventDefault();
-            Swal.fire({
-                icon: 'warning',
-                title: 'Empty Search',
-                text: 'Please select at least one filter (State, Region, or Date) to search.',
-                confirmButtonColor: '#004b82'
-            });
+            Swal.fire({ icon: 'warning', title: 'Empty Search', text: 'Please select at least one filter.', confirmButtonColor: '#004b82' });
         }
     });
 
-    /* --- CUSTOM DATE PICKER LOGIC --- */
     const dateText = document.getElementById("selected-date-text");
     const dateInput = document.getElementById("real_date_input");
     const calendarPopup = document.getElementById("calendar-popup");
@@ -289,8 +281,7 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
     let currMonth = currDate.getMonth();
     let currYear = currDate.getFullYear();
     let selectedDay = initialDateStr ? currDate.getDate() : null; 
-    let todayDate = new Date();
-    todayDate.setHours(0,0,0,0); 
+    let todayDate = new Date(); todayDate.setHours(0,0,0,0); 
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     function renderCalendar() {
@@ -299,19 +290,16 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
         daysContainer.innerHTML = "";
         monthDisplay.innerText = months[currMonth];
         yearDisplay.innerText = currYear;
-
         for (let i = 0; i < firstDayOfMonth; i++) {
             const emptyDiv = document.createElement("div");
             emptyDiv.classList.add("inactive");
             daysContainer.appendChild(emptyDiv);
         }
-
         for (let i = 1; i <= lastDateOfMonth; i++) {
             const dayDiv = document.createElement("div");
             dayDiv.innerText = i;
             let checkDate = new Date(currYear, currMonth, i);
             checkDate.setHours(0,0,0,0); 
-
             if (checkDate < todayDate) {
                 dayDiv.classList.add("disabled"); 
             } else {
@@ -330,16 +318,13 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
     function selectDay(day) {
         selectedDay = day;
         currDate = new Date(currYear, currMonth, day);
-        renderCalendar(); 
-        updateDateValue();
-        calendarPopup.classList.remove("active");
+        renderCalendar(); updateDateValue(); calendarPopup.classList.remove("active");
     }
 
     function changeMonth(direction) {
         event.stopPropagation();
         currMonth += direction;
-        if (currMonth < 0) { currMonth = 11; currYear--; } 
-        else if (currMonth > 11) { currMonth = 0; currYear++; }
+        if (currMonth < 0) { currMonth = 11; currYear--; } else if (currMonth > 11) { currMonth = 0; currYear++; }
         renderCalendar();
     }
 
@@ -365,13 +350,7 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
         }
     });
 
-    /* --- REGION DROPDOWN LOGIC --- */
-    const regions = {
-        "Johor": ["Johor Bahru", "Skudai", "Muar", "Batu Pahat", "Kluang", "Segamat", "Kulai", "Tangkak", "Pagoh"],
-        "Melaka": ["Melaka City", "Ayer Keroh", "Alor Gajah", "Jasin"],
-        "Kuala Lumpur/Selangor": ["Kuala Lumpur", "Petaling Jaya", "Shah Alam", "Subang Jaya", "Cyberjaya", "Putrajaya", "Seremban", "Nilai"]
-    };
-
+    const regions = { "Johor": ["Johor Bahru", "Skudai", "Muar", "Batu Pahat", "Kluang", "Segamat", "Kulai", "Tangkak", "Pagoh"], "Melaka": ["Melaka City", "Ayer Keroh", "Alor Gajah", "Jasin"], "Kuala Lumpur/Selangor": ["Kuala Lumpur", "Petaling Jaya", "Shah Alam", "Subang Jaya", "Cyberjaya", "Putrajaya", "Seremban", "Nilai"] };
     const stateSelect = document.getElementById('stateSelect');
     const regionSelect = document.getElementById('regionSelect');
 
@@ -387,9 +366,7 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
             });
         } else { regionSelect.disabled = true; }
     }
-
     stateSelect.addEventListener('change', function() { updateRegions(this.value); });
-    
     window.onload = function() {
         const savedState = "<?php echo $search_state; ?>";
         const savedRegion = "<?php echo $search_region; ?>";
@@ -397,5 +374,5 @@ input[type="text"]:focus, select:focus { border-color: #004b82; outline: none; }
         renderCalendar();
     };
 </script>
-                            
+
 <?php include "footer.php"; ?>
