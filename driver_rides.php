@@ -12,33 +12,6 @@ if (!isset($_SESSION['driver_id'])) {
 
 $driver_id = $_SESSION['driver_id'];
 
-/**
- * My Rides page for drivers.
- *
- * Uses current structure:
- *   bookings (
- *      id INT,
- *      student_id VARCHAR(50),     -- links to students.student_id
- *      driver_id INT,
- *      destination VARCHAR(255),
- *      date_time DATETIME,
- *      passengers INT,
- *      pickup_point VARCHAR(255),
- *      remark TEXT,
- *      status VARCHAR(50),
- *      created_at TIMESTAMP
- *   )
- *
- *   students (
- *      id INT,
- *      name VARCHAR(100),
- *      student_id VARCHAR(50),
- *      email VARCHAR(100),
- *      password VARCHAR(255),
- *      phone VARCHAR(20)
- *   )
- */
-
 // Fetch all rides for this driver
 $rides = [];
 $stmt = $conn->prepare("

@@ -67,11 +67,10 @@ if ($notify_stmt) {
 }
 
 // ---------------------------------------------------------
-// 3. Count Unread Chat Messages (Corrected SQL)
+// 3. Count Unread Chat Messages
 // ---------------------------------------------------------
 $chat_unread_count = 0;
 
-// Logic: Join ride_chat_messages -> bookings (using booking_ref = booking.id)
 $chat_stmt = $conn->prepare("
     SELECT COUNT(*) as total 
     FROM ride_chat_messages r
@@ -92,7 +91,7 @@ if ($chat_stmt) {
     $chat_stmt->close();
 }
 
-// Calculate Total Notifications (Bookings + Chats)
+// Calculate Total Notifications
 $total_notifications = $pending_bookings_count + $chat_unread_count;
 
 include "header.php";
@@ -563,6 +562,49 @@ include "header.php";
     </p>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Pass PHP variables to JS
+    var pendingBookings = <?php echo (int)$pending_bookings_count; ?>;
+    var unreadChats = <?php echo (int)$chat_unread_count; ?>;
+    var totalNotifs = pendingBookings + unreadChats;
+
+    if (totalNotifs > 0) {
+        
+        let messageText = "";
+        let redirectUrl = "";
+
+        // Logic to determine message and redirection
+        if (pendingBookings > 0 && unreadChats > 0) {
+            messageText = `You have ${pendingBookings} pending booking(s) and ${unreadChats} new message(s).`;
+            redirectUrl = "driver_booking_requests.php"; // Prioritize bookings
+        } else if (pendingBookings > 0) {
+            messageText = `You have ${pendingBookings} pending booking request(s) waiting for approval.`;
+            redirectUrl = "driver_booking_requests.php";
+        } else if (unreadChats > 0) {
+            messageText = `You have ${unreadChats} unread message(s) from students.`;
+            redirectUrl = "driver_forum.php";
+        }
+
+        // Fire SweetAlert
+        Swal.fire({
+            title: 'New Activity!',
+            text: messageText,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#005a9c',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Check Now',
+            cancelButtonText: 'Later'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = redirectUrl;
+            }
+        });
+    }
+});
+</script>
 <?php
 include "footer.php";
 ?>
