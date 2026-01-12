@@ -363,7 +363,7 @@ function renderRideCard($row) {
     if ($status == 'CANCELLED') $st_class = "st-cancelled";
 
     $driver = $row['driver_name'] ?: "Waiting for Driver";
-    $chatKey = $row['driver_id'] . '_' . $row['date_time'];
+    // $chatKey = $row['driver_id'] . '_' . $row['date_time']; // 这一行已经不需要了
     
     // --- [IMPORTANT FIX] Explicitly define variables to avoid warnings ---
     $can_cancel = in_array($status, ['PENDING', 'ACCEPTED']);
@@ -416,7 +416,7 @@ function renderRideCard($row) {
 
             <div class="action-buttons">
                 <?php if($can_chat): ?>
-                    <a href="ride_chat.php?room=<?php echo urlencode($chatKey); ?>" class="btn-common btn-chat">
+                    <a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-common btn-chat">
                         <i class="fa-regular fa-comments"></i> Chat
                     </a>
                 <?php endif; ?>
