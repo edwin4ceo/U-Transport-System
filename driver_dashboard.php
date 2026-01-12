@@ -21,16 +21,13 @@ $vehicle_type    = "";
 $vehicle_color   = "";
 $seat_count      = "";
 
-// Get driver + vehicle info (1 driver, 1 vehicle)
+// ---------------------------------------------------------
+// 1. Get driver + vehicle info
+// ---------------------------------------------------------
 $stmt = $conn->prepare("
     SELECT 
-        d.full_name,
-        d.email,
-        v.vehicle_model,
-        v.plate_number,
-        v.vehicle_type,
-        v.vehicle_color,
-        v.seat_count
+        d.full_name, d.email,
+        v.vehicle_model, v.plate_number, v.vehicle_type, v.vehicle_color, v.seat_count
     FROM drivers d
     LEFT JOIN vehicles v ON v.driver_id = d.driver_id
     WHERE d.driver_id = ?
@@ -41,10 +38,8 @@ if ($stmt) {
     $stmt->bind_param("i", $driver_id);
     $stmt->execute();
     $result = $stmt->get_result();
-
     if ($result && $result->num_rows === 1) {
         $row = $result->fetch_assoc();
-
         $full_name     = $row['full_name'];
         $email         = $row['email'];
         $vehicle_model = $row['vehicle_model'] ?? "";
@@ -53,9 +48,52 @@ if ($stmt) {
         $vehicle_color = $row['vehicle_color'] ?? "";
         $seat_count    = $row['seat_count'] ?? "";
     }
-
     $stmt->close();
 }
+
+// ---------------------------------------------------------
+// 2. Count Pending Booking Requests
+// ---------------------------------------------------------
+$pending_bookings_count = 0;
+$notify_stmt = $conn->prepare("SELECT COUNT(*) as total FROM bookings WHERE driver_id = ? AND status = 'pending'");
+if ($notify_stmt) {
+    $notify_stmt->bind_param("i", $driver_id);
+    $notify_stmt->execute();
+    $notify_res = $notify_stmt->get_result();
+    if ($row_notify = $notify_res->fetch_assoc()) {
+        $pending_bookings_count = $row_notify['total'];
+    }
+    $notify_stmt->close();
+}
+
+// ---------------------------------------------------------
+// 3. Count Unread Chat Messages (Corrected SQL)
+// ---------------------------------------------------------
+$chat_unread_count = 0;
+
+// Logic: Join ride_chat_messages -> bookings (using booking_ref = booking.id)
+$chat_stmt = $conn->prepare("
+    SELECT COUNT(*) as total 
+    FROM ride_chat_messages r
+    JOIN bookings b ON r.booking_ref = b.id
+    WHERE b.driver_id = ? 
+    AND r.sender_type = 'student' 
+    AND r.is_read = 0
+");
+
+if ($chat_stmt) {
+    $chat_stmt->bind_param("i", $driver_id);
+    if ($chat_stmt->execute()) {
+        $chat_res = $chat_stmt->get_result();
+        if ($row_chat = $chat_res->fetch_assoc()) {
+            $chat_unread_count = $row_chat['total'];
+        }
+    }
+    $chat_stmt->close();
+}
+
+// Calculate Total Notifications (Bookings + Chats)
+$total_notifications = $pending_bookings_count + $chat_unread_count;
 
 include "header.php";
 ?>
@@ -68,9 +106,9 @@ include "header.php";
     /* ✅ FULL-WIDTH DASHBOARD */
     .dashboard-wrapper {
         min-height: calc(100vh - 140px);
-        padding: 30px 40px 40px; /* more breathing space */
+        padding: 30px 40px 40px;
         max-width: 100%;
-        margin: 0;               /* remove centered container */
+        margin: 0;
         box-sizing: border-box;
     }
 
@@ -127,7 +165,8 @@ include "header.php";
 
     .dashboard-actions-top {
         display: flex;
-        gap: 8px;
+        gap: 12px;
+        align-items: center;
     }
 
     .btn-outline {
@@ -149,7 +188,56 @@ include "header.php";
         color: #fff;
     }
 
-    /* ✅ Wider + nicer proportions */
+    /* --- Notification Styles --- */
+    .notification-bell {
+        position: relative;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: #fff;
+        border: 1px solid #005a9c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #005a9c;
+        font-size: 16px;
+        text-decoration: none;
+        transition: 0.2s;
+    }
+    .notification-bell:hover {
+        background: #e6f4ff;
+    }
+    .bell-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: #e74c3c; /* Red */
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #fff;
+    }
+    
+    /* Card Badges */
+    .alert-badge {
+        margin-top: 6px;
+        font-size: 11px;
+        color: #e74c3c;
+        font-weight: 700;
+        background: #fff2f0;
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        border: 1px solid #ffccc7;
+    }
+
+    /* ✅ Grid Layout */
     .dashboard-grid {
         display: grid;
         grid-template-columns: 1.6fr 2.4fr;
@@ -247,6 +335,8 @@ include "header.php";
         padding: 18px;
         box-shadow: 0 6px 18px rgba(0,0,0,0.06);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        position: relative;
+        text-decoration: none;
     }
 
     .quick-card:hover {
@@ -311,7 +401,7 @@ include "header.php";
         }
         .dashboard-actions-top {
             width: 100%;
-            justify-content: flex-start;
+            justify-content: flex-end;
             flex-wrap: wrap;
         }
         .quick-actions-grid {
@@ -335,6 +425,13 @@ include "header.php";
         </div>
 
         <div class="dashboard-actions-top">
+            <a href="driver_booking_requests.php" class="notification-bell" title="Notifications">
+                <i class="fa-regular fa-bell"></i>
+                <?php if ($total_notifications > 0): ?>
+                    <span class="bell-badge"><?php echo $total_notifications; ?></span>
+                <?php endif; ?>
+            </a>
+
             <a href="driver_profile.php" class="btn-outline">
                 <i class="fa-regular fa-user"></i>
                 Edit profile
@@ -343,7 +440,6 @@ include "header.php";
     </div>
 
     <div class="dashboard-grid">
-        <!-- Left: Driver & Vehicle -->
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Driver & Vehicle</h3>
@@ -400,7 +496,6 @@ include "header.php";
             </div>
         </div>
 
-        <!-- Right: Quick Actions -->
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Quick Actions</h3>
@@ -418,6 +513,11 @@ include "header.php";
                     <div class="quick-card">
                         <div class="quick-icon"><i class="fa-solid fa-clipboard-list"></i></div>
                         <div class="quick-title">Booking Requests</div>
+                        
+                        <?php if ($pending_bookings_count > 0): ?>
+                            <div class="alert-badge"><?php echo $pending_bookings_count; ?> Pending</div>
+                        <?php endif; ?>
+
                         <a href="driver_booking_requests.php" class="quick-link">View →</a>
                     </div>
 
@@ -436,6 +536,11 @@ include "header.php";
                     <div class="quick-card">
                         <div class="quick-icon"><i class="fa-solid fa-comments"></i></div>
                         <div class="quick-title">Chat</div>
+
+                        <?php if ($chat_unread_count > 0): ?>
+                            <div class="alert-badge"><?php echo $chat_unread_count; ?> New Msg</div>
+                        <?php endif; ?>
+
                         <a href="driver_forum.php" class="quick-link">Go →</a>
                     </div>
 

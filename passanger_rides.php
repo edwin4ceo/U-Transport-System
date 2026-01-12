@@ -127,7 +127,8 @@ function renderRide($row) {
     if (in_array($status, ['COMPLETED', 'CANCELLED'])) $badge = "status-badge st-past";
 
     $driver = $row['driver_name'] ?: "Pending Driver";
-    $chatKey = $row['driver_id'] . '_' . $row['date_time'];
+    
+    // [FIX] Removed $chatKey logic, using booking_id directly
     ?>
     <div class="ride-item">
         <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
@@ -141,7 +142,7 @@ function renderRide($row) {
             </div>
             
             <?php if($status == 'ACCEPTED'): ?>
-                <a href="ride_chat.php?room=<?php echo urlencode($chatKey); ?>" class="btn-chat">
+                <a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-chat">
                     <i class="fa-regular fa-comments"></i> Group Chat
                 </a>
             <?php endif; ?>

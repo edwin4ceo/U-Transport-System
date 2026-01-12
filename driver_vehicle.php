@@ -44,6 +44,12 @@ if (isset($_POST['request_change'])) {
     $new_vehicle_type   = trim($_POST['new_vehicle_type'] ?? "");
     $new_vehicle_color  = trim($_POST['new_vehicle_color'] ?? "");
     $new_seat_count     = trim($_POST['new_seat_count'] ?? "");
+    
+    // [NEW] Get Dates
+    $road_tax_expiry    = trim($_POST['road_tax_expiry'] ?? "");
+    $insurance_expiry   = trim($_POST['insurance_expiry'] ?? "");
+
+    $max_seats = 6; 
 
     // Basic validation
     if (
@@ -51,97 +57,78 @@ if (isset($_POST['request_change'])) {
         $new_plate_number === "" ||
         $new_vehicle_type === "" ||
         $new_vehicle_color === "" ||
-        $new_seat_count === ""
+        $new_seat_count === "" ||
+        $road_tax_expiry === "" ||   // Check Empty
+        $insurance_expiry === ""     // Check Empty
     ) {
         $_SESSION['swal_title'] = "Missing Fields";
-        $_SESSION['swal_msg']   = "Please fill in all fields in the vehicle change request form.";
+        $_SESSION['swal_msg']   = "Please fill in all vehicle details including expiry dates.";
         $_SESSION['swal_type']  = "warning";
-    } elseif (!ctype_digit($new_seat_count) || (int)$new_seat_count <= 0) {
+    
+    // Check Seat Count
+    } elseif (!ctype_digit($new_seat_count) || (int)$new_seat_count <= 0 || (int)$new_seat_count > $max_seats) {
         $_SESSION['swal_title'] = "Invalid Seat Count";
-        $_SESSION['swal_msg']   = "Seat count must be a positive number.";
+        $_SESSION['swal_msg']   = "Seat count must be a number between 1 and $max_seats.";
         $_SESSION['swal_type']  = "warning";
+
+    // [NEW] Check if documents are expired
+    } elseif ($road_tax_expiry < date('Y-m-d')) {
+        $_SESSION['swal_title'] = "Road Tax Expired";
+        $_SESSION['swal_msg']   = "The Road Tax date you entered is already expired. Please renew it first.";
+        $_SESSION['swal_type']  = "warning";
+
+    } elseif ($insurance_expiry < date('Y-m-d')) {
+        $_SESSION['swal_title'] = "Insurance Expired";
+        $_SESSION['swal_msg']   = "The Insurance date you entered is already expired. Please renew it first.";
+        $_SESSION['swal_type']  = "warning";
+
     } else {
 
-        // Optional: block if driver already has a pending request
-        $pending_stmt = $conn->prepare("
-            SELECT request_id 
-            FROM vehicle_change_requests
-            WHERE driver_id = ? AND status = 'pending'
-            LIMIT 1
-        ");
-
+        // Block if pending request exists
+        $pending_stmt = $conn->prepare("SELECT request_id FROM vehicle_change_requests WHERE driver_id = ? AND status = 'pending' LIMIT 1");
         $has_pending = false;
         if ($pending_stmt) {
             $pending_stmt->bind_param("i", $driver_id);
             $pending_stmt->execute();
-            $pending_res = $pending_stmt->get_result();
-            if ($pending_res && $pending_res->num_rows > 0) {
-                $has_pending = true;
-            }
+            if ($pending_stmt->get_result()->num_rows > 0) $has_pending = true;
             $pending_stmt->close();
         }
 
         if ($has_pending) {
             $_SESSION['swal_title'] = "Pending Request";
-            $_SESSION['swal_msg']   = "You already have a pending vehicle change request. Please wait for admin approval.";
+            $_SESSION['swal_msg']   = "You already have a pending vehicle change request.";
             $_SESSION['swal_type']  = "info";
         } else {
-            // Find current vehicle_id, if exists
             $old_vehicle_id = $current_vehicle ? (int)$current_vehicle['vehicle_id'] : null;
 
+            // [UPDATED SQL] Added road_tax_expiry and insurance_expiry
             $insert = $conn->prepare("
                 INSERT INTO vehicle_change_requests
-                (driver_id, old_vehicle_id, new_vehicle_model, new_plate_number, new_vehicle_type, new_vehicle_color, new_seat_count, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+                (driver_id, old_vehicle_id, new_vehicle_model, new_plate_number, new_vehicle_type, new_vehicle_color, new_seat_count, road_tax_expiry, insurance_expiry, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
             ");
 
             if ($insert) {
-                // old_vehicle_id may be null if driver has no vehicle yet
                 if ($old_vehicle_id === null) {
                     $null = null;
-                    $insert->bind_param(
-                        "isssssi",
-                        $driver_id,
-                        $null,
-                        $new_vehicle_model,
-                        $new_plate_number,
-                        $new_vehicle_type,
-                        $new_vehicle_color,
-                        $new_seat_count
-                    );
+                    $insert->bind_param("isssssiss", $driver_id, $null, $new_vehicle_model, $new_plate_number, $new_vehicle_type, $new_vehicle_color, $new_seat_count, $road_tax_expiry, $insurance_expiry);
                 } else {
-                    $insert->bind_param(
-                        "iissssi",
-                        $driver_id,
-                        $old_vehicle_id,
-                        $new_vehicle_model,
-                        $new_plate_number,
-                        $new_vehicle_type,
-                        $new_vehicle_color,
-                        $new_seat_count
-                    );
+                    $insert->bind_param("iisssssss", $driver_id, $old_vehicle_id, $new_vehicle_model, $new_plate_number, $new_vehicle_type, $new_vehicle_color, $new_seat_count, $road_tax_expiry, $insurance_expiry);
                 }
 
                 if ($insert->execute()) {
                     $_SESSION['swal_title'] = "Request Submitted";
-                    $_SESSION['swal_msg']   = "Your vehicle change request has been submitted and is awaiting admin approval.";
+                    $_SESSION['swal_msg']   = "Your vehicle change request has been submitted to Admin.";
                     $_SESSION['swal_type']  = "success";
                 } else {
                     $_SESSION['swal_title'] = "Error";
-                    $_SESSION['swal_msg']   = "Failed to submit your request. Please try again.";
+                    $_SESSION['swal_msg']   = "Failed to submit request.";
                     $_SESSION['swal_type']  = "error";
                 }
-
                 $insert->close();
-            } else {
-                $_SESSION['swal_title'] = "Error";
-                $_SESSION['swal_msg']   = "Database error (insert request).";
-                $_SESSION['swal_type']  = "error";
             }
         }
     }
-
-    // Redirect to avoid resubmission on refresh
     redirect("driver_vehicle.php");
     exit;
 }
@@ -335,6 +322,23 @@ include "header.php";
     color: #cf1322;
 }
 
+/* [NEW] Policy Alert Box Style */
+.policy-alert {
+    background-color: #e6f4ff;
+    border-left: 4px solid #005a9c;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #004b82;
+    line-height: 1.5;
+}
+.policy-alert strong {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 700;
+}
+
 @media (max-width: 900px) {
     .vehicle-grid {
         grid-template-columns: 1fr;
@@ -352,7 +356,6 @@ include "header.php";
     </div>
 
     <div class="vehicle-grid">
-        <!-- Left: Current vehicle info -->
         <div class="card">
             <div class="card-title">Current Vehicle</div>
             <div class="card-subtitle">
@@ -423,11 +426,13 @@ include "header.php";
             <?php endif; ?>
         </div>
 
-        <!-- Right: Request change form -->
         <div class="card">
             <div class="form-section-title">Request Vehicle Change</div>
-            <div class="card-subtitle">
-                Fill in the details of the vehicle you want to use. Your request will be reviewed by the admin.
+            
+            <div class="policy-alert">
+                <strong>Why only one vehicle?</strong>
+                To ensure passenger safety, drivers are limited to one active vehicle. 
+                Please provide valid <b>Road Tax</b> and <b>Insurance</b> dates for Admin verification.
             </div>
 
             <form method="post" action="">
@@ -453,8 +458,18 @@ include "header.php";
                     </div>
 
                     <div class="form-group">
-                        <label for="new_seat_count">Seat Count</label>
-                        <input type="number" id="new_seat_count" name="new_seat_count" min="1" placeholder="e.g. 4" required>
+                        <label for="new_seat_count">Seat Count (Max 6)</label>
+                        <input type="number" id="new_seat_count" name="new_seat_count" min="1" max="6" placeholder="e.g. 4" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="road_tax_expiry">Road Tax Expiry</label>
+                        <input type="date" id="road_tax_expiry" name="road_tax_expiry" min="<?php echo date('Y-m-d'); ?>" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="insurance_expiry">Insurance Expiry</label>
+                        <input type="date" id="insurance_expiry" name="insurance_expiry" min="<?php echo date('Y-m-d'); ?>" required>
                     </div>
                 </div>
 
