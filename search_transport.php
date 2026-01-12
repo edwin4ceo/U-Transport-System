@@ -46,7 +46,7 @@ if (!empty($search_state)) {
     $sql .= " AND b.destination LIKE '%$safe_state%' ";
 }
 if (!empty($search_region)) {
-    $safe_region = $conn->real_escape_string($safe_region);
+    $safe_region = $conn->real_escape_string($search_region);
     $sql .= " AND b.destination LIKE '%$safe_region%' ";
 }
 
@@ -87,14 +87,14 @@ include "header.php";
 .request-card { background: #ffffff; border-radius: 16px; border: 1px solid #e3e6ea; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px 30px; margin-top: 20px; margin-bottom: 30px; }
 
 /* --- FORCED UNIFIED SPACING --- */
-/* Use more specific selector to bypass any header.php styles */
+/* Reduced margin-top from 18px to 8px and margin-bottom to 5px */
 .request-card form label { 
     display: block !important; 
-    margin-bottom: 8px !important; 
+    margin-bottom: 5px !important; 
     font-size: 15px !important; 
     font-weight: 600 !important; 
     color: #333 !important; 
-    margin-top: 18px !important; /* Force the gap to 18px */
+    margin-top: 1px !important; 
 }
 .request-card form label:first-of-type { 
     margin-top: 0 !important; 
@@ -124,7 +124,7 @@ include "header.php";
     font-size: 16px; 
     font-weight: 600; 
     cursor: pointer; 
-    margin-top: 30px !important; 
+    margin-top: 20px !important; /* Slightly reduced button top margin */
     transition: background 0.2s; 
 }
 .btn-submit:hover { background-color: #003660; }
@@ -208,7 +208,9 @@ include "header.php";
             <button type="submit" class="btn-submit"><i class="fa-solid fa-magnifying-glass"></i> Search Rides</button>
 
             <?php if(!empty($search_state) || !empty($search_region) || !empty($search_date)): ?>
-                <a href="search_transport.php" class="reset-link">Reset Filters</a>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="search_transport.php" class="reset-link" style="color: #666; text-decoration: none; font-size: 14px;">Reset Filters</a>
+                </div>
             <?php endif; ?>
         </form>
     </div>
@@ -219,17 +221,17 @@ include "header.php";
             <p>No available carpool rides found matching your criteria.</p>
         </div>
     <?php else: ?>
-        <div class="results-header">Available Rides (<?php echo count($available_rides); ?>)</div>
+        <div class="results-header" style="font-weight: 700; margin-bottom: 15px; color: #333;">Available Rides (<?php echo count($available_rides); ?>)</div>
         <?php foreach ($available_rides as $ride): ?>
-            <div class="ride-card">
+            <div class="ride-card" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #eee;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
-                        <div class="route-text">To: <?php echo htmlspecialchars($ride['destination']); ?></div>
-                        <div class="info-row">
+                        <div class="route-text" style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">To: <?php echo htmlspecialchars($ride['destination']); ?></div>
+                        <div class="info-row" style="font-size: 14px; color: #666; margin-bottom: 5px;">
                             <span><i class="fa-regular fa-calendar"></i> <?php echo date("d M Y, h:i A", strtotime($ride['date_time'])); ?></span>
-                            <span><i class="fa-solid fa-user-tie"></i> <?php echo htmlspecialchars($ride['driver_name']); ?></span>
+                            <span style="margin-left: 15px;"><i class="fa-solid fa-user-tie"></i> <?php echo htmlspecialchars($ride['driver_name']); ?></span>
                         </div>
-                        <div class="info-row">
+                        <div class="info-row" style="font-size: 14px; color: #666;">
                             <span style="background: #f5f5f5; padding: 5px 10px; border-radius: 6px;">
                                 <i class="fa-solid fa-car"></i> <?php echo htmlspecialchars($ride['vehicle_model']); ?> (<?php echo htmlspecialchars($ride['plate_number']); ?>)
                             </span>
@@ -238,15 +240,15 @@ include "header.php";
                     <div style="text-align: right;">
                         <div style="margin-bottom: 15px;">
                             <?php if ($ride['remaining_seats'] > 0): ?>
-                                <span class="seat-badge"><?php echo $ride['remaining_seats']; ?> Seats Left</span>
+                                <span class="seat-badge" style="background: #e8f5e9; color: #2e7d32; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;"><?php echo $ride['remaining_seats']; ?> Seats Left</span>
                             <?php else: ?>
-                                <span class="seat-badge" style="background:#ffebee; color:#c62828;">Full</span>
+                                <span class="seat-badge" style="background:#ffebee; color:#c62828; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">Full</span>
                             <?php endif; ?>
                         </div>
                         <?php if ($ride['is_joined']): ?>
                             <div class="btn-joined" style="background-color: #cfd8dc; color: #546e7a; padding: 10px 24px; border-radius: 50px; font-weight: 600;"><i class="fa-solid fa-check"></i> Joined</div>
                         <?php elseif ($ride['remaining_seats'] > 0): ?>
-                            <a href="passanger_request_transport.php?join_driver=<?php echo $ride['driver_id']; ?>&join_date=<?php echo urlencode($ride['date_time']); ?>&join_dest=<?php echo urlencode($ride['destination']); ?>" style="background-color: #009688; color: white; padding: 10px 24px; border-radius: 50px; text-decoration: none; font-weight: 600;">
+                            <a href="passanger_request_transport.php?join_driver=<?php echo $ride['driver_id']; ?>&join_date=<?php echo urlencode($ride['date_time']); ?>&join_dest=<?php echo urlencode($ride['destination']); ?>" style="background-color: #009688; color: white; padding: 10px 24px; border-radius: 50px; text-decoration: none; font-weight: 600; display: inline-block;">
                                 Join Ride <i class="fa-solid fa-arrow-right"></i>
                             </a>
                         <?php endif; ?>
