@@ -2,6 +2,9 @@
 session_start();
 require_once 'db_connect.php';
 
+// INCLUDE THE NEW HEADER (This replaces all the HTML/CSS/Menu code)
+require_once 'admin_header.php';
+
 // Security Check
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: admin_login.php");
@@ -135,14 +138,6 @@ if (!$result) {
     </style>
 </head>
 <body>
-    <header style="background-color: #2c3e50; color: white; padding: 15px 0;">
-        <div class="container">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h1><i class="fa-solid fa-star-half-stroke"></i> Manage Reviews</h1>
-                <a href="admin_dashboard.php" style="color: white; text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> Dashboard</a>
-            </div>
-        </div>
-    </header>
 
     <main>
         <div class="container" style="margin-top: 30px;">

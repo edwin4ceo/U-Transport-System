@@ -2,6 +2,9 @@
 session_start();
 include "db_connect.php";
 
+// INCLUDE THE NEW HEADER (This replaces all the HTML/CSS/Menu code)
+require_once 'admin_header.php';
+
 // 1. SECURITY CHECK
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: admin_login.php");
@@ -109,22 +112,6 @@ if ($selected_driver_id > 0) {
     </style>
 </head>
 <body>
-
-    <header class="admin-header">
-        <div class="container">
-            <h1><i class="fa-solid fa-building-user"></i> FMD Staff</h1>
-            <nav class="admin-nav">
-                <ul>
-                    <li><a href="admin_dashboard.php">Home</a></li>
-                    <li><a href="verify_drivers.php">Approve</a></li>
-                    <li><a href="view_drivers.php">Drivers</a></li>
-                    <li><a href="view_passengers.php">Passengers</a></li>
-                    <li><a href="view_bookings.php">Bookings</a></li>
-                    <li><a href="admin_profile.php">Profile</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
 
     <div class="chat-wrapper">
         <div class="chat-header-title">

@@ -2,6 +2,9 @@
 session_start();
 require_once 'db_connect.php';
 
+// INCLUDE THE NEW HEADER (This replaces all the HTML/CSS/Menu code)
+require_once 'admin_header.php';
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') { header("Location: admin_login.php"); exit(); }
 
 $sql = "SELECT * FROM contact_messages ORDER BY created_at DESC";
@@ -25,12 +28,6 @@ $result = mysqli_query($conn, $sql);
     </style>
 </head>
 <body>
-    <header style="background-color: #2c3e50; color: white; padding: 15px 0;">
-        <div class="container" style="display: flex; justify-content: space-between; align-items: center; width:90%; margin:0 auto;">
-            <h1 style="margin:0;"><i class="fa-solid fa-envelope-open-text"></i> User Feedback</h1>
-            <a href="admin_dashboard.php" style="color: white; text-decoration: none;">Back to Dashboard</a>
-        </div>
-    </header>
 
     <main>
         <div class="container" style="margin-top: 20px;">
