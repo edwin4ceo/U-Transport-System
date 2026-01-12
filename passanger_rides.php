@@ -3,6 +3,7 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
+// 1. Check Login
 if(!isset($_SESSION['student_id'])) redirect("passanger_login.php");
 $student_id = $_SESSION['student_id'];
 
@@ -23,7 +24,7 @@ if(isset($_POST['cancel_ride'])){
 }
 // ----------------------------------------
 
-// Fetch Rides
+// 2. Fetch Rides (Join with Reviews to check 'Rated' status)
 $rides = [];
 $stmt = $conn->prepare("
     SELECT 
@@ -37,10 +38,12 @@ $stmt = $conn->prepare("
         b.driver_id, 
         d.full_name AS driver_name,
         v.vehicle_model,
-        v.plate_number
+        v.plate_number,
+        r.review_id AS has_rated  
     FROM bookings b
     LEFT JOIN drivers d ON b.driver_id = d.driver_id
     LEFT JOIN vehicles v ON d.driver_id = v.driver_id
+    LEFT JOIN reviews r ON b.id = r.booking_id 
     WHERE b.student_id = ?
     ORDER BY b.date_time ASC
 ");
@@ -231,7 +234,7 @@ include "header.php";
 }
 .btn-cancel:hover { background-color: #fee2e2; }
 
-/* [NEW] Rate Button Style (Amber/Gold) */
+/* Rate Button (Gold) */
 .btn-rate {
     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
     color: white; 
@@ -241,7 +244,18 @@ include "header.php";
     box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3); 
     transform: translateY(-1px); 
 }
-/* ------------------------------------- */
+
+/* Rated Button (Gray/Subtle) */
+.btn-rated {
+    background: #edf2f7;
+    color: #718096;
+    border: 1px solid #cbd5e0;
+    cursor: default;
+}
+.btn-rated:hover {
+    background: #e2e8f0;
+    color: #4a5568;
+}
 
 /* Bottom Row */
 .card-bottom { display: flex; justify-content: space-between; align-items: center; }
@@ -324,6 +338,16 @@ include "header.php";
             }
         })
     }
+
+    function showRatedAlert() {
+        Swal.fire({
+            title: 'Already Rated',
+            text: 'You have already submitted a review for this ride. Thank you!',
+            icon: 'info',
+            confirmButtonColor: '#718096',
+            confirmButtonText: 'Close'
+        });
+    }
 </script>
 
 <?php
@@ -341,11 +365,13 @@ function renderRideCard($row) {
     $driver = $row['driver_name'] ?: "Waiting for Driver";
     $chatKey = $row['driver_id'] . '_' . $row['date_time'];
     
+    // --- [IMPORTANT FIX] Explicitly define variables to avoid warnings ---
     $can_cancel = in_array($status, ['PENDING', 'ACCEPTED']);
     $can_chat = ($status == 'ACCEPTED');
-    
-    // [NEW] Logic: Can Rate if Completed
-    $can_rate = ($status == 'COMPLETED');
+    $is_completed = ($status == 'COMPLETED');
+    $has_rated = !empty($row['has_rated']); 
+    // -------------------------------------------------------------------
+
     ?>
     
     <div class="ride-item-card">
@@ -406,10 +432,16 @@ function renderRideCard($row) {
                     </form>
                 <?php endif; ?>
 
-                <?php if($can_rate): ?>
-                    <a href="passanger_rate.php?booking_id=<?php echo $row['booking_id']; ?>" class="btn-common btn-rate">
-                        <i class="fa-solid fa-star"></i> Rate
-                    </a>
+                <?php if($is_completed): ?>
+                    <?php if(!$has_rated): ?>
+                        <a href="passanger_rate.php?booking_id=<?php echo $row['booking_id']; ?>" class="btn-common btn-rate">
+                            <i class="fa-solid fa-star"></i> Rate
+                        </a>
+                    <?php else: ?>
+                        <button onclick="showRatedAlert()" class="btn-common btn-rated">
+                            <i class="fa-solid fa-check"></i> Rated
+                        </button>
+                    <?php endif; ?>
                 <?php endif; ?>
 
             </div>
