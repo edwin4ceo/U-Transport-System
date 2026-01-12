@@ -65,7 +65,7 @@ include "header.php";
               <td style="padding:12px;"><?php echo htmlspecialchars($row['student_name'] ?? "Student"); ?></td>
               <td style="padding:12px;"><?php echo htmlspecialchars($row['status'] ?? ""); ?></td>
               <td style="padding:12px;">
-                <a href="chat/open_room.php?booking_id=<?php echo (int)$row['booking_id']; ?>"
+                <a href="chat/ride_chat.php?booking_id=<?php echo (int)$row['booking_id']; ?>"
                    style="display:inline-block; padding:8px 12px; border-radius:10px; background:#005a9c; color:#fff; text-decoration:none;">
                   Open Chat
                 </a>
