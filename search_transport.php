@@ -168,7 +168,7 @@ include "header.php";
         </div>
     </div>
 
-    <form method="GET" action="search_transport.php" class="search-bar-container">
+    <form method="GET" action="search_transport.php" class="search-bar-container" id="filterForm">
         
         <select name="state" id="stateSelect" class="search-select">
             <option value="">All States</option>
@@ -234,9 +234,12 @@ include "header.php";
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     const stateSelect = document.getElementById('stateSelect');
     const regionSelect = document.getElementById('regionSelect');
+    const filterForm = document.getElementById('filterForm'); // Get Form
 
     // Define Region Data (Same as Request Page)
     const regions = {
@@ -277,6 +280,25 @@ include "header.php";
     stateSelect.addEventListener('change', function() {
         updateRegions(this.value);
     });
+
+    // --- [NEW] SweetAlert Validation on Submit ---
+    filterForm.addEventListener('submit', function(e) {
+        const selectedState = stateSelect.value;
+        
+        // If State is empty ("All States"), block submit and show warning
+        if (!selectedState) {
+            e.preventDefault(); // Stop form submission
+            
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Selection Found',
+                text: 'Please select a State to filter the rides.',
+                confirmButtonColor: '#004b82',
+                confirmButtonText: 'OK'
+            });
+        }
+    });
+    // ---------------------------------------------
 
     // On Page Load: Check if we need to restore previous selection (from PHP)
     // Pass PHP variable to JS

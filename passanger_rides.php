@@ -6,6 +6,23 @@ include "function.php";
 if(!isset($_SESSION['student_id'])) redirect("passanger_login.php");
 $student_id = $_SESSION['student_id'];
 
+// --- [LOGIC] Handle Ride Cancellation ---
+if(isset($_POST['cancel_ride'])){
+    $cancel_id = $_POST['cancel_id'];
+    
+    // Update status to 'Cancelled'
+    $stmt = $conn->prepare("UPDATE bookings SET status = 'Cancelled' WHERE id = ? AND student_id = ?");
+    $stmt->bind_param("is", $cancel_id, $student_id);
+    
+    if($stmt->execute()){
+        echo "<script>window.location.href='passanger_rides.php';</script>";
+    } else {
+        echo "<script>alert('Failed to cancel ride.');</script>";
+    }
+    $stmt->close();
+}
+// ----------------------------------------
+
 // Fetch Rides
 $rides = [];
 $stmt = $conn->prepare("
@@ -51,116 +68,362 @@ foreach ($rides as $r) {
 include "header.php"; 
 ?>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <style>
-/* --- RE-ADJUSTED SIZES (Balanced Mode) --- */
-.rides-wrapper { min-height: calc(100vh - 160px); padding: 30px 10px; max-width: 1100px; margin: 0 auto; background: #f5f7fb; }
+/* --- STYLES --- */
 
-/* 1. Main Page Title - Made slightly bigger to dominate */
-.rides-header-title h1 { margin: 0; font-size: 26px; font-weight: 700; color: #004b82; }
-.rides-header-title p { margin: 4px 0 0; font-size: 13px; color: #666; }
+.rides-wrapper { 
+    min-height: calc(100vh - 160px); 
+    padding: 30px 20px; 
+    max-width: 880px;   
+    margin: 0 auto; 
+    background: #f8f9fa; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
 
-/* 2. Section Titles - Slightly smaller than before */
-.section-title { font-size: 16px; font-weight: 600; color: #2c3e50; margin: 25px 0 10px; }
+.rides-header-title h1 { margin: 0; font-size: 24px; font-weight: 700; color: #1a202c; }
+.rides-header-title p { margin: 6px 0 0; font-size: 14px; color: #718096; }
 
-/* 3. Card Container - Reduced padding to fix "too big" feel */
-.ride-card { background: #fff; border-radius: 16px; border: 1px solid #e3e6ea; padding: 15px 18px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+.section-title { 
+    font-size: 15px; font-weight: 700; color: #4a5568; 
+    margin: 28px 0 14px; display: flex; align-items: center; gap: 8px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.section-title i { color: #004b82; font-size: 14px; }
 
-/* Ride Item Rows */
-.ride-item { border-bottom: 1px dashed #e0e0e0; padding: 15px 0; }
-.ride-item:last-child { border-bottom: none; }
+.ride-card-container { display: flex; flex-direction: column; gap: 16px; }
 
-/* 4. Route Text - Balanced size (15px) */
-.ride-route { font-size: 15px; font-weight: 700; color: #004b82; }
-.ride-date { font-size: 12px; color: #888; }
+/* Card Style */
+.ride-item-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 20px;       
+    box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    border: 1px solid #e2e8f0;
+    transition: transform 0.2s ease;
+    position: relative;
+}
+.ride-item-card:hover { 
+    box-shadow: 0 6px 12px rgba(0,0,0,0.06); 
+    border-color: #cbd5e0;
+    transform: translateY(-2px);
+}
 
-/* 5. Middle Info - Balanced size (13.5px) */
-.ride-middle-row { display: flex; justify-content: space-between; font-size: 13.5px; color: #555; margin-top: 6px; gap: 10px; flex-wrap: wrap; }
+/* Address Grid */
+.card-top-grid {
+    display: grid;
+    grid-template-columns: 1fr 24px 1fr; 
+    gap: 10px;
+    align-items: stretch; 
+    margin-bottom: 16px;
+}
 
-/* Badges & Pills - Kept compact */
-.status-badge { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: bold; }
-.st-pending { background: #fff8e6; color: #d35400; }
-.st-active { background: #e8f8ec; color: #27ae60; }
-.st-past { background: #f0f0f0; color: #777; }
+/* Address Box */
+.address-box {
+    background-color: #eff3f6; 
+    border: 1px solid #dce2e8; 
+    border-radius: 9px;
+    padding: 10px 14px; 
+    font-size: 14px;    
+    font-weight: 600;
+    color: #2d3748;
+    line-height: 1.4;
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center; 
+    text-align: center;  
+}
 
-.info-pill { padding: 3px 8px; border-radius: 999px; background: #eef4ff; color: #2c3e50; font-size: 11px; font-weight: 600; }
+.box-label {
+    font-size: 10.5px; 
+    color: #718096; 
+    font-weight: 700; 
+    text-transform: uppercase; 
+    margin-bottom: 4px;
+}
+
+.address-text {
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 6px;
+    width: 100%;
+}
+.address-text i { font-size: 13px; flex-shrink: 0; } 
+
+.route-arrow {
+    color: #cbd5e0;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Date Row */
+.date-row {
+    display: flex; 
+    justify-content: flex-end; 
+    margin-bottom: 10px;
+}
+.date-badge {
+    font-size: 12.5px; 
+    font-weight: 600; 
+    color: #004b82;            
+    background-color: #e6f0ff; 
+    border: 1px solid #cce0ff; 
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 20px;
+}
+
+/* Middle Row */
+.card-middle {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 14px; border-bottom: 1px solid #edf2f7; margin-bottom: 14px;
+}
+
+/* Driver Info Left Aligned */
+.driver-info {
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    font-size: 14px; 
+    color: #4a5568;
+    text-align: left; 
+}
+
+.driver-text-block {
+    display: flex; 
+    flex-direction: column;
+    align-items: flex-start; 
+    justify-content: center;
+}
+
+.driver-avatar {
+    width: 40px; height: 40px; 
+    background: #edf2f7; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; 
+    color: #718096; 
+    font-size: 18px;
+    flex-shrink: 0; 
+}
+
+/* Buttons */
+.action-buttons { display: flex; gap: 9px; align-items: center; }
+
+.btn-common {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 7px 16px; 
+    border-radius: 50px; font-size: 13px; font-weight: 600;
+    cursor: pointer; text-decoration: none; transition: all 0.2s ease; line-height: 1; border: none;
+}
 
 .btn-chat { 
-    background: #0084ff; color: white; border: none; padding: 5px 14px; 
-    border-radius: 20px; font-size: 12px; cursor: pointer; text-decoration: none; 
-    display: inline-flex; align-items: center; gap: 5px;
+    background: linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%); color: white; 
+    box-shadow: 0 2px 4px rgba(49, 130, 206, 0.2);
 }
-.btn-chat:hover { background: #006bcf; }
+.btn-chat:hover { box-shadow: 0 4px 8px rgba(49, 130, 206, 0.3); transform: translateY(-1px); }
+
+.btn-cancel {
+    background-color: #fff5f5; color: #c53030; border: 1px solid #feb2b2;
+}
+.btn-cancel:hover { background-color: #fee2e2; }
+
+/* [NEW] Rate Button Style (Amber/Gold) */
+.btn-rate {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+    color: white; 
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+.btn-rate:hover { 
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3); 
+    transform: translateY(-1px); 
+}
+/* ------------------------------------- */
+
+/* Bottom Row */
+.card-bottom { display: flex; justify-content: space-between; align-items: center; }
+
+.status-pill {
+    padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.st-pending { background: #fffaf0; color: #dd6b20; border: 1px solid #fbd38d; }
+.st-accepted { background: #f0fff4; color: #38a169; border: 1px solid #9ae6b4; }
+.st-completed { background: #ebf8ff; color: #3182ce; border: 1px solid #90cdf4; }
+.st-cancelled { background: #fff5f5; color: #e53e3e; border: 1px solid #feb2b2; }
+.st-rejected { background: #edf2f7; color: #718096; border: 1px solid #cbd5e0; }
+
+.empty-state {
+    text-align: center; padding: 35px; background: white;
+    border-radius: 14px; border: 1px dashed #cbd5e0; color: #a0aec0; font-size: 14px;
+}
+.empty-state i { font-size: 26px; margin-bottom: 10px; display: block; }
+
+.remark-text {
+    font-size: 12.5px; color: #a0aec0; font-style: italic; 
+    margin-right: auto; margin-left: 15px;
+    max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 </style>
 
 <div class="rides-wrapper">
     <div class="rides-header-title">
         <h1>My Rides</h1>
-        <p>View your upcoming trips and ride status.</p>
+        <p>Manage your upcoming trips and view history.</p>
     </div>
 
-    <h2 class="section-title">Upcoming rides</h2>
-    <div class="ride-card">
+    <div class="section-title">
+        <i class="fa-solid fa-calendar-days"></i> Upcoming Rides
+    </div>
+    
+    <div class="ride-card-container">
         <?php if (empty($upcoming)): ?>
-            <p style="text-align:center; color:#999; font-size:14px; padding:15px;">No upcoming rides.</p>
+            <div class="empty-state">
+                <i class="fa-solid fa-road"></i>
+                No upcoming rides found.
+            </div>
         <?php else: ?>
-            <?php foreach ($upcoming as $row): renderRide($row); endforeach; ?>
+            <?php foreach ($upcoming as $row): renderRideCard($row); endforeach; ?>
         <?php endif; ?>
     </div>
 
-    <h2 class="section-title">Past rides</h2>
-    <div class="ride-card">
+    <div class="section-title">
+        <i class="fa-solid fa-clock-rotate-left"></i> Past History
+    </div>
+
+    <div class="ride-card-container">
         <?php if (empty($past)): ?>
-            <p style="text-align:center; color:#999; font-size:14px; padding:15px;">No past history.</p>
+            <div class="empty-state">
+                <i class="fa-regular fa-folder-open"></i>
+                No ride history available.
+            </div>
         <?php else: ?>
-            <?php foreach ($past as $row): renderRide($row); endforeach; ?>
+            <?php foreach ($past as $row): renderRideCard($row); endforeach; ?>
         <?php endif; ?>
     </div>
 </div>
 
+<script>
+    function confirmCancel(bookingId) {
+        Swal.fire({
+            title: 'Cancel Ride?',
+            text: "Are you sure you want to cancel this booking? This action cannot be undone.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e53e3e',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Yes, cancel it!',
+            cancelButtonText: 'No, keep it',
+            reverseButtons: true 
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('form-cancel-' + bookingId).submit();
+            }
+        })
+    }
+</script>
+
 <?php
-function renderRide($row) {
+function renderRideCard($row) {
     $date = date("d M Y, h:i A", strtotime($row['date_time']));
     $status = strtoupper($row['status']);
     
-    $badge = "status-badge st-pending";
-    if ($status == 'ACCEPTED') $badge = "status-badge st-active";
-    if (in_array($status, ['COMPLETED', 'CANCELLED'])) $badge = "status-badge st-past";
+    // Status Styles
+    $st_class = "st-rejected"; 
+    if ($status == 'PENDING') $st_class = "st-pending";
+    if ($status == 'ACCEPTED') $st_class = "st-accepted";
+    if ($status == 'COMPLETED') $st_class = "st-completed";
+    if ($status == 'CANCELLED') $st_class = "st-cancelled";
 
     $driver = $row['driver_name'] ?: "Pending Driver";
-    
-    // [FIX] Removed $chatKey logic, using booking_id directly
+    $chatKey = $row['driver_id'] . '_' . $row['date_time'];
     ?>
     <div class="ride-item">
         <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
             <div class="ride-route"><?php echo htmlspecialchars($row['pickup_point'] . ' → ' . $row['destination']); ?></div>
             <div class="ride-date"><?php echo $date; ?></div>
         </div>
-        
-        <div class="ride-middle-row">
-            <div style="display:flex; align-items:center; gap:5px;">
-                <i class="fa-solid fa-user-tie"></i> Driver: <b><?php echo htmlspecialchars($driver); ?></b>
+
+        <div class="card-top-grid">
+            <div class="address-box">
+                <div class="box-label">From</div>
+                <div class="address-text">
+                    <i class="fa-solid fa-location-dot" style="color:#e53e3e;"></i>
+                    <?php echo htmlspecialchars($row['pickup_point']); ?>
+                </div>
+            </div>
+            <div class="route-arrow">
+                <i class="fa-solid fa-arrow-right"></i>
+            </div>
+            <div class="address-box">
+                <div class="box-label">To</div>
+                <div class="address-text">
+                    <i class="fa-solid fa-flag-checkered" style="color:#2b6cb0;"></i>
+                    <?php echo htmlspecialchars($row['destination']); ?>
+                </div>
             </div>
             
             <?php if($status == 'ACCEPTED'): ?>
-                <a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-chat">
+                <a href="ride_chat.php?room=<?php echo urlencode($chatKey); ?>" class="btn-chat">
                     <i class="fa-regular fa-comments"></i> Group Chat
                 </a>
             <?php endif; ?>
         </div>
 
-        <?php if(!empty($row['remark'])): ?>
-            <div class="ride-middle-row" style="color:#777; font-style:italic; font-size:12.5px;">
-                Remark: <?php echo htmlspecialchars($row['remark']); ?>
+        <div class="card-middle">
+            <div class="driver-info">
+                <div class="driver-avatar">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+                <div class="driver-text-block">
+                    <span style="font-size:10px; color:#a0aec0; font-weight:700; text-transform:uppercase; line-height:1.2; letter-spacing:0.5px;">Driver</span>
+                    <span style="font-weight:600; font-size:14px; color:#2d3748;"><?php echo htmlspecialchars($driver); ?></span>
+                    <span style="font-size:11px; color:#718096; margin-top:2px;"><?php echo $row['passengers']; ?> Passenger(s)</span>
+                </div>
             </div>
-        <?php endif; ?>
 
-        <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-            <span class="<?php echo $badge; ?>"><?php echo $status; ?></span>
-            <div style="display:flex; gap:8px;">
-                <span class="info-pill"><?php echo $row['passengers']; ?> Pax</span>
-                <span class="info-pill">#<?php echo $row['booking_id']; ?></span>
+            <div class="action-buttons">
+                <?php if($can_chat): ?>
+                    <a href="ride_chat.php?room=<?php echo urlencode($chatKey); ?>" class="btn-common btn-chat">
+                        <i class="fa-regular fa-comments"></i> Chat
+                    </a>
+                <?php endif; ?>
+
+                <?php if($can_cancel): ?>
+                    <form id="form-cancel-<?php echo $row['booking_id']; ?>" method="POST" style="margin:0;">
+                        <input type="hidden" name="cancel_id" value="<?php echo $row['booking_id']; ?>">
+                        <input type="hidden" name="cancel_ride" value="1">
+                        
+                        <button type="button" onclick="confirmCancel(<?php echo $row['booking_id']; ?>)" class="btn-common btn-cancel">
+                            <i class="fa-solid fa-ban"></i> Cancel
+                        </button>
+                    </form>
+                <?php endif; ?>
+
+                <?php if($can_rate): ?>
+                    <a href="passanger_rate.php?booking_id=<?php echo $row['booking_id']; ?>" class="btn-common btn-rate">
+                        <i class="fa-solid fa-star"></i> Rate
+                    </a>
+                <?php endif; ?>
+
             </div>
         </div>
+
+        <div class="card-bottom">
+            <span class="status-pill <?php echo $st_class; ?>">
+                <?php echo $status; ?>
+            </span>
+            
+            <?php if(!empty($row['remark'])): ?>
+                <span class="remark-text">"<?php echo htmlspecialchars($row['remark']); ?>"</span>
+            <?php endif; ?>
+
+            <span style="font-size:11px; color:#cbd5e0;">#<?php echo $row['booking_id']; ?></span>
+        </div>
+
     </div>
     <?php
 }
