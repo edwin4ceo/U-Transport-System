@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $message = trim($_POST['message'] ?? '');
 
     if ($message !== '') {
-        // [IMPORTANT] Keep this as a single line string to prevent extra spaces in the DB
+        // Auto-reply text
         $auto_reply_text = "Thank you for your message. This is an automated reply. Our support team will get back to you within 5-10 minutes. We appreciate your patience.";
 
         if ($current_role === 'driver') {
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Refresh page to show new messages
+    // Refresh page to show new messages and prevent form resubmission
     header("Location: contact_us.php");
     exit;
 }
@@ -64,18 +64,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // --- 3. FETCH CHAT HISTORY ---
 $messages = [];
 
+// Determine SQL based on role
 if ($current_role === 'driver') {
-    $sql = "SELECT id, driver_id, sender_type, message, created_at 
+    $sql = "SELECT id, driver_id, sender_type, message, created_at, is_read 
             FROM driver_support_messages 
             WHERE driver_id = ? 
             ORDER BY created_at ASC, id ASC";
 } else {
-    $sql = "SELECT id, student_id, sender_type, message, created_at 
+    $sql = "SELECT id, student_id, sender_type, message, created_at, is_read 
             FROM student_support_messages 
             WHERE student_id = ? 
             ORDER BY created_at ASC, id ASC";
 }
 
+// Execute Query
 $stmt = $conn->prepare($sql);
 if ($stmt) {
     if ($current_role === 'driver') {
@@ -93,6 +95,34 @@ if ($stmt) {
     }
     $stmt->close();
 }
+
+// --- 4. MARK AS READ (DIRECTLY HERE) ---
+// This runs immediately after fetching messages.
+// The messages array above still contains the old "is_read = 0" status so we can show "NEW" tags.
+// But the database is updated right now, so next time it will be clean.
+
+if ($current_role === 'driver') {
+    // Update Driver Messages
+    $update_sql = "UPDATE driver_support_messages SET is_read = 1 WHERE driver_id = ? AND sender_type = 'admin' AND is_read = 0";
+    $stmt_upd = $conn->prepare($update_sql);
+    if ($stmt_upd) {
+        $stmt_upd->bind_param("i", $current_id);
+        $stmt_upd->execute();
+        $stmt_upd->close();
+    }
+} 
+// Optionally add student logic here if needed
+/*
+elseif ($current_role === 'student') {
+    $update_sql = "UPDATE student_support_messages SET is_read = 1 WHERE student_id = ? AND sender_type = 'admin' AND is_read = 0";
+    $stmt_upd = $conn->prepare($update_sql);
+    if ($stmt_upd) {
+        $stmt_upd->bind_param("s", $current_id);
+        $stmt_upd->execute();
+        $stmt_upd->close();
+    }
+}
+*/
 
 include "header.php";
 ?>
@@ -174,6 +204,11 @@ include "header.php";
     border-bottom-left-radius: 2px;
 }
 
+.chat-bubble.unread {
+    border: 2px solid #ff6b6b;
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+}
+
 .chat-meta {
     font-size: 10px;
     margin-top: 4px;
@@ -223,8 +258,8 @@ include "header.php";
     width: 90px;
     border: none;
     border-radius: 20px;
-    padding: 10px 14px;
-    font-size: 13px;
+    padding: 10px 14px; 
+    font-size: 13px; 
     font-weight: 600;
     cursor: pointer;
     background: #004b82;
@@ -235,6 +270,17 @@ include "header.php";
 
 .chat-input-wrapper button:hover {
     background: #003660;
+}
+
+/* Unread badge */
+.unread-badge {
+    background: #ff6b6b;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 5px;
+    font-weight: bold;
 }
 </style>
 
@@ -258,18 +304,27 @@ include "header.php";
                     <?php
                         $sender = $msg['sender_type'];
                         $isMe = ($sender === 'driver' || $sender === 'student');
+                        // Use the data we fetched initially. 
+                        // Even though DB is updated now, $msg['is_read'] still has the old value (0) for this page load.
+                        $isUnread = ($sender === 'admin' && $msg['is_read'] == 0);
                         
                         $rowClass = $isMe ? 'me' : 'support';
                         $bubbleClass = $isMe ? 'me' : 'support';
+                        if ($isUnread) {
+                            $bubbleClass .= ' unread';
+                        }
                         $displayName = $isMe ? "You" : "Support Team";
                         $timeLabel = date("d M Y, h:i A", strtotime($msg['created_at']));
                     ?>
 
                     <div class="chat-message-row <?= $rowClass ?>">
-                        <div class="chat-bubble <?= $bubbleClass ?>">
+                        <div class="chat-bubble <?= $bubbleClass ?>" id="message-<?= $msg['id'] ?>">
                             <?= nl2br(htmlspecialchars($msg['message'])) ?>
                             <span class="chat-meta">
                                 <?= $displayName ?> • <?= $timeLabel ?>
+                                <?php if ($isUnread): ?>
+                                    <span class="unread-badge">NEW</span>
+                                <?php endif; ?>
                             </span>
                         </div>
                     </div>
@@ -292,10 +347,13 @@ include "header.php";
 </div>
 
 <script>
-var container = document.getElementById("chatMessages");
-if (container) {
-    container.scrollTop = container.scrollHeight;
-}
+// Simple auto-scroll to the bottom of the chat
+document.addEventListener('DOMContentLoaded', function() {
+    var container = document.getElementById("chatMessages");
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
+});
 </script>
 
 <?php include "footer.php"; ?>

@@ -17,6 +17,13 @@ if (empty($room_ref)) {
     die("Invalid Chat Room");
 }
 
+if ($is_driver) {
+    $update_stmt = $conn->prepare("UPDATE ride_chat_messages SET is_read = 1 WHERE booking_ref = ? AND sender_type = 'student'");
+    $update_stmt->bind_param("s", $room_ref);
+    $update_stmt->execute();
+    $update_stmt->close();
+}
+
 // Identify Sender
 if ($is_student) {
     $sender_id = $_SESSION['student_id'];
