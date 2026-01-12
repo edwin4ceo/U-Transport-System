@@ -2,6 +2,9 @@
 session_start();
 require_once 'db_connect.php';
 
+// INCLUDE THE NEW HEADER (This replaces all the HTML/CSS/Menu code)
+require_once 'admin_header.php';
+
 // --- 1. SECURITY CHECK ---
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: admin_login.php");
@@ -62,18 +65,6 @@ $result = mysqli_query($conn, $sql);
     </style>
 </head>
 <body>
-
-    <header style="background-color: #2c3e50; color: white; padding: 15px 0;">
-        <div class="container">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h1><i class="fa-solid fa-user-check"></i> Verify Drivers</h1>
-                <nav>
-                    <a href="admin_dashboard.php" style="color: white; margin-right: 15px;">Dashboard</a>
-                    <a href="admin_login.php" style="color: #e74c3c;">Logout</a>
-                </nav>
-            </div>
-        </div>
-    </header>
 
     <main>
         <div class="container">

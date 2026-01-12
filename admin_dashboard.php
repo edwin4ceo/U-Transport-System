@@ -2,6 +2,9 @@
 session_start();
 require_once 'db_connect.php';
 
+// INCLUDE THE NEW HEADER (This replaces all the HTML/CSS/Menu code)
+require_once 'admin_header.php';
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: admin_login.php");
     exit();
@@ -68,26 +71,6 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
     </style>
 </head>
 <body>
-
-    <header class="admin-header">
-        <div class="container">
-            <div class="logo-section"><h1><i class="fa-solid fa-building-user"></i> FMD Staff</h1></div>
-            <nav class="admin-nav">
-                <ul>
-                    <li><a href="admin_dashboard.php" style="color:white;">Home</a></li>
-                    <li><a href="verify_drivers.php">Approve</a></li>
-                    <li><a href="view_bookings.php">Bookings</a></li>
-                    
-                    <li><a href="admin_vehicle_requests.php">Vehicles</a></li>
-                    <li><a href="manage_reviews.php">Reviews</a></li>
-
-                    <li class="nav-divider"></li>
-                    <li><a href="admin_profile.php"><i class="fa-solid fa-user-circle"></i> Profile</a></li>
-                    <li><a href="admin_login.php" style="color:#e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
 
     <main class="dashboard-container">
         
