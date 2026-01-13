@@ -11,7 +11,7 @@ if (!isset($_SESSION['driver_id'])) {
 
 $driver_id = $_SESSION['driver_id'];
 
-// --- 初始数据检索 ---
+// --- Initial Data Retrieval ---
 $full_name = "Driver";
 $email = $vehicle_model = $plate_number = $vehicle_type = $vehicle_color = $seat_count = "";
 
@@ -39,7 +39,7 @@ if ($stmt) {
     $stmt->close();
 }
 
-// 获取初始计数用于 JS 对比
+// Fetch initial counts for JavaScript comparison
 $pending_bookings_count = 0;
 $res = $conn->query("SELECT COUNT(*) as total FROM bookings WHERE driver_id = $driver_id AND status = 'Pending'");
 if ($row = $res->fetch_assoc()) $pending_bookings_count = $row['total'];
@@ -135,10 +135,12 @@ include "header.php";
                     <div class="tile-icon"><i class="fa-solid fa-route"></i></div>
                     <div class="tile-title">Today's Trips</div>
                 </a>
-                <a href="javascript:void(0)" onclick="editVehiclePopup()" class="action-tile">
-                    <div class="tile-icon"><i class="fa-solid fa-car"></i></div>
-                    <div class="tile-title">Vehicle Settings</div>
+
+                <a href="driver_payment_settings.php" class="action-tile">
+                    <div class="tile-icon"><i class="fa-solid fa-qrcode"></i></div>
+                    <div class="tile-title">Payment Settings</div>
                 </a>
+
                 <a href="driver_ratings.php" class="action-tile">
                     <div class="tile-icon"><i class="fa-solid fa-star"></i></div>
                     <div class="tile-title">My Ratings</div>
@@ -151,17 +153,17 @@ include "header.php";
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// 1. Initialize stats from PHP
+// 1. Initialize stats from PHP for comparison
 let currentStats = {
     bookings: <?php echo (int)$pending_bookings_count; ?>,
     chats: <?php echo (int)$chat_unread_count; ?>,
     admin: <?php echo (int)$admin_unread_count; ?>
 };
 
-// 2. Setup Notification Sound (Gentle chime)
+// 2. Setup Notification Sound
 const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-// 3. Configure Toast
+// 3. Configure Toast Notification Style
 const Toast = Swal.mixin({
     toast: true,
     position: 'top-end',
@@ -174,20 +176,20 @@ const Toast = Swal.mixin({
     }
 });
 
-// Helper to play sound safely
+// Helper function to play sound safely
 function playSound() {
     notificationSound.play().catch(error => {
-        console.log('Audio play failed (user has not interacted with document yet):', error);
+        console.log('Audio play failed (waiting for user interaction):', error);
     });
 }
 
-// 4. Check Function
+// 4. Background Check Function for new notifications
 function checkNotifications() {
     fetch('driver_check_notifications.php')
         .then(res => res.json())
         .then(data => {
             
-            // --- CHECK BOOKINGS ---
+            // --- Check for New Bookings ---
             if (data.pending_bookings > currentStats.bookings) {
                 playSound();
                 Toast.fire({ 
@@ -196,14 +198,14 @@ function checkNotifications() {
                     text: 'You have a new pending booking.' 
                 });
             }
-            // Update Badge Logic
+            // Update Booking Badge UI
             if (data.pending_bookings > 0) {
                 document.getElementById('badge-booking').innerHTML = `<div class='tile-badge'>${data.pending_bookings} Pending</div>`;
             } else {
                 document.getElementById('badge-booking').innerHTML = '';
             }
 
-            // --- CHECK STUDENT CHATS ---
+            // --- Check for New Student Chats ---
             if (data.chat_unread > currentStats.chats) {
                 playSound();
                 Toast.fire({ 
@@ -212,14 +214,14 @@ function checkNotifications() {
                     text: 'A student sent you a message.' 
                 });
             }
-            // Update Badge Logic
+            // Update Chat Badge UI
             if (data.chat_unread > 0) {
                 document.getElementById('badge-chat').innerHTML = `<div class='tile-badge'>${data.chat_unread} New</div>`;
             } else {
                 document.getElementById('badge-chat').innerHTML = '';
             }
 
-            // --- CHECK ADMIN REPLIES ---
+            // --- Check for Admin Replies ---
             if (data.admin_unread > currentStats.admin) {
                 playSound();
                 Toast.fire({ 
@@ -228,14 +230,14 @@ function checkNotifications() {
                     text: 'Support team has replied to you.' 
                 });
             }
-            // Update Badge Logic
+            // Update Admin Badge UI
             if (data.admin_unread > 0) {
                 document.getElementById('badge-admin').innerHTML = `<div class='tile-badge'>Reply</div>`;
             } else {
                 document.getElementById('badge-admin').innerHTML = '';
             }
 
-            // Update local stats to match server
+            // Sync local stats with server data
             currentStats = {
                 bookings: data.pending_bookings,
                 chats: data.chat_unread,
@@ -245,10 +247,10 @@ function checkNotifications() {
         .catch(err => console.error('Notification Error:', err));
 }
 
-// Check every 5 seconds for faster response
+// Check for updates every 5 seconds
 setInterval(checkNotifications, 5000);
 
-// Popup Functions
+// Popup Functions for Profile and Vehicle management
 function editProfilePopup() {
     Swal.fire({ title: 'Edit Profile', text: 'Update password and details.', icon: 'info', showCancelButton: true, confirmButtonColor: '#004b82' })
     .then((result) => { if (result.isConfirmed) window.location.href = 'driver_profile.php'; });
