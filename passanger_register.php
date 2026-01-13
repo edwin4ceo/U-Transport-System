@@ -16,6 +16,8 @@ use PHPMailer\PHPMailer\Exception;
 $name = "";
 $student_id = "";
 $email = "";
+$password = ""; 
+$confirm_password = ""; 
 $gender_selection = ""; 
 
 if(isset($_POST['register'])){
@@ -24,7 +26,7 @@ if(isset($_POST['register'])){
     $email            = $_POST['email'];
     $password         = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
-    $gender           = $_POST['gender']; 
+    $gender_selection = $_POST['gender']; 
 
     if (empty($student_id)) {
         $_SESSION['swal_title'] = "Invalid Student ID";
@@ -44,7 +46,7 @@ if(isset($_POST['register'])){
     }
     elseif ($password !== $confirm_password) {
         $_SESSION['swal_title'] = "Password Mismatch";
-        $_SESSION['swal_msg'] = "Passwords do not match. Please try again.";
+        $_SESSION['swal_msg'] = "Please ensure your confirm password is entered correctly."; 
         $_SESSION['swal_type'] = "error";
     }
     elseif (!str_contains($email, "@student.mmu.edu.my")) {
@@ -72,7 +74,7 @@ if(isset($_POST['register'])){
                 'student_id' => $student_id,
                 'email' => $email,
                 'password_hash' => $password_hash,
-                'gender' => $gender,
+                'gender' => $gender_selection,
                 'otp_code' => $otp_code,
                 'otp_timestamp' => time(),
                 'resend_count' => 0 
@@ -109,46 +111,23 @@ if(isset($_POST['register'])){
 
 <style>
     footer { width: 100%; margin-top: auto; }
-    
-    /* MODIFIED: Font-size removed to match Login/Forgot pages and use browser default */
-    input[type="text"], 
-    input[type="email"], 
-    input[type="password"], 
-    select {
-        width: 100%; 
-        padding: 10px; 
-        margin-bottom: 11px; 
-        border: 1px solid #ccc; 
-        border-radius: 4px; 
-        box-sizing: border-box; 
-        font-weight: normal; /* Ensure font is not bold */
+    input[type="text"], input[type="email"], input[type="password"], select {
+        width: 100%; padding: 10px; margin-bottom: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; 
     }
-
     label { display: block; margin-bottom: 4px; font-weight: 500; color: #333; }
-    
     .password-wrapper { position: relative; width: 100%; margin-bottom: 11px; }
     .password-wrapper input { width: 100%; padding-right: 40px; margin-bottom: 0 !important; }
-    
-    .toggle-password { 
-        position: absolute; 
-        right: 15px; 
-        top: 50%; 
-        transform: translateY(-50%); 
-        cursor: pointer; 
-        color: #7f8c8d; 
-        z-index: 10; 
-        font-size: 1.1rem; 
-    }
-    
+    .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #7f8c8d; z-index: 10; font-size: 1.1rem; }
     .footer-link-container { margin-top: 15px; text-align: center; }
     .footer-link-container p { font-size: 15px; color: #555; margin: 0; }
-    .footer-link-container a { text-decoration: none; color: #005A9C; font-weight: 500; }
+    .footer-link-container a { text-decoration: none; color: #005A9C; font-weight: 500; font-size: 15px; }
+    .footer-link-container a:hover { text-decoration: underline; }
 </style>
 
 <h2>Register (MMU Student)</h2>
 <p style="margin-bottom: 15px;">Create your account to request and search for rides.</p>
 
-<form action="" method="POST">
+<form action="" method="POST" onkeydown="return event.key != 'Enter';">
     <label>Full Name</label>
     <input type="text" name="name" id="nameInput" value="<?php echo htmlspecialchars($name); ?>" required placeholder="ENTER YOUR FULL NAME" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
 
@@ -160,20 +139,20 @@ if(isset($_POST['register'])){
 
     <label>Gender</label>
     <select name="gender" required>
-        <option value="" disabled selected hidden>Select Gender</option>
-        <option value="Male" <?php if($gender_selection == 'Male') echo 'selected'; ?>>Male</option>
-        <option value="Female" <?php if($gender_selection == 'Female') echo 'selected'; ?>>Female</option>
+        <option value="" disabled <?php echo ($gender_selection == "") ? 'selected' : ''; ?> hidden>Select Gender</option>
+        <option value="Male" <?php echo ($gender_selection == "Male") ? 'selected' : ''; ?>>Male</option>
+        <option value="Female" <?php echo ($gender_selection == "Female") ? 'selected' : ''; ?>>Female</option>
     </select>
 
     <label>Password</label>
     <div class="password-wrapper">
-        <input type="password" name="password" id="passwordInput" required placeholder="Min 6 characters" minlength="6">
+        <input type="password" name="password" id="passwordInput" value="<?php echo htmlspecialchars($password); ?>" required placeholder="Min 6 characters" minlength="6">
         <i class="fa-solid fa-eye-slash toggle-password" id="eyeIcon"></i>
     </div>
 
     <label>Confirm Password</label>
     <div class="password-wrapper">
-        <input type="password" name="confirm_password" id="confirmPasswordInput" required placeholder="Re-enter your password">
+        <input type="password" name="confirm_password" id="confirmPasswordInput" value="<?php echo htmlspecialchars($confirm_password); ?>" required placeholder="Re-enter your password">
         <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconConfirm"></i>
     </div>
 
@@ -185,6 +164,19 @@ if(isset($_POST['register'])){
 </div>
 
 <script>
+    // Prevent Enter key and show SweetAlert in English
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && event.target.tagName !== 'BUTTON') {
+            event.preventDefault();
+            Swal.fire({
+                icon: 'info',
+                title: 'Action Required',
+                text: 'Please click the Register button to submit your application.',
+                confirmButtonColor: '#005A9C'
+            });
+        }
+    });
+
     const studentIdInput = document.getElementById('studentIDInput');
     const emailInput = document.getElementById('emailInput');
     studentIdInput.addEventListener('input', function() {
@@ -192,6 +184,7 @@ if(isset($_POST['register'])){
         if (id.length > 0) { emailInput.value = id + "@student.mmu.edu.my"; }
         else { emailInput.value = ""; }
     });
+
     function setupPasswordToggle(inputId, iconId) {
         const input = document.getElementById(inputId);
         const icon = document.getElementById(iconId);
