@@ -211,7 +211,7 @@ include "header.php";
 
 <div class="rides-wrapper">
     <div class="rides-header">
-        <h1>My Assignments</h1>
+        <h1>My Rides</h1>
         <p>Manage your active trips and view history.</p>
     </div>
 
