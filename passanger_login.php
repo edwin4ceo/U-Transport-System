@@ -59,19 +59,40 @@ if(isset($_POST['login'])){
         z-index: 1000;
     }
 
+    /* Standard Input Styling - Synced with Register Page */
+    input[type="email"], input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 11px; /* 11px spacing */
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box; 
+        font-size: 14px;
+        font-weight: normal;
+    }
+
+    label { 
+        display: block; 
+        margin-bottom: 4px; 
+        font-weight: 500; /* Medium weight */
+        color: #333; 
+    }
+
     /* Password Eye Icon Style */
     .password-wrapper {
         position: relative;
         width: 100%;
+        margin-bottom: 11px;
     }
     .password-wrapper input {
         width: 100%;
-        padding-right: 40px; /* Space for the icon */
+        padding-right: 40px; 
+        margin-bottom: 0 !important;
     }
     .toggle-password {
         position: absolute;
         right: 15px;
-        top: 35%; /* Center vertically */
+        top: 50%; 
         transform: translateY(-50%);
         cursor: pointer;
         color: #7f8c8d;
@@ -80,6 +101,26 @@ if(isset($_POST['login'])){
         user-select: none; 
     }
     .toggle-password:hover { color: #005A9C; }
+
+    /* Footer Links Styling - Made "Nicely" */
+    .footer-link-container {
+        margin-top: 15px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .footer-link-container a {
+        font-size: 15px; /* Matches Register page size */
+        color: #005A9C; /* Professional Blue */
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s;
+    }
+
+    .footer-link-container a:hover {
+        text-decoration: underline;
+        color: #003d6b;
+    }
 </style>
 
 <h2>Login</h2>
@@ -98,7 +139,7 @@ if(isset($_POST['login'])){
     <button type="submit" name="login">Login</button>
 </form>
 
-<div style="margin-top: 15px; display: flex; justify-content: space-between;">
+<div class="footer-link-container">
     <a href="passanger_register.php">Create an Account</a>
     <a href="passanger_forgot_password.php">Forgot Password?</a>
 </div>
@@ -111,10 +152,8 @@ if(isset($_POST['login'])){
         const val = this.value;
         const requiredDomain = "@student.mmu.edu.my";
 
-        // Only check if field is not empty
         if (val.length > 0) {
             if (!val.endsWith(requiredDomain)) {
-                // Show SweetAlert Warning
                 Swal.fire({
                     icon: 'warning',
                     title: 'Invalid Email Format',
@@ -125,28 +164,24 @@ if(isset($_POST['login'])){
         }
     });
 
-    // 2. Password Toggle Function (Press and Hold)
+    // 2. Password Toggle Function
     const passwordInput = document.getElementById('passwordInput');
     const eyeIcon = document.getElementById('eyeIcon');
 
     function showPassword() {
         passwordInput.type = 'text';
-        eyeIcon.classList.remove('fa-eye-slash');
-        eyeIcon.classList.add('fa-eye');
+        eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
     }
 
     function hidePassword() {
         passwordInput.type = 'password';
-        eyeIcon.classList.remove('fa-eye');
-        eyeIcon.classList.add('fa-eye-slash');
+        eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
     }
 
-    // Mouse Events
     eyeIcon.addEventListener('mousedown', showPassword);
     eyeIcon.addEventListener('mouseup', hidePassword);
     eyeIcon.addEventListener('mouseleave', hidePassword);
 
-    // Touch Events (Mobile)
     eyeIcon.addEventListener('touchstart', function(e) {
         e.preventDefault();
         showPassword();
