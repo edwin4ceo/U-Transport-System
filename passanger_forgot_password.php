@@ -18,41 +18,38 @@ if(isset($_SESSION['student_id'])){
 
 if(isset($_POST['reset_password'])){
     $student_id = $_POST['student_id'];
-    $email = $_POST['email']; // Auto-filled
+    $email = $_POST['email']; 
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
 
-    // 1. Validation: Check MMU Domain
     if (!str_contains($email, "@student.mmu.edu.my")) {
         $_SESSION['swal_title'] = "Invalid Email Domain";
         $_SESSION['swal_msg'] = "Please confirm if you entered the correct Student ID.";
         $_SESSION['swal_type'] = "error";
     }
-    // 2. Validation: Check if passwords match
     elseif($new_password !== $confirm_password){
         $_SESSION['swal_title'] = "Password Mismatch";
         $_SESSION['swal_msg'] = "New passwords do not match. Please try again.";
         $_SESSION['swal_type'] = "error";
     }
+    elseif(strlen($new_password) < 6){
+        $_SESSION['swal_title'] = "Weak Password";
+        $_SESSION['swal_msg'] = "Password must be at least 6 characters long.";
+        $_SESSION['swal_type'] = "error";
+    }
     else {
-        // 3. Verify User Identity
         $stmt = $conn->prepare("SELECT * FROM students WHERE email = ? AND student_id = ?");
         $stmt->bind_param("ss", $email, $student_id);
         $stmt->execute();
         $result = $stmt->get_result();
 
         if($result->num_rows === 1){
-            // Identity Verified
             $row = $result->fetch_assoc();
             $name = $row['name']; 
             
-            // Generate OTP
             $otp = rand(1000, 9999);
-            
-            // Hash the NEW password
             $new_password_hash = password_hash($new_password, PASSWORD_BCRYPT);
             
-            // Store Data in Session
             $_SESSION['temp_reset_data'] = [
                 'email' => $email,
                 'name' => $name,
@@ -63,7 +60,6 @@ if(isset($_POST['reset_password'])){
                 'resend_count' => 0
             ];
 
-            // Send OTP Email
             $mail = new PHPMailer(true);
             try {
                 $mail->isSMTP();
@@ -73,31 +69,19 @@ if(isset($_POST['reset_password'])){
                 $mail->Password   = 'oprh ldrk nwvg eyiv';   
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port       = 587;
-
                 $mail->setFrom('soonkit0726@gmail.com', 'U-Transport System');
                 $mail->addAddress($email, $name);
-
                 $mail->isHTML(true);
                 $mail->Subject = 'Reset Password Verification Code';
-                $mail->Body    = "
-                    <h3>Hello $name,</h3>
-                    <p>You have requested to reset your password.</p>
-                    <p>Here is your verification code:</p>
-                    <h2 style='color: #004b82; letter-spacing: 5px;'>$otp</h2>
-                    <p>This code will expire in 10 minutes.</p>
-                ";
-                
+                $mail->Body    = "<h3>Hello $name,</h3><p>Your verification code is: <b>$otp</b></p>";
                 $mail->send();
-                
                 header("Location: verify_reset_otp.php");
                 exit();
-
             } catch (Exception $e) {
                 $_SESSION['swal_title'] = "Email Error";
                 $_SESSION['swal_msg'] = "Mailer Error: {$mail->ErrorInfo}";
                 $_SESSION['swal_type'] = "error";
             }
-
         } else {
             $_SESSION['swal_title'] = "Verification Failed";
             $_SESSION['swal_msg'] = "The Student ID provided does not match our records.";
@@ -110,56 +94,50 @@ if(isset($_POST['reset_password'])){
 <?php include "header.php"; ?>
 
 <style>
-    /* Standard Input Styling */
     input[type="email"], input[type="text"], input[type="password"] {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 15px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-sizing: border-box; 
+        width: 100%; padding: 10px; margin-bottom: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px;
     }
+    label { display: block; margin-bottom: 4px; font-weight: 500; color: #333; }
+    
+    .password-wrapper { position: relative; width: 100%; margin-bottom: 11px; }
+    .password-wrapper input { margin-bottom: 0 !important; padding-right: 40px; }
+    .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #7f8c8d; z-index: 10; font-size: 1.1rem; }
 
-    /* Password Eye Icon Style */
-    .password-wrapper {
-        position: relative;
-        width: 100%;
+    /* 完全同步 Register 页面的容器样式 */
+    .footer-link-container {
+        margin-top: 15px;
+        text-align: center;
     }
-    .password-wrapper input {
-        margin-bottom: 15px; 
-        padding-right: 40px; 
+    .footer-link-container p {
+        font-size: 15px; /* 强制设为 15px */
+        color: #555;
+        margin: 0;
     }
-    .toggle-password {
-        position: absolute;
-        right: 15px;
-        top: 35%; 
-        transform: translateY(-50%);
-        cursor: pointer;
-        color: #7f8c8d;
-        z-index: 10;
-        font-size: 1.1rem;
-        user-select: none; 
+    .footer-link-container a {
+        text-decoration: none;
+        color: #005A9C;
+        font-weight: 500;
+        font-size: 15px; /* 链接字号也强制 15px */
     }
-    .toggle-password:hover { color: #005A9C; }
+    .footer-link-container a:hover {
+        text-decoration: underline;
+    }
 </style>
 
 <h2>Reset Password</h2>
-
 <p style="margin-bottom: 5px;">Enter your Student ID and new password.</p>
-<p style="color: red; font-size: 13px; margin-top: 0; font-weight: 500;">
-    * You will need to verify your email in the next step.
-</p>
+<p style="color: red; font-size: 13px; margin-top: 0; font-weight: 500;">* You will need to verify your email in the next step.</p>
+
 <form action="" method="POST">
-    
     <label>Student ID</label>
-    <input type="text" name="student_id" id="studentIDInput" required placeholder="e.g. 1234567890" maxlength="10">
+    <input type="text" name="student_id" id="studentIDInput" required placeholder="e.g. 1234567890">
 
     <label>MMU Email</label>
     <input type="email" name="email" id="emailInput" required placeholder="ID@student.mmu.edu.my" readonly style="background-color: #f9f9f9; cursor: not-allowed;">
 
     <label>New Password</label>
     <div class="password-wrapper">
-        <input type="password" name="new_password" id="newPass" required placeholder="Create new password">
+        <input type="password" name="new_password" id="newPass" required placeholder="Min 6 characters" minlength="6">
         <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconNew"></i>
     </div>
 
@@ -172,49 +150,29 @@ if(isset($_POST['reset_password'])){
     <button type="submit" name="reset_password" style="font-size: 15px;">Verify Email to Complete Reset Password</button>
 </form>
 
-<div style="margin-top: 15px; text-align: center;">
-    <a href="passanger_login.php" style="color: #666; text-decoration: none;">&larr; Back to Login</a>
+<div class="footer-link-container">
+    <p><a href="passanger_login.php">← Back to Login</a></p>
 </div>
 
 <script>
     const studentIdInput = document.getElementById('studentIDInput');
     const emailInput = document.getElementById('emailInput');
 
-    // Auto-fill Email from Student ID
     studentIdInput.addEventListener('input', function() {
         const id = this.value;
-        if (id.length > 0) {
-            emailInput.value = id + "@student.mmu.edu.my";
-        } else {
-            emailInput.value = "";
-        }
+        if (id.length > 0) { emailInput.value = id + "@student.mmu.edu.my"; }
+        else { emailInput.value = ""; }
     });
 
-    // Password Toggle Function
     function setupPasswordToggle(inputId, iconId) {
         const input = document.getElementById(inputId);
         const icon = document.getElementById(iconId);
-
-        function show() {
-            input.type = 'text';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-
-        function hide() {
-            input.type = 'password';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        }
-
+        function show() { input.type = 'text'; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
+        function hide() { input.type = 'password'; icon.classList.replace('fa-eye', 'fa-eye-slash'); }
         icon.addEventListener('mousedown', show);
         icon.addEventListener('mouseup', hide);
         icon.addEventListener('mouseleave', hide);
-
-        icon.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            show();
-        });
+        icon.addEventListener('touchstart', (e) => { e.preventDefault(); show(); });
         icon.addEventListener('touchend', hide);
     }
 
