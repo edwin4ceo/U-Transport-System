@@ -15,18 +15,19 @@ $error_msg = "";
 
 // 2. Handle Form Submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    
+
     // --- CASE A: Update Personal Info ---
     if (isset($_POST['btn_update_profile'])) {
-        $phone = trim($_POST['phone']); 
+        // NOTE: phone will come from hidden input (#phone_full) as FULL format: +60xxxxxxxxx
+        $phone = trim($_POST['phone'] ?? '');
         $bio   = $_POST['bio'] ?? '';
-        
-        // [UPDATED] We ONLY get Expiry Date now (License Number is read-only)
-        $license_exp = $_POST['license_expiry'];
 
-        // Validation: Malaysia Phone (+60)
+        // We ONLY get Expiry Date now (License Number is read-only)
+        $license_exp = $_POST['license_expiry'] ?? '';
+
+        // Validation: Malaysia Mobile (+60) => +601 + (8 or 9 digits)
         if (!preg_match("/^\+601[0-9]{8,9}$/", $phone)) {
-            $error_msg = "Invalid phone format! Must start with '+60' followed by mobile digits.";
+            $error_msg = "Invalid phone format! Must start with '+60' followed by Malaysia mobile digits.";
         } else {
             // Upload Logic
             $target_dir = "uploads/";
@@ -35,18 +36,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Profile Image
             if (!empty($_FILES['profile_image']['name'])) {
                 $fileName = time() . "_p_" . basename($_FILES['profile_image']['name']);
-                if(move_uploaded_file($_FILES['profile_image']['tmp_name'], $target_dir . $fileName)){
+                if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $target_dir . $fileName)) {
                     $stmt = $conn->prepare("UPDATE drivers SET profile_image = ? WHERE driver_id = ?");
                     $stmt->bind_param("si", $fileName, $driver_id);
                     $stmt->execute();
                 }
             }
-            
-            // [UPDATED] SQL Query - REMOVED license_number from update
-            // We only update phone, bio, and license_expiry
+
+            // Update phone, bio, license_expiry
             $stmt = $conn->prepare("UPDATE drivers SET phone = ?, bio = ?, license_expiry = ? WHERE driver_id = ?");
             $stmt->bind_param("sssi", $phone, $bio, $license_exp, $driver_id);
-            
+
             if ($stmt->execute()) {
                 $success_msg = "Profile updated successfully!";
             } else {
@@ -57,15 +57,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- CASE B: Change Password ---
     if (isset($_POST['btn_change_pass'])) {
-        $current_pass = $_POST['current_pass'];
-        $new_pass     = $_POST['new_pass'];
-        $confirm_pass = $_POST['confirm_pass'];
+        $current_pass = $_POST['current_pass'] ?? '';
+        $new_pass     = $_POST['new_pass'] ?? '';
+        $confirm_pass = $_POST['confirm_pass'] ?? '';
 
         $stmt = $conn->prepare("SELECT password FROM drivers WHERE driver_id = ?");
         $stmt->bind_param("i", $driver_id);
         $stmt->execute();
         $res = $stmt->get_result()->fetch_assoc();
-        $db_pass = $res['password'];
+        $db_pass = $res['password'] ?? '';
 
         if (!password_verify($current_pass, $db_pass)) {
             $error_msg = "Current password is incorrect.";
@@ -104,14 +104,14 @@ $user = $stmt->get_result()->fetch_assoc();
 // 4. Completeness
 $total_fields = 8;
 $filled = 0;
-if(!empty($user['full_name'])) $filled++;
-if(!empty($user['email'])) $filled++;
-if(!empty($user['phone'])) $filled++;
-if(!empty($user['bio'])) $filled++;
-if(!empty($user['vehicle_model'])) $filled++;
-if(!empty($user['profile_image'])) $filled++;
-if(!empty($user['license_number'])) $filled++;
-if(!empty($user['license_expiry'])) $filled++;
+if (!empty($user['full_name'])) $filled++;
+if (!empty($user['email'])) $filled++;
+if (!empty($user['phone'])) $filled++;
+if (!empty($user['bio'])) $filled++;
+if (!empty($user['vehicle_model'])) $filled++;
+if (!empty($user['profile_image'])) $filled++;
+if (!empty($user['license_number'])) $filled++;
+if (!empty($user['license_expiry'])) $filled++;
 
 $percentage = round(($filled / $total_fields) * 100);
 $bar_color = ($percentage == 100) ? '#48bb78' : '#ecc94b';
@@ -191,10 +191,10 @@ textarea.form-input { resize: vertical; min-height: 100px; font-family: inherit;
 
 <div class="profile-wrapper">
 
-    <?php if($success_msg): ?>
+    <?php if ($success_msg): ?>
         <script>Swal.fire('Saved', '<?php echo $success_msg; ?>', 'success');</script>
     <?php endif; ?>
-    <?php if($error_msg): ?>
+    <?php if ($error_msg): ?>
         <script>Swal.fire('Error', '<?php echo $error_msg; ?>', 'error');</script>
     <?php endif; ?>
 
@@ -216,7 +216,11 @@ textarea.form-input { resize: vertical; min-height: 100px; font-family: inherit;
 
         <div class="avatar-section">
             <label for="profile_input" class="avatar-wrapper">
-                <?php $p_img = !empty($user['profile_image']) ? "uploads/".$user['profile_image'] : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"; ?>
+                <?php
+                $p_img = !empty($user['profile_image'])
+                    ? "uploads/" . $user['profile_image']
+                    : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+                ?>
                 <img src="<?php echo $p_img; ?>" id="avatar_preview">
                 <div class="avatar-overlay">CHANGE</div>
             </label>
@@ -230,27 +234,44 @@ textarea.form-input { resize: vertical; min-height: 100px; font-family: inherit;
                 <label class="form-label">Full Name</label>
                 <input type="text" class="form-input" value="<?php echo htmlspecialchars($user['full_name'] ?? ''); ?>" readonly title="Contact Admin to change">
             </div>
+
+            <!-- PHONE: keep +60 fixed -->
             <div class="form-group">
-                <label class="form-label">Phone Number (+60)</label>
-                <input type="text" name="phone" class="form-input" 
-                       value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" 
-                       required placeholder="e.g. +60123456789"
-                       onchange="validatePhone(this)">
+                <label class="form-label">Phone Number</label>
+
+                <div style="display:flex; gap:10px;">
+                    <input type="text" class="form-input"
+                           value="+60"
+                           readonly
+                           style="max-width:90px; text-align:center;">
+
+                    <input type="text"
+                           id="phone_input"
+                           class="form-input"
+                           placeholder="123456789"
+                           value="<?php echo !empty($user['phone']) ? htmlspecialchars(substr($user['phone'], 3)) : ''; ?>"
+                           required
+                           inputmode="numeric"
+                           oninput="formatPhone()">
+                </div>
+
+                <!-- Submitted to backend -->
+                <input type="hidden" name="phone" id="phone_full">
             </div>
         </div>
 
         <div class="grid-2">
             <div class="form-group">
                 <label class="form-label">Driving License Number</label>
-                <input type="text" class="form-input" 
-                       value="<?php echo htmlspecialchars($user['license_number'] ?? ''); ?>" 
+                <input type="text" class="form-input"
+                       value="<?php echo htmlspecialchars($user['license_number'] ?? ''); ?>"
                        readonly title="Contact Admin to change">
             </div>
-            
+
             <div class="form-group">
                 <label class="form-label">License Expiry Date</label>
-                <input type="date" name="license_expiry" class="form-input" 
-                       value="<?php echo htmlspecialchars($user['license_expiry'] ?? ''); ?>" 
+                <input type="date" name="license_expiry" class="form-input"
+                       value="<?php echo htmlspecialchars($user['license_expiry'] ?? ''); ?>"
                        required>
             </div>
         </div>
@@ -265,7 +286,7 @@ textarea.form-input { resize: vertical; min-height: 100px; font-family: inherit;
                 <div class="vehicle-readonly-title"><i class="fa-solid fa-car"></i> Assigned Vehicle</div>
                 <a href="driver_vehicle.php" style="font-size:12px; color:#3182ce; font-weight:600; text-decoration:none;">Change Vehicle <i class="fa-solid fa-arrow-right"></i></a>
             </div>
-            
+
             <div class="grid-2" style="margin-bottom:0;">
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Vehicle Model</label>
@@ -283,7 +304,7 @@ textarea.form-input { resize: vertical; min-height: 100px; font-family: inherit;
 
     <form class="form-card" method="POST">
         <div class="card-title" style="color:#e53e3e;">Security Settings</div>
-        
+
         <div class="form-group">
             <label class="form-label">Current Password</label>
             <input type="password" name="current_pass" class="form-input" required>
@@ -317,20 +338,54 @@ function previewImage(input, imgId) {
     }
 }
 
-function validatePhone(input) {
-    var val = input.value.trim();
+// Build the FULL phone value for backend submission: +60xxxxxxxxx
+function formatPhone() {
+    var input  = document.getElementById('phone_input');
+    var hidden = document.getElementById('phone_full');
+    if (!input || !hidden) return;
+
+    // Keep digits only
+    input.value = (input.value || '').replace(/\D/g, '');
+
+    // Submit as full +60 format
+    hidden.value = '+60' + input.value;
+}
+
+// Validate full phone before submit (same rule as PHP)
+function validatePhoneFull() {
+    var hidden = document.getElementById('phone_full');
+    var val = (hidden && hidden.value) ? hidden.value.trim() : '';
     var regex = /^\+601[0-9]{8,9}$/;
 
     if (val.length > 0 && !regex.test(val)) {
         Swal.fire({
             icon: 'warning',
             title: 'Invalid Phone Format',
-            text: 'Please use the format +601xxxxxxxxx (e.g. +60123456789).',
+            text: 'Please enter a valid Malaysia mobile number (e.g. +60123456789).',
             confirmButtonColor: '#004b82'
         });
-        input.value = '';
+        document.getElementById('phone_input').value = '';
+        hidden.value = '';
+        return false;
     }
+    return true;
 }
+
+// Initialize hidden phone on load
+document.addEventListener("DOMContentLoaded", function() {
+    formatPhone();
+});
+
+// Validate only when saving profile
+document.addEventListener("submit", function(e) {
+    var submitter = e.submitter;
+    if (submitter && submitter.name === "btn_update_profile") {
+        formatPhone();
+        if (!validatePhoneFull()) {
+            e.preventDefault();
+        }
+    }
+});
 </script>
 
 <?php include "footer.php"; ?>
