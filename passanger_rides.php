@@ -342,13 +342,23 @@ include "header.php";
         })
     }
 
-    function showRatedAlert() {
+    // UPDATED FUNCTION: Accepts bookingId and shows an Edit button
+    function showRatedAlert(bookingId) {
         Swal.fire({
-            title: 'Already Rated',
-            text: 'You have already submitted a review for this ride. Thank you!',
+            title: 'Review Submitted',
+            text: 'You have already rated this driver. Would you like to edit your review?',
             icon: 'info',
-            confirmButtonColor: '#718096',
-            confirmButtonText: 'Close'
+            showCancelButton: true,
+            confirmButtonColor: '#3182ce', // Blue color for the Edit button
+            cancelButtonColor: '#718096',  // Grey color for the Close button
+            confirmButtonText: '<i class="fa-solid fa-pen-to-square"></i> Edit Review',
+            cancelButtonText: 'Close',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Redirect to rating page with the booking ID so it can load the existing review
+                window.location.href = 'passanger_rate.php?booking_id=' + bookingId;
+            }
         });
     }
 </script>
@@ -367,7 +377,6 @@ function renderRideCard($row) {
     if ($status == 'CANCELLED') $st_class = "st-cancelled";
 
     $driver = $row['driver_name'] ?: "Waiting for Driver";
-    // $chatKey = $row['driver_id'] . '_' . $row['date_time']; // 这一行已经不需要了
     
     // --- [LOGIC] Define action permissions ---
     // NOTE: User can cancel if status is PENDING, ACCEPTED, or APPROVED
@@ -446,7 +455,7 @@ function renderRideCard($row) {
                             <i class="fa-solid fa-star"></i> Rate
                         </a>
                     <?php else: ?>
-                        <button onclick="showRatedAlert()" class="btn-common btn-rated">
+                        <button onclick="showRatedAlert(<?php echo $row['booking_id']; ?>)" class="btn-common btn-rated">
                             <i class="fa-solid fa-check"></i> Rated
                         </button>
                     <?php endif; ?>
