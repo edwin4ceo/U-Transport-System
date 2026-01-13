@@ -30,9 +30,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             // Check password
             if ($password === $user['password']) {
+                // Login Success
                 $_SESSION['user_id'] = $user['id']; 
                 $_SESSION['full_name'] = $user['full_name'];
-                $_SESSION['role'] = 'admin';
+                
+                // [FIX] USE THE ROLE FROM THE DATABASE
+                $_SESSION['role'] = $user['role']; 
+                $_SESSION['email'] = $user['email'];
                 
                 header("Location: admin_dashboard.php");
                 exit();
@@ -107,6 +111,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         <div style="text-align: center; margin-top: 15px; display: flex; justify-content: space-between; font-size: 0.85rem;">
             <a href="admin_forgot_password.php" style="color: #3498db;">Forgot Password?</a>
+        </div>
     </div>
 
     <?php if(!empty($alert_script)): ?>

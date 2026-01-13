@@ -1,5 +1,6 @@
 <?php
 session_start();
+
 require_once 'db_connect.php';
 
 // INCLUDE THE NEW HEADER (This replaces all the HTML/CSS/Menu code)
