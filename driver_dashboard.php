@@ -58,7 +58,6 @@ include "header.php";
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-    /* ... 这里保留你之前的所有 <style> 代码 ... */
     :root { --primary: #004b82; --bg-color: #f8f9fc; --card-bg: #ffffff; --text-main: #1a202c; --text-light: #718096; }
     body { background: var(--bg-color); font-family: 'Inter', sans-serif; }
     .dashboard-wrapper { max-width: 1200px; width: 95%; margin: 0 auto 40px; padding: 20px; box-sizing: border-box; }
@@ -109,19 +108,25 @@ include "header.php";
             <div class="quick-actions-grid">
                 
                 <a href="driver_booking_requests.php" class="action-tile">
-                    <div id="badge-booking"><?php if ($pending_bookings_count > 0) echo "<div class='tile-badge'>$pending_bookings_count Pending</div>"; ?></div>
+                    <div id="badge-booking">
+                        <?php if ($pending_bookings_count > 0) echo "<div class='tile-badge'>$pending_bookings_count Pending</div>"; ?>
+                    </div>
                     <div class="tile-icon"><i class="fa-solid fa-clipboard-list"></i></div>
                     <div class="tile-title">Booking Requests</div>
                 </a>
 
                 <a href="driver_forum.php" class="action-tile">
-                    <div id="badge-chat"><?php if ($chat_unread_count > 0) echo "<div class='tile-badge'>$chat_unread_count New</div>"; ?></div>
+                    <div id="badge-chat">
+                        <?php if ($chat_unread_count > 0) echo "<div class='tile-badge'>$chat_unread_count New</div>"; ?>
+                    </div>
                     <div class="tile-icon"><i class="fa-solid fa-comments"></i></div>
                     <div class="tile-title">Student Chat</div>
                 </a>
 
                 <a href="contact_us.php" class="action-tile">
-                    <div id="badge-admin"><?php if ($admin_unread_count > 0) echo "<div class='tile-badge'>Reply</div>"; ?></div>
+                    <div id="badge-admin">
+                        <?php if ($admin_unread_count > 0) echo "<div class='tile-badge'>Reply</div>"; ?>
+                    </div>
                     <div class="tile-icon"><i class="fa-solid fa-headset"></i></div>
                     <div class="tile-title">Admin Support</div>
                 </a>
@@ -146,63 +151,104 @@ include "header.php";
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// 1. 初始化当前数值
+// 1. Initialize stats from PHP
 let currentStats = {
     bookings: <?php echo (int)$pending_bookings_count; ?>,
     chats: <?php echo (int)$chat_unread_count; ?>,
     admin: <?php echo (int)$admin_unread_count; ?>
 };
 
-// 2. 配置弹出通知样式
+// 2. Setup Notification Sound (Gentle chime)
+const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+
+// 3. Configure Toast
 const Toast = Swal.mixin({
     toast: true,
     position: 'top-end',
     showConfirmButton: false,
-    timer: 4000,
-    timerProgressBar: true
+    timer: 5000,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer)
+        toast.addEventListener('mouseleave', Swal.resumeTimer)
+    }
 });
 
-// 3. 检查新通知的函数
+// Helper to play sound safely
+function playSound() {
+    notificationSound.play().catch(error => {
+        console.log('Audio play failed (user has not interacted with document yet):', error);
+    });
+}
+
+// 4. Check Function
 function checkNotifications() {
     fetch('driver_check_notifications.php')
         .then(res => res.json())
         .then(data => {
-            // 检查新订单
+            
+            // --- CHECK BOOKINGS ---
             if (data.pending_bookings > currentStats.bookings) {
-                Toast.fire({ icon: 'info', title: 'New Booking Request!', text: 'You have a new ride request.' });
+                playSound();
+                Toast.fire({ 
+                    icon: 'info', 
+                    title: 'New Ride Request!', 
+                    text: 'You have a new pending booking.' 
+                });
+            }
+            // Update Badge Logic
+            if (data.pending_bookings > 0) {
                 document.getElementById('badge-booking').innerHTML = `<div class='tile-badge'>${data.pending_bookings} Pending</div>`;
-            } else if (data.pending_bookings == 0) {
+            } else {
                 document.getElementById('badge-booking').innerHTML = '';
             }
 
-            // 检查新聊天
+            // --- CHECK STUDENT CHATS ---
             if (data.chat_unread > currentStats.chats) {
-                Toast.fire({ icon: 'success', title: 'New Message', text: 'A student sent you a message.' });
+                playSound();
+                Toast.fire({ 
+                    icon: 'success', 
+                    title: 'New Message', 
+                    text: 'A student sent you a message.' 
+                });
+            }
+            // Update Badge Logic
+            if (data.chat_unread > 0) {
                 document.getElementById('badge-chat').innerHTML = `<div class='tile-badge'>${data.chat_unread} New</div>`;
-            } else if (data.chat_unread == 0) {
+            } else {
                 document.getElementById('badge-chat').innerHTML = '';
             }
 
-            // 检查管理员回复
+            // --- CHECK ADMIN REPLIES ---
             if (data.admin_unread > currentStats.admin) {
-                Toast.fire({ icon: 'warning', title: 'Admin Support', text: 'You have a new reply from admin.' });
+                playSound();
+                Toast.fire({ 
+                    icon: 'warning', 
+                    title: 'Admin Reply', 
+                    text: 'Support team has replied to you.' 
+                });
+            }
+            // Update Badge Logic
+            if (data.admin_unread > 0) {
                 document.getElementById('badge-admin').innerHTML = `<div class='tile-badge'>Reply</div>`;
+            } else {
+                document.getElementById('badge-admin').innerHTML = '';
             }
 
-            // 更新当前状态
+            // Update local stats to match server
             currentStats = {
                 bookings: data.pending_bookings,
                 chats: data.chat_unread,
                 admin: data.admin_unread
             };
         })
-        .catch(err => console.log('Notification Check Error:', err));
+        .catch(err => console.error('Notification Error:', err));
 }
 
-// 4. 每 10 秒自动检查一次
-setInterval(checkNotifications, 10000);
+// Check every 5 seconds for faster response
+setInterval(checkNotifications, 5000);
 
-// 原有的弹窗函数
+// Popup Functions
 function editProfilePopup() {
     Swal.fire({ title: 'Edit Profile', text: 'Update password and details.', icon: 'info', showCancelButton: true, confirmButtonColor: '#004b82' })
     .then((result) => { if (result.isConfirmed) window.location.href = 'driver_profile.php'; });
