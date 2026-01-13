@@ -6,6 +6,12 @@ require_once 'db_connect.php';
 // 2. INCLUDE THE NEW HEADER (This replaces the HTML <head> and <header>)
 require_once 'admin_header.php'; 
 
+// Allow both Admin AND Staff
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'staff'])) {
+    header("Location: admin_login.php");
+    exit();
+}
+
 // 3. The rest of your PHP logic
 $search = "";
 $sql = "SELECT * FROM drivers WHERE verification_status = 'verified'";

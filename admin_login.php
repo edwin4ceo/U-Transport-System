@@ -107,8 +107,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         <div style="text-align: center; margin-top: 15px; display: flex; justify-content: space-between; font-size: 0.85rem;">
             <a href="admin_forgot_password.php" style="color: #3498db;">Forgot Password?</a>
-            <a href="admin_register.php" style="color: #7f8c8d;"><i class="fa-solid fa-user-plus"></i> Add Staff</a>
-        </div>
     </div>
 
     <?php if(!empty($alert_script)): ?>
