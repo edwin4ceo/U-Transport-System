@@ -12,7 +12,8 @@ if(isset($_POST['cancel_ride'])){
     $cancel_id = $_POST['cancel_id'];
     
     // Update status to 'Cancelled'
-    $stmt = $conn->prepare("UPDATE bookings SET status = 'Cancelled' WHERE id = ? AND student_id = ?");
+    // NOTE: Added compatibility to cancel rides that are Pending, Accepted, or Approved
+    $stmt = $conn->prepare("UPDATE bookings SET status = 'Cancelled' WHERE id = ? AND student_id = ? AND (status = 'PENDING' OR status = 'ACCEPTED' OR status = 'APPROVED')");
     $stmt->bind_param("is", $cancel_id, $student_id);
     
     if($stmt->execute()){
@@ -26,6 +27,7 @@ if(isset($_POST['cancel_ride'])){
 
 // 2. Fetch Rides (Join with Reviews to check 'Rated' status)
 $rides = [];
+// NOTE: Selecting booking data, driver info, vehicle info, and review status
 $stmt = $conn->prepare("
     SELECT 
         b.id AS booking_id,
@@ -61,6 +63,7 @@ $past = [];
 
 foreach ($rides as $r) {
     $st = strtoupper(trim($r['status'] ?? ''));
+    // NOTE: 'APPROVED' is treated as an active ride (Upcoming), same as 'ACCEPTED'
     if (in_array($st, ['COMPLETED', 'CANCELLED', 'REJECTED'])) {
         $past[] = $r;
     } else {
@@ -74,7 +77,7 @@ include "header.php";
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-/* --- STYLES --- */
+/* --- STYLES (Kept exactly as provided) --- */
 
 .rides-wrapper { 
     min-height: calc(100vh - 160px); 
@@ -355,22 +358,27 @@ function renderRideCard($row) {
     $date = date("d M Y, h:i A", strtotime($row['date_time']));
     $status = strtoupper($row['status']);
     
-    // Status Styles
+    // Status Styles Mapping
+    // NOTE: Treating 'APPROVED' exactly like 'ACCEPTED' for display purposes
     $st_class = "st-rejected"; 
     if ($status == 'PENDING') $st_class = "st-pending";
-    if ($status == 'ACCEPTED') $st_class = "st-accepted";
+    if ($status == 'ACCEPTED' || $status == 'APPROVED') $st_class = "st-accepted";
     if ($status == 'COMPLETED') $st_class = "st-completed";
     if ($status == 'CANCELLED') $st_class = "st-cancelled";
 
     $driver = $row['driver_name'] ?: "Waiting for Driver";
     // $chatKey = $row['driver_id'] . '_' . $row['date_time']; // 这一行已经不需要了
     
-    // --- [IMPORTANT FIX] Explicitly define variables to avoid warnings ---
-    $can_cancel = in_array($status, ['PENDING', 'ACCEPTED']);
-    $can_chat = ($status == 'ACCEPTED');
+    // --- [LOGIC] Define action permissions ---
+    // NOTE: User can cancel if status is PENDING, ACCEPTED, or APPROVED
+    $can_cancel = in_array($status, ['PENDING', 'ACCEPTED', 'APPROVED']);
+    
+    // NOTE: Chat is enabled if the driver has accepted (ACCEPTED or APPROVED)
+    $can_chat = in_array($status, ['ACCEPTED', 'APPROVED']);
+    
     $is_completed = ($status == 'COMPLETED');
     $has_rated = !empty($row['has_rated']); 
-    // -------------------------------------------------------------------
+    // -----------------------------------------
 
     ?>
     
@@ -449,7 +457,10 @@ function renderRideCard($row) {
 
         <div class="card-bottom">
             <span class="status-pill <?php echo $st_class; ?>">
-                <?php echo $status; ?>
+                <?php 
+                    // Display 'ACCEPTED' even if DB says 'APPROVED'
+                    echo ($status == 'APPROVED') ? 'ACCEPTED' : $status; 
+                ?>
             </span>
             
             <?php if(!empty($row['remark'])): ?>
