@@ -79,7 +79,7 @@ if(isset($_POST['request'])){
     $destination  = $state . ", " . $region . " - " . $address;
     
     $datetime     = $_POST['date_time'];
-    $passengers   = (int)$_POST['passengers']; // Force integer
+    $passengers   = (int)$_POST['passengers']; 
     $vehicle_type = $_POST['vehicle_type']; 
     
     $pickup       = $_POST['pickup']; 
@@ -88,22 +88,15 @@ if(isset($_POST['request'])){
     
     $target_driver = isset($_POST['target_driver_id']) ? $_POST['target_driver_id'] : NULL;
 
-    // ======================================================
-    // STRICT SERVER-SIDE VALIDATION (FIX FOR 5 PAX ISSUE)
-    // ======================================================
-    
-    // Check 1: Empty Fields
+    // Validation
     if(empty($state) || empty($region) || empty($address) || empty($datetime) || empty($pickup) || empty($passengers) || empty($vehicle_type)){
         $swal_type = "warning";
         $swal_message = "Please fill in all required fields.";
     }
-    // Check 2: Join Mode - Seats ran out while filling form
     elseif ($is_join_mode && $passengers > $available_seats) {
         $swal_type = "error";
         $swal_message = "Sorry, seat availability has changed. Only $available_seats seat(s) left.";
     } 
-    // Check 3: LOGIC ENFORCEMENT - Standard Cars cannot take > 4 pax
-    // This stops 'Hatchback' with '5 passengers' from ever entering the database
     elseif ($vehicle_type != 'MPV' && $passengers > 4) {
         $swal_type = "error";
         $swal_message = "Limit Exceeded: " . $vehicle_type . " can only accept max 4 passengers. Please select MPV.";
@@ -129,8 +122,6 @@ if(isset($_POST['request'])){
 include "header.php"; 
 ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <style>
@@ -140,10 +131,84 @@ include "header.php";
     .request-card { background: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 35px; margin-top: 25px; }
     
     label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 700; color: #2d3748; margin-top: 20px; }
+    
     input[type="text"], select { width: 100%; padding: 14px; font-size: 15px; border: 1.5px solid #e2e8f0; border-radius: 12px; transition: all 0.2s; box-sizing: border-box; }
     input:focus, select:focus { border-color: #004b82; outline: none; box-shadow: 0 0 0 3px rgba(0,75,130,0.1); }
     
     input:read-only, select:disabled, .readonly-select { background-color: #f1f5f9; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; pointer-events: none; }
+
+    /* --- DATE PICKER STYLE --- */
+    .date-picker-container { 
+        position: relative; 
+        width: 100%; 
+    }
+    
+    .date-input-field {
+        width: 100%; padding: 14px; font-size: 15px; border: 1.5px solid #e2e8f0; border-radius: 12px; background-color: #fff;
+        display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; box-sizing: border-box;
+    }
+    .date-input-field:hover { border-color: #cbd5e0; }
+    .date-input-field span { color: #718096; font-weight: 500; }
+    .date-input-field.has-value span { color: #2d3748; font-weight: 600; }
+    .date-input-field i { color: #004b82; font-size: 18px; }
+
+    .calendar-popup {
+        display: none; 
+        position: absolute; top: 100%; left: 0; 
+        width: 100%; max-width: 350px;
+        background: #fff; border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        z-index: 1000; margin-top: 10px;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    .calendar-popup.active { display: block; }
+    
+    .calendar-header { background-color: #004b82; color: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .calendar-nav { cursor: pointer; font-size: 18px; padding: 5px 10px; user-select: none; }
+    .current-date { font-size: 16px; font-weight: 700; }
+    
+    .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 10px 15px 5px; text-align: center; color: #888; font-weight: 600; font-size: 13px; }
+    .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 15px; grid-auto-rows: 38px; }
+    
+    .calendar-days div { display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 50%; font-size: 14px; color: #333; margin: 2px; }
+    .calendar-days div:hover { background-color: #f0f0f0; }
+    .calendar-days div.selected { background-color: #004b82 !important; color: #fff !important; font-weight: bold; }
+    .calendar-days div.today { border: 1px solid #004b82; color: #004b82; font-weight: bold; }
+    .calendar-days div.disabled { color: #d0d0d0 !important; pointer-events: none; }
+
+    /* --- Time Picker Styles (Perfectly Aligned) --- */
+    .time-picker-simple {
+        border-top: 1px solid #e2e8f0;
+        padding: 15px;
+        display: flex;
+        justify-content: center;
+        align-items: center; /* Critical for vertical alignment */
+        gap: 8px;
+        background: #f8fafc;
+    }
+    .time-select-simple {
+        padding: 0 10px;
+        height: 40px; /* Fixed height */
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        background: white;
+        font-size: 15px;
+        color: #2d3748;
+        cursor: pointer;
+        outline: none;
+    }
+    .time-separator { 
+        font-weight: 700; 
+        color: #4a5568; 
+        font-size: 20px; 
+        height: 40px; /* Same height as inputs */
+        display: flex; 
+        align-items: center; /* Center text vertically in the box */
+        justify-content: center;
+        transform: translateY(-10px); /* VISUAL TWEAK: Lift colon slightly */
+    }
+    /* ----------------------------------------------- */
 
     .join-box { background-color: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 12px; margin-bottom: 25px; font-size: 14px; line-height: 1.6; }
 
@@ -203,7 +268,57 @@ include "header.php";
             <?php endif; ?>
 
             <label>Date & Time</label>
-            <input type="text" name="date_time" id="datetimepicker" value="<?php echo $pre_date; ?>" <?php echo $is_join_mode ? 'readonly' : 'required'; ?> placeholder="When do you want to leave?">
+            
+            <div class="date-picker-container">
+                <div class="date-input-field <?php echo !empty($pre_date) ? 'has-value' : ''; ?>" id="customDateTrigger" onclick="toggleCalendar()">
+                    <span id="selected-date-text">
+                        <?php 
+                            if(!empty($pre_date)) { echo date("d M Y, h:i A", strtotime($pre_date)); } 
+                            else { echo "Select Date & Time"; }
+                        ?>
+                    </span>
+                    <i class="fa-solid fa-calendar-days"></i>
+                </div>
+                
+                <input type="hidden" name="date_time" id="real_datetime_input" value="<?php echo $pre_date; ?>">
+
+                <div class="calendar-popup" id="calendar-popup">
+                    <div class="calendar-header">
+                        <span class="calendar-nav" onclick="changeMonth(-1)">&#10094;</span>
+                        <div class="current-date">
+                            <span id="month-display">Month</span> <span id="year-display">Year</span>
+                        </div>
+                        <span class="calendar-nav" onclick="changeMonth(1)">&#10095;</span>
+                    </div>
+                    
+                    <div class="calendar-weekdays">
+                        <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+                    </div>
+                    <div class="calendar-days" id="calendar-days"></div>
+
+                    <div class="time-picker-simple">
+                        <select id="hourSelect" class="time-select-simple" onchange="updateDateTimeValue()">
+                            <?php for($i=1; $i<=12; $i++) echo "<option value='$i'>".str_pad($i,2,"0",STR_PAD_LEFT)."</option>"; ?>
+                        </select>
+                        
+                        <div class="time-separator">:</div>
+                        
+                        <select id="minuteSelect" class="time-select-simple" onchange="updateDateTimeValue()">
+                            <?php 
+                            for($m=0; $m<60; $m+=5) {
+                                $minLabel = str_pad($m, 2, "0", STR_PAD_LEFT);
+                                echo "<option value='$minLabel'>$minLabel</option>";
+                            } 
+                            ?>
+                        </select>
+                        
+                        <select id="ampmSelect" class="time-select-simple" onchange="updateDateTimeValue()">
+                            <option value="AM">AM</option>
+                            <option value="PM" selected>PM</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
 
             <label><i class="fa-solid fa-location-dot"></i> Pick-up Point (MMU Campus)</label>
             <select name="pickup" id="pickupPoint" required>
@@ -303,26 +418,183 @@ include "header.php";
 </div>
 
 <script>
-    flatpickr("#datetimepicker", { enableTime: true, dateFormat: "Y-m-d H:i", minDate: "today" });
+    // --- CUSTOM CALENDAR SCRIPT ---
+    const dateText = document.getElementById("selected-date-text");
+    const dateInput = document.getElementById("real_datetime_input");
+    const calendarPopup = document.getElementById("calendar-popup");
+    const daysContainer = document.getElementById("calendar-days");
+    const monthDisplay = document.getElementById("month-display");
+    const yearDisplay = document.getElementById("year-display");
+    
+    // Initial State Check (e.g., Joining a ride)
+    let initialVal = dateInput.value;
+    let currDate = new Date();
+    let selectedDay = null;
 
+    // Time defaults
+    let selHour = "12";
+    let selMin = "00";
+    let selAmPm = "PM";
+
+    // If there is an existing date value, parse it
+    if(initialVal) {
+        let d = new Date(initialVal);
+        if(!isNaN(d.getTime())) {
+            currDate = d;
+            selectedDay = d.getDate();
+            
+            // Extract Time
+            let h = d.getHours();
+            let m = d.getMinutes();
+            selAmPm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            h = h ? h : 12; 
+            selHour = h;
+            
+            // Round manual input to nearest 5 for display, or just display exact
+            // Here we just set exact for logic, but dropdown will select nearest if exact exists
+            selMin = m < 10 ? '0'+m : m;
+        }
+    }
+    
+    // Set Time Pickers
+    document.getElementById('hourSelect').value = selHour;
+    
+    // Ensure minute exists in our 5-min steps, else fallback to 00
+    let minSelect = document.getElementById('minuteSelect');
+    let found = false;
+    for(let i=0; i<minSelect.options.length; i++){
+        if(minSelect.options[i].value == selMin){
+            minSelect.selectedIndex = i;
+            found = true;
+            break;
+        }
+    }
+    if(!found) minSelect.value = "00";
+
+    document.getElementById('ampmSelect').value = selAmPm;
+
+    let currMonth = currDate.getMonth();
+    let currYear = currDate.getFullYear();
+    let todayDate = new Date(); todayDate.setHours(0,0,0,0);
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const isJoinMode = <?php echo $is_join_mode ? 'true' : 'false'; ?>;
+
+    function renderCalendar() {
+        let firstDay = new Date(currYear, currMonth, 1).getDay(); 
+        let lastDate = new Date(currYear, currMonth + 1, 0).getDate();
+        
+        daysContainer.innerHTML = "";
+        monthDisplay.innerText = months[currMonth];
+        yearDisplay.innerText = currYear;
+
+        // Blank days
+        for (let i = 0; i < firstDay; i++) {
+            const div = document.createElement("div");
+            daysContainer.appendChild(div);
+        }
+
+        // Days
+        for (let i = 1; i <= lastDate; i++) {
+            const div = document.createElement("div");
+            div.innerText = i;
+            let checkDate = new Date(currYear, currMonth, i);
+            checkDate.setHours(0,0,0,0); 
+
+            if (checkDate < todayDate) {
+                div.classList.add("disabled"); 
+            } else {
+                if (i === new Date().getDate() && currMonth === new Date().getMonth() && currYear === new Date().getFullYear()) div.classList.add("today");
+                if (selectedDay && i === selectedDay && currMonth === currDate.getMonth() && currYear === currDate.getFullYear()) div.classList.add("selected");
+                
+                if(!isJoinMode) {
+                    div.onclick = (e) => { 
+                        e.stopPropagation(); 
+                        selectDay(i); 
+                    };
+                }
+            }
+            daysContainer.appendChild(div);
+        }
+    }
+
+    function selectDay(day) {
+        selectedDay = day;
+        currDate = new Date(currYear, currMonth, day);
+        renderCalendar();
+        updateDateTimeValue();
+    }
+
+    function changeMonth(dir) {
+        event.stopPropagation();
+        if(isJoinMode) return;
+        currMonth += dir;
+        if (currMonth < 0) { currMonth = 11; currYear--; } 
+        else if (currMonth > 11) { currMonth = 0; currYear++; }
+        renderCalendar();
+    }
+
+    function updateDateTimeValue() {
+        if (!selectedDay) return;
+
+        const h = document.getElementById('hourSelect').value;
+        const m = document.getElementById('minuteSelect').value;
+        const ap = document.getElementById('ampmSelect').value;
+
+        // Display
+        const monthShort = months[currMonth].substring(0,3);
+        const display = `${selectedDay} ${monthShort} ${currYear}, ${String(h).padStart(2,'0')}:${m} ${ap}`;
+        dateText.innerText = display;
+        dateText.style.color = "#2d3748";
+        document.getElementById("customDateTrigger").classList.add("has-value");
+
+        // Real Value (24h format for SQL)
+        let h24 = parseInt(h);
+        if (ap === "PM" && h24 < 12) h24 += 12;
+        if (ap === "AM" && h24 === 12) h24 = 0;
+        
+        let mm = String(currMonth + 1).padStart(2, '0');
+        let dd = String(selectedDay).padStart(2, '0');
+        let hh = String(h24).padStart(2, '0');
+
+        dateInput.value = `${currYear}-${mm}-${dd} ${hh}:${m}`;
+    }
+
+    function toggleCalendar() {
+        if(isJoinMode) return;
+        event.stopPropagation();
+        calendarPopup.classList.toggle("active");
+        if(calendarPopup.classList.contains("active")) renderCalendar();
+    }
+
+    document.addEventListener('click', function(e) {
+        const wrap = document.querySelector('.date-picker-container');
+        if (wrap && !wrap.contains(e.target)) calendarPopup.classList.remove('active');
+    });
+
+    window.onload = function() {
+        renderCalendar();
+        if(initialVal) updateDateTimeValue();
+        if(stateSel.value) updateRegions(stateSel.value);
+    };
+
+    // --- FARE & REGION LOGIC ---
     const regions = {
         "Johor": ["Johor Bahru", "Skudai", "Muar", "Batu Pahat", "Kluang", "Segamat", "Kulai", "Tangkak", "Pagoh"],
         "Melaka": ["Melaka City", "Ayer Keroh", "Alor Gajah", "Bukit Beruang", "Klebang"],
         "Kuala Lumpur/Selangor": ["Kuala Lumpur", "Cyberjaya", "Shah Alam", "Putrajaya", "Petaling Jaya"]
     };
-
     const stateSel = document.getElementById('stateSelect');
     const regionSel = document.getElementById('regionSelect');
     const paxSel = document.getElementById('passengerSelect');
     const vehSel = document.getElementById('vehicleSelect');
     const stdCars = document.querySelectorAll('.std-car');
 
-    function updateRegions(stateValue) {
+    function updateRegions(val) {
         regionSel.innerHTML = '<option value="" disabled selected hidden>Select region</option>';
-        
-        if (stateValue && regions[stateValue]) {
+        if (val && regions[val]) {
             regionSel.disabled = false;
-            regions[stateValue].forEach(city => {
+            regions[val].forEach(city => {
                 const opt = document.createElement('option');
                 opt.value = city; opt.innerText = city; regionSel.appendChild(opt);
             });
@@ -330,16 +602,7 @@ include "header.php";
         updatePrice();
     }
 
-    stateSel.addEventListener('change', function() {
-        updateRegions(this.value);
-    });
-
-    window.addEventListener('DOMContentLoaded', () => {
-        if(stateSel.value) {
-            updateRegions(stateSel.value);
-        }
-        updatePrice();
-    });
+    stateSel.addEventListener('change', function() { updateRegions(this.value); });
 
     paxSel.addEventListener('change', function() {
         if (!vehSel.disabled) {
@@ -359,7 +622,6 @@ include "header.php";
         const state = stateSel.value;
         const pax = parseInt(paxSel.value) || 0;
         const vehicle = vehSel.value;
-        
         let rate = 0;
         if (state === "Melaka") rate = 12.00;
         else if (state === "Kuala Lumpur/Selangor") rate = 60.00;
@@ -380,7 +642,6 @@ include "header.php";
             document.getElementById('fareDetailWrap').style.display = "none";
             document.getElementById('mpvBadge').style.display = "none";
         }
-
         document.getElementById('displayFare').innerText = finalTotal.toFixed(2);
         document.getElementById('hiddenFare').value = finalTotal.toFixed(2);
         if(state) document.getElementById('rateInfo').innerText = "Rate: RM " + rate.toFixed(2) + " / seat";
@@ -388,7 +649,6 @@ include "header.php";
 
     document.getElementById('requestForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
         const fare = document.getElementById('hiddenFare').value;
         const pax = paxSel.value;
         const state = stateSel.value;
@@ -397,6 +657,11 @@ include "header.php";
         const pickup = document.getElementById('pickupPoint').value;
         const vehicle = vehSel.value;
         
+        if(!document.getElementById('real_datetime_input').value) {
+            Swal.fire({ title: 'Date & Time Required', text: 'Please select when you want to leave.', icon: 'warning', confirmButtonColor: '#004b82' });
+            return;
+        }
+
         let rate = (state === "Melaka") ? 12.00 : (state === "Johor" ? 85.00 : 60.00);
         let base = (rate * pax).toFixed(2);
         let extra = (fare - base).toFixed(2);
@@ -405,29 +670,14 @@ include "header.php";
             title: 'Confirm Your Booking?',
             html: `
                 <div style="text-align: left; background: #f8fafc; padding: 20px; border-radius: 15px; font-size: 14px; border: 1px solid #e2e8f0; line-height: 1.6;">
-                    <p style="margin-bottom:12px;">
-                        <i class="fa-solid fa-location-dot" style="color:#004b82; width:20px;"></i> <b>Pick-up:</b><br>
-                        <span style="color: #64748b; margin-left: 24px;">${pickup} (MMU Melaka)</span>
-                    </p>
-                    <p style="margin-bottom:12px;">
-                        <i class="fa-solid fa-map-marker-alt" style="color:#e53e3e; width:20px;"></i> <b>Destination Address:</b><br>
-                        <span style="color: #64748b; margin-left: 24px;">${address}, ${region}, ${state}</span>
-                    </p>
-                    <p style="margin-bottom:12px;">
-                        <i class="fa-solid fa-user-group" style="color:#004b82; width:20px;"></i> <b>Booking Details:</b><br>
-                        <span style="color: #64748b; margin-left: 24px;">${pax} Person(s) - ${vehicle}</span>
-                    </p>
+                    <p style="margin-bottom:12px;"><i class="fa-solid fa-location-dot" style="color:#004b82; width:20px;"></i> <b>Pick-up:</b><br><span style="color: #64748b; margin-left: 24px;">${pickup} (MMU Melaka)</span></p>
+                    <p style="margin-bottom:12px;"><i class="fa-solid fa-map-marker-alt" style="color:#e53e3e; width:20px;"></i> <b>Dest:</b><br><span style="color: #64748b; margin-left: 24px;">${address}, ${region}, ${state}</span></p>
+                    <p style="margin-bottom:12px;"><i class="fa-solid fa-user-group" style="color:#004b82; width:20px;"></i> <b>Details:</b><br><span style="color: #64748b; margin-left: 24px;">${pax} Pax - ${vehicle}</span></p>
                     <hr style="margin:12px 0; border:0; border-top:1px solid #cbd5e1;">
-                    <p><b>Standard Subtotal:</b> RM ${base}</p>
-                    ${vehicle === "MPV" ? `<p style="color:#e53e3e;"><b>MPV Surcharge (25%):</b> + RM ${extra}</p>` : ''}
-                    <p style="font-size: 22px; color: #15803d; margin-top:12px;"><b>Total Fare: RM ${fare}</b></p>
+                    <p style="font-size: 22px; color: #15803d; margin-top:12px;"><b>Total: RM ${fare}</b></p>
                 </div>
             `,
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonColor: '#004b82',
-            confirmButtonText: 'Submit Request',
-            cancelButtonText: 'Cancel'
+            icon: 'info', showCancelButton: true, confirmButtonColor: '#004b82', confirmButtonText: 'Submit Request'
         }).then((res) => { if (res.isConfirmed) e.target.submit(); });
     });
 </script>
