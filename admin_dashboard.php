@@ -75,10 +75,10 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
 
     <main class="dashboard-container">
         
-        <div class="welcome-banner">
-            <h2 style="margin:0;">Welcome back, Admin!</h2>
-            <p style="color:#666; margin-top:5px;">System Overview</p>
-        </div>
+        <div class="welcome-banner" style="background: white; padding: 25px; border-radius: 12px; margin-bottom: 30px; border-left: 5px solid #2c3e50;">
+    <h2 style="margin:0;">Welcome back, <?php echo htmlspecialchars($_SESSION['full_name']); ?>!</h2>
+    <p style="color:#666; margin-top:5px;">System Overview</p>
+</div>
 
         <div class="stats-grid">
             <a href="view_drivers.php" style="text-decoration:none; color:inherit;">

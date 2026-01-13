@@ -1,13 +1,12 @@
 <?php
-// [FIX] START SESSION FIRST so we can check if user is logged in
 session_start(); 
-
 require_once 'db_connect.php';
 
-// --- SECURITY CHECK ---
-// Only a logged-in 'admin' can access this page.
+// --- STRICT SECURITY CHECK ---
+// ONLY 'admin' can access. 'staff' must be blocked.
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header("Location: admin_login.php");
+    // If user is staff, this line sends them away
+    header("Location: admin_dashboard.php"); // Redirect to dashboard instead of login loop
     exit();
 }
 

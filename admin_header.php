@@ -52,8 +52,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <li><a href="reports.php">Reports</a></li>
 
         <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-            <li><a href="admin_register.php" style="color:#f1c40f;">Add Staff</a></li>
-        <?php endif; ?>
+    <li><a href="admin_register.php">Add Staff</a></li>
+<?php endif; ?>
 
         <li class="nav-divider"></li>
         
