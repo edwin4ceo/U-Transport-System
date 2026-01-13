@@ -44,23 +44,25 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <h1><i class="fa-solid fa-building-user"></i> FMD Staff</h1>
         </div>
         <nav class="admin-nav">
-    <ul>
-        <li><a href="admin_dashboard.php">Home</a></li>
-        <li><a href="verify_drivers.php">Approve</a></li>
-        <li><a href="view_bookings.php">Bookings</a></li>
-        <li><a href="manage_reviews.php">Reviews</a></li>
-        <li><a href="reports.php">Reports</a></li>
+            <ul>
+                <li><a href="admin_dashboard.php" class="<?= $current_page == 'admin_dashboard.php' ? 'active' : '' ?>">Home</a></li>
+                <li><a href="verify_drivers.php" class="<?= $current_page == 'verify_drivers.php' ? 'active' : '' ?>">Approve</a></li>
+                <li><a href="view_bookings.php" class="<?= $current_page == 'view_bookings.php' ? 'active' : '' ?>">Bookings</a></li>
+                <li><a href="manage_reviews.php" class="<?= $current_page == 'manage_reviews.php' ? 'active' : '' ?>">Reviews</a></li>
+                <li><a href="reports.php" class="<?= $current_page == 'reports.php' ? 'active' : '' ?>">Reports</a></li>
 
-        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-    <li><a href="admin_register.php">Add Staff</a></li>
-<?php endif; ?>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                    <li><a href="admin_register.php" class="<?= $current_page == 'admin_register.php' ? 'active' : '' ?>" style="color:#f1c40f;">Add Staff</a></li>
+                <?php endif; ?>
 
-        <li class="nav-divider"></li>
-        
-        <li><a href="admin_profile.php">Profile</a></li>
-        <li><a href="admin_login.php">Logout</a></li>
-    </ul>
-</nav>
+                <li class="nav-divider"></li>
+                
+                <li><a href="admin_driver_chat.php" class="<?= $current_page == 'admin_driver_chat.php' ? 'active' : '' ?>"><i class="fa-solid fa-headset"></i></a></li>
+                <li><a href="admin_student_chat.php" class="<?= $current_page == 'admin_student_chat.php' ? 'active' : '' ?>"><i class="fa-solid fa-user-graduate"></i></a></li>
+                <li><a href="admin_profile.php" class="<?= $current_page == 'admin_profile.php' ? 'active' : '' ?>"><i class="fa-solid fa-user-circle"></i> Profile</a></li>
+                <li><a href="admin_login.php" style="color:#e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></a></li>
+            </ul>
+        </nav>
     </div>
 </header>
 
