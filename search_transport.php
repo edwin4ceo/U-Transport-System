@@ -16,6 +16,7 @@ $search_date   = isset($_GET['date']) ? $_GET['date'] : '';
 $current_time = date("Y-m-d H:i:s");
 
 // Search Logic: Find all Approved/Accepted rides
+// Note: This gets the base list of rides that are active
 $sql = "
     SELECT 
         b.driver_id,
@@ -27,7 +28,6 @@ $sql = "
         v.seat_count,
         v.plate_number,
         v.vehicle_model,
-        SUM(b.passengers) as total_occupied,
         GROUP_CONCAT(b.student_id) as passenger_ids
     FROM bookings b
     JOIN drivers d ON b.driver_id = d.driver_id
@@ -56,21 +56,41 @@ $available_rides = [];
 $result = $conn->query($sql);
 
 if ($result) {
+    // Prepare a statement to check TRUE occupancy (Accepted + Pending)
+    // This fixes the issue where Pending seats were not counted in the search view
+    $stmt_real_count = $conn->prepare("SELECT SUM(passengers) as total FROM bookings WHERE driver_id = ? AND date_time = ? AND status IN ('Pending', 'Accepted', 'Approved', 'APPROVED', 'ACCEPTED')");
+
     while ($row = $result->fetch_assoc()) {
         $capacity = isset($row['seat_count']) ? (int)$row['seat_count'] : 4;
-        $occupied = (int)$row['total_occupied'];
-        $remaining = $capacity - $occupied;
+        
+        // --- FIX START: Calculate Real Occupancy (Including Pending) ---
+        $stmt_real_count->bind_param("ss", $row['driver_id'], $row['date_time']);
+        $stmt_real_count->execute();
+        $res_real = $stmt_real_count->get_result();
+        $real_occupied = 0;
+        if ($r = $res_real->fetch_assoc()) {
+            $real_occupied = (int)$r['total'];
+        }
+        // --- FIX END ---
+
+        $remaining = $capacity - $real_occupied;
 
         // Check if current user is already in this ride
         $passengers_in_car = explode(",", $row['passenger_ids']);
         $am_i_joined = in_array($student_id, $passengers_in_car);
 
-        if ($remaining > 0 || $am_i_joined) {
-            $row['remaining_seats'] = ($remaining < 0) ? 0 : $remaining; 
-            $row['is_joined'] = $am_i_joined; 
-            $available_rides[] = $row;
+        // FILTER LOGIC:
+        // If NO seats remaining AND I am NOT joined -> Skip this ride (Don't show it)
+        if ($remaining <= 0 && !$am_i_joined) {
+            continue; 
         }
+
+        // Only add to list if there are seats OR if I'm already in it
+        $row['remaining_seats'] = ($remaining < 0) ? 0 : $remaining; 
+        $row['is_joined'] = $am_i_joined; 
+        $available_rides[] = $row;
     }
+    $stmt_real_count->close();
 }
 
 include "header.php";
@@ -87,7 +107,6 @@ include "header.php";
 .request-card { background: #ffffff; border-radius: 16px; border: 1px solid #e3e6ea; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px 30px; margin-top: 20px; margin-bottom: 30px; }
 
 /* --- FORCED UNIFIED SPACING --- */
-/* Reduced margin-top from 18px to 8px and margin-bottom to 5px */
 .request-card form label { 
     display: block !important; 
     margin-bottom: 5px !important; 
@@ -100,7 +119,6 @@ include "header.php";
     margin-top: 0 !important; 
 }
 
-/* Ensure fillboxes themselves match Request page */
 .request-card form input[type="text"], 
 .request-card form select,
 .request-card form .date-input-field { 
@@ -124,7 +142,7 @@ include "header.php";
     font-size: 16px; 
     font-weight: 600; 
     cursor: pointer; 
-    margin-top: 20px !important; /* Slightly reduced button top margin */
+    margin-top: 20px !important; 
     transition: background 0.2s; 
 }
 .btn-submit:hover { background-color: #003660; }
@@ -260,7 +278,7 @@ include "header.php";
 </div>
 
 <script>
-    // Region and Calendar Logic (Unchanged to keep functionality)
+    // Region and Calendar Logic
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         const state = document.getElementById('stateSelect').value;
         const region = document.getElementById('regionSelect').value;
