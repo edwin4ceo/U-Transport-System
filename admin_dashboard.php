@@ -1,9 +1,8 @@
 <?php
 session_start();
-
 require_once 'db_connect.php';
 
-// INCLUDE THE NEW HEADER (This replaces all the HTML/CSS/Menu code)
+// INCLUDE THE NEW HEADER
 require_once 'admin_header.php';
 
 // Allow both Admin AND Staff
@@ -25,9 +24,12 @@ $total_passengers = mysqli_fetch_assoc($passenger_query)['total'];
 $booking_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM bookings");
 $total_bookings = mysqli_fetch_assoc($booking_query)['total'];
 
-// Count Pending Vehicle Requests (For the badge/alert)
 $veh_req_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM vehicle_change_requests WHERE status = 'pending'");
 $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
+
+// [NEW] Count Staff Members
+$staff_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM admins WHERE role = 'staff'");
+$total_staff = mysqli_fetch_assoc($staff_query)['total'];
 ?>
 
 <!DOCTYPE html>
@@ -39,16 +41,7 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         body { background-color: #f4f6f9; }
-        .admin-header { background-color: #2c3e50; color: white; height: 70px; display: flex; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .admin-header .container { display: flex; justify-content: space-between; align-items: center; width: 95%; margin: 0 auto; }
-        .admin-nav ul { list-style: none; display: flex; gap: 15px; padding: 0; margin: 0; align-items: center; }
-        .admin-nav a { color: #bdc3c7; text-decoration: none; font-weight: 600; transition: 0.3s; font-size: 0.9rem; }
-        .admin-nav a:hover { color: white; }
-        .nav-divider { width: 1px; background: rgba(255,255,255,0.2); height: 25px; margin: 0 5px; }
-        
-        .dashboard-container { margin-top: 30px; width: 90%; margin-left: auto; margin-right: auto; }
         .welcome-banner { background: white; padding: 25px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #2c3e50; }
-        
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
         .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s; }
         .stat-card:hover { transform: translateY(-5px); }
@@ -61,8 +54,8 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
         .bg-green { background: #e8f5e9; color: #4caf50; }
         .bg-purple { background: #f3e5f5; color: #9c27b0; }
         .bg-red { background: #fadbd8; color: #e74c3c; }
+        .bg-gold { background: #fef9e7; color: #f1c40f; }
 
-        /* Action Section Split */
         .actions-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 40px; }
         .action-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .action-box h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
@@ -76,10 +69,10 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
 
     <main class="dashboard-container">
         
-        <div class="welcome-banner" style="background: white; padding: 25px; border-radius: 12px; margin-bottom: 30px; border-left: 5px solid #2c3e50;">
-    <h2 style="margin:0;">Welcome back, <?php echo htmlspecialchars($_SESSION['full_name']); ?>!</h2>
-    <p style="color:#666; margin-top:5px;">System Overview</p>
-</div>
+        <div class="welcome-banner">
+            <h2 style="margin:0;">Welcome back, <?php echo htmlspecialchars($_SESSION['full_name']); ?>!</h2>
+            <p style="color:#666; margin-top:5px;">System Overview</p>
+        </div>
 
         <div class="stats-grid">
             <a href="view_drivers.php" style="text-decoration:none; color:inherit;">
@@ -116,10 +109,18 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
                     <div class="stat-icon bg-green"><i class="fa-solid fa-calendar-check"></i></div>
                 </div>
             </a>
+
+            <?php if($_SESSION['role'] === 'admin'): ?>
+            <a href="manage_staff.php" style="text-decoration:none; color:inherit;">
+                <div class="stat-card">
+                    <div class="stat-info"><h3><?php echo $total_staff; ?></h3><p>Staff Team</p></div>
+                    <div class="stat-icon bg-gold"><i class="fa-solid fa-users-gear"></i></div>
+                </div>
+            </a>
+            <?php endif; ?>
         </div>
 
         <div class="actions-section">
-            
             <div class="action-box">
                 <h3 style="color:#2c3e50;"><i class="fa-solid fa-layer-group"></i> Management</h3>
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
@@ -132,26 +133,14 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
                             <?php endif; ?>
                         </a>
                     </li>
-                    <li>
-                        <a href="verify_drivers.php" style="color:#d35400;">
-                            <i class="fa-solid fa-id-card"></i> Approve New Drivers
-                        </a>
-                    </li>
-                    <li>
-                        <a href="manage_reviews.php" style="color:#f39c12;">
-                            <i class="fa-solid fa-star"></i> Manage Reviews & Ratings
-                        </a>
-                    </li>
-                    <li>
-                        <a href="view_bookings.php" style="color:#27ae60;">
-                            <i class="fa-solid fa-list-check"></i> View All Bookings
-                        </a>
-                    </li>
-                    <li>
-                        <a href="view_passengers.php" style="color:#7f8c8d;">
-                            <i class="fa-solid fa-users-viewfinder"></i> View Passenger List
-                        </a>
-                    </li>
+                    <li><a href="verify_drivers.php" style="color:#d35400;"><i class="fa-solid fa-id-card"></i> Approve New Drivers</a></li>
+                    <li><a href="manage_reviews.php" style="color:#f39c12;"><i class="fa-solid fa-star"></i>View Reviews & Ratings</a></li>
+                    <li><a href="view_bookings.php" style="color:#27ae60;"><i class="fa-solid fa-list-check"></i> View All Bookings</a></li>
+                    <li><a href="view_passengers.php" style="color:#7f8c8d;"><i class="fa-solid fa-users-viewfinder"></i> View Passenger List</a></li>
+                    
+                    <?php if($_SESSION['role'] === 'admin'): ?>
+                        <li><a href="manage_staff.php" style="color:#e67e22;"><i class="fa-solid fa-user-group"></i> Manage Staff Team</a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
 
@@ -159,19 +148,10 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
                 <h3 style="color:#2c3e50;"><i class="fa-solid fa-headset"></i> Support Center</h3>
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
                 <ul class="action-list">
-                    <li>
-                        <a href="admin_driver_chat.php" style="color:#2980b9;">
-                            <i class="fa-solid fa-comments"></i> Driver Support Chat
-                        </a>
-                    </li>
-                    <li>
-                        <a href="admin_student_chat.php" style="color:#8e44ad;">
-                            <i class="fa-solid fa-user-graduate"></i> Student Support Chat
-                        </a>
-                    </li>
+                    <li><a href="admin_driver_chat.php" style="color:#2980b9;"><i class="fa-solid fa-comments"></i> Driver Support Chat</a></li>
+                    <li><a href="admin_student_chat.php" style="color:#8e44ad;"><i class="fa-solid fa-user-graduate"></i> Student Support Chat</a></li>
                 </ul>
             </div>
-
         </div>
 
     </main>
@@ -179,46 +159,22 @@ $total_veh_requests = mysqli_fetch_assoc($veh_req_query)['total'];
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let lastUnreadCount = 0;
-    
-    // Initial Check
     fetch('admin_check_notifications.php').then(r => r.json()).then(d => lastUnreadCount = d.unread_count);
-
-    // Poll every 5 seconds
     setInterval(() => {
         fetch('admin_check_notifications.php')
             .then(response => response.json())
             .then(data => {
                 if (data.unread_count > lastUnreadCount) {
-                    // Play Sound
                     const audio = new Audio('https://proxy.notificationsounds.com/notification-sounds/completed-577/download/file-sounds-1149-completed.mp3'); 
                     audio.play().catch(e => console.log("Audio blocked"));
-                    
-                    // Determine message source
                     let title = 'New Support Message';
-                    let text = 'You have a new unread message.';
                     let link = 'admin_dashboard.php';
-
-                    if (data.driver_unread > 0) {
-                        title = 'Driver Message';
-                        link = 'admin_driver_chat.php';
-                    } else if (data.student_unread > 0) {
-                        title = 'Student Message';
-                        link = 'admin_student_chat.php';
-                    }
-
+                    if (data.driver_unread > 0) { title = 'Driver Message'; link = 'admin_driver_chat.php'; } 
+                    else if (data.student_unread > 0) { title = 'Student Message'; link = 'admin_student_chat.php'; }
                     Swal.fire({
-                        position: 'top-end',
-                        icon: 'info',
-                        title: title,
-                        text: text,
-                        showConfirmButton: true,
-                        confirmButtonText: 'View Chat',
-                        toast: true
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = link;
-                        }
-                    });
+                        position: 'top-end', icon: 'info', title: title, text: 'You have a new unread message.',
+                        showConfirmButton: true, confirmButtonText: 'View Chat', toast: true
+                    }).then((result) => { if (result.isConfirmed) window.location.href = link; });
                 }
                 lastUnreadCount = data.unread_count;
             });
