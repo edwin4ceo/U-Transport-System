@@ -1,12 +1,12 @@
 <?php
-// Start the session to manage user states and messages
+// Start session to manage user login state
 session_start();
 
 // Include database connection and helper functions
 include "db_connect.php";
 include "function.php";
 
-// --- INCLUDE PHPMAILER (From original register logic) ---
+// --- INCLUDE PHPMAILER ---
 require 'PHPMailer/Exception.php';
 require 'PHPMailer/PHPMailer.php';
 require 'PHPMailer/SMTP.php';
@@ -19,14 +19,14 @@ if(isset($_SESSION['student_id'])){
     redirect("passenger_home.php");
 }
 
-// Initialize variables for the forms to prevent "undefined variable" errors
+// Initialize variables to prevent undefined errors
 $reg_name = "";
 $reg_student_id = "";
 $reg_email = "";
 $reg_gender = "";
 
 // ---------------------------------------------------------
-// LOGIC 1: HANDLING REGISTRATION (From passanger_register.php)
+// PHP LOGIC: REGISTER
 // ---------------------------------------------------------
 if(isset($_POST['register'])){
     $reg_name             = strtoupper($_POST['reg_name']); 
@@ -64,7 +64,7 @@ if(isset($_POST['register'])){
         $_SESSION['swal_type'] = "error";
     }
     else {
-        // Check if email already exists
+        // Check for duplicate email
         $check = $conn->query("SELECT * FROM students WHERE email='$reg_email'");
         if($check->num_rows > 0){
             $_SESSION['swal_title'] = "Registration Failed";
@@ -72,10 +72,11 @@ if(isset($_POST['register'])){
             $_SESSION['swal_type'] = "warning";
         } 
         else {
-            // Proceed with OTP generation
+            // Generate OTP & Hash Password
             $otp_code = rand(1000, 9999);
             $password_hash = password_hash($reg_password, PASSWORD_BCRYPT);
 
+            // Store temporary data for verification
             $_SESSION['temp_register_data'] = [
                 'name' => $reg_name, 
                 'student_id' => $reg_student_id,
@@ -104,7 +105,6 @@ if(isset($_POST['register'])){
                 $mail->Body    = "<h3>Hello $reg_name,</h3><p>Your verification code is: <b>$otp_code</b></p>";
                 $mail->send();
                 
-                // Redirect to verification page
                 header("Location: verify_email.php");
                 exit();
             } catch (Exception $e) {
@@ -114,42 +114,34 @@ if(isset($_POST['register'])){
             }
         }
     }
-    // If registration failed, keep the "right-panel-active" class to stay on register slide
-    echo "<script>window.onload = function() { document.getElementById('container').classList.add('right-panel-active'); }</script>";
+    // JS to keep register form active if error occurs
+    echo "<script>window.onload = function() { register(); }</script>";
 }
 
 // ---------------------------------------------------------
-// LOGIC 2: HANDLING LOGIN (From passanger_login.php)
+// PHP LOGIC: LOGIN
 // ---------------------------------------------------------
 if(isset($_POST['login'])){
     $email = $_POST['login_email'];
     $password = $_POST['login_password'];
 
-    // 1. Check if the email exists in the database
     $result = $conn->query("SELECT * FROM students WHERE email='$email'");
 
     if($result->num_rows == 1){
         $row = $result->fetch_assoc();
-
         if(password_verify($password, $row['password'])){
-            // Login Success
             $_SESSION['student_id'] = $row['student_id']; 
             $_SESSION['student_name'] = $row['name'];
-
             alert("Login successful! Redirecting...");
             redirect("passenger_home.php"); 
-        } 
-        else {
-            // Wrong Password
+        } else {
             $_SESSION['swal_title'] = "Incorrect Password";
             $_SESSION['swal_msg'] = "The password you entered is incorrect.";
             $_SESSION['swal_type'] = "error";
         }
-    } 
-    else {
-        // Email Not Found
+    } else {
         $_SESSION['swal_title'] = "Email Not Found";
-        $_SESSION['swal_msg'] = "This email is not registered in our system.";
+        $_SESSION['swal_msg'] = "This email is not registered.";
         $_SESSION['swal_type'] = "warning";
     }
 }
@@ -158,298 +150,287 @@ if(isset($_POST['login'])){
 <?php include "header.php"; ?>
 
 <style>
-    /* Base styles to center the container */
-    body {
-        background: #f6f5f7;
-        font-family: 'Poppins', sans-serif;
+    /* --- 1. HEADER FIX (Keep it visible but transparent container) --- */
+    .content-area {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
 
-    /* Main Container with relative positioning */
-    .container-custom {
-        background-color: #fff;
-        border-radius: 10px;
-        box-shadow: 0 14px 28px rgba(0,0,0,0.25), 
-                    0 10px 10px rgba(0,0,0,0.22);
+    /* --- 2. PAGE WRAPPER --- */
+    .wrapper {
+        width: 100%;
+        min-height: 700px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 30px; 
         position: relative;
         overflow: hidden;
-        width: 850px; /* Wider to fit your fields */
-        max-width: 100%;
-        min-height: 650px; /* Taller to fit the registration form */
-        margin: 50px auto; /* Center on page */
+        background-color: #f6f5f7; 
     }
 
-    /* Form Container Base Styles */
-    .form-container {
+    /* --- 3. TOGGLE BUTTONS (Right Side) --- */
+    .nav-button {
         position: absolute;
-        top: 0;
-        height: 100%;
-        transition: all 0.6s ease-in-out;
-    }
-
-    /* Form Styling */
-    form {
-        background-color: #FFFFFF;
+        top: 10px;
+        right: 10%; 
         display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        padding: 0 50px;
-        height: 100%;
-        text-align: center;
-    }
-
-    h1 {
-        font-weight: bold;
-        margin: 0;
-        margin-bottom: 15px;
-        color: #333;
-    }
-
-    span {
-        font-size: 12px;
-        margin-bottom: 15px;
-        color: #888;
-    }
-
-    /* Input Fields Styling */
-    input, select {
-        background-color: #eee;
-        border: none;
-        padding: 12px 15px;
-        margin: 8px 0;
-        width: 100%;
-        border-radius: 4px;
-        outline: none;
-    }
-
-    /* Button Styling (Using your Blue Color) */
-    button.btn-action {
-        border-radius: 20px;
-        border: 1px solid #005A9C;
-        background-color: #005A9C;
-        color: #FFFFFF;
-        font-size: 12px;
-        font-weight: bold;
-        padding: 12px 45px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        transition: transform 80ms ease-in;
-        margin-top: 15px;
-        cursor: pointer;
-    }
-
-    button.btn-action:active {
-        transform: scale(0.95);
-    }
-
-    button.btn-action:focus {
-        outline: none;
-    }
-
-    /* Ghost Button (for the Overlay) */
-    button.ghost {
-        background-color: transparent;
-        border-color: #FFFFFF;
-        color: white;
-        border-radius: 20px;
-        border: 1px solid #FFFFFF;
-        font-size: 12px;
-        font-weight: bold;
-        padding: 12px 45px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        cursor: pointer;
-        margin-top: 15px;
-    }
-
-    /* Forgot Password Link */
-    .forgot-pass {
-        color: #333;
-        font-size: 14px;
-        text-decoration: none;
-        margin: 15px 0;
-    }
-
-    /* --- Animations and Positioning --- */
-
-    /* Sign In Container (Default Left) */
-    .sign-in-container {
-        left: 0;
-        width: 50%;
-        z-index: 2;
-    }
-
-    /* Sign Up Container (Default Right, Hidden) */
-    .sign-up-container {
-        left: 0;
-        width: 50%;
-        opacity: 0;
-        z-index: 1;
-    }
-
-    /* Active State: Sign Up moves in */
-    .container-custom.right-panel-active .sign-in-container {
-        transform: translateX(100%);
-    }
-
-    .container-custom.right-panel-active .sign-up-container {
-        transform: translateX(100%);
-        opacity: 1;
-        z-index: 5;
-        animation: show 0.6s;
-    }
-
-    @keyframes show {
-        0%, 49.99% { opacity: 0; z-index: 1; }
-        50%, 100% { opacity: 1; z-index: 5; }
-    }
-
-    /* Overlay Container (The colored sliding part) */
-    .overlay-container {
-        position: absolute;
-        top: 0;
-        left: 50%;
-        width: 50%;
-        height: 100%;
-        overflow: hidden;
-        transition: transform 0.6s ease-in-out;
+        gap: 15px;
         z-index: 100;
     }
 
-    .container-custom.right-panel-active .overlay-container {
-        transform: translateX(-100%);
-    }
-
-    /* The Overlay Gradient Background */
-    .overlay {
-        background: #005A9C;
-        background: -webkit-linear-gradient(to right, #004a80, #005A9C);
-        background: linear-gradient(to right, #004a80, #005A9C);
-        background-repeat: no-repeat;
-        background-size: cover;
-        background-position: 0 0;
-        color: #FFFFFF;
-        position: relative;
-        left: -100%;
-        height: 100%;
-        width: 200%;
-        transform: translateX(0);
-        transition: transform 0.6s ease-in-out;
-    }
-
-    .container-custom.right-panel-active .overlay {
-        transform: translateX(50%);
-    }
-
-    /* Overlay Panels (Text inside the slider) */
-    .overlay-panel {
+    /* --- 4. BACK BUTTON (Left Side) - NEW ADDITION --- */
+    .back-nav {
         position: absolute;
+        top: 10px;
+        left: 10%; /* Symmetrical to the right buttons */
+        z-index: 100;
+    }
+
+    /* Shared Button Style (Applies to Toggle & Back buttons) */
+    .btn, .btn-back {
+        height: 40px;
+        border: none;
+        border-radius: 30px !important; 
+        background: rgba(0, 90, 156, 0.1); /* Light Blue Transparent */
+        color: #005A9C;
+        font-weight: 600;
+        cursor: pointer;
+        transition: .3s;
         display: flex;
         align-items: center;
         justify-content: center;
-        flex-direction: column;
-        padding: 0 40px;
-        text-align: center;
-        top: 0;
-        height: 100%;
-        width: 50%;
-        transform: translateX(0);
-        transition: transform 0.6s ease-in-out;
+        text-decoration: none; /* For the link */
+        font-size: 14px;
+        font-family: 'Poppins', sans-serif;
     }
 
-    .overlay-left {
-        transform: translateX(-20%);
+    /* Specific Widths */
+    .btn { width: 110px; }
+    .btn-back { padding: 0 30px; gap: 8px; } /* Auto width with padding */
+
+    /* Active/Hover State */
+    .btn.white-btn, .btn:hover, .btn-back:hover {
+        background: #005A9C; 
+        color: #fff;
+        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
     }
 
-    .container-custom.right-panel-active .overlay-left {
-        transform: translateX(0);
+    /* --- 5. FORM CONTAINER --- */
+    .form-box {
+        position: relative;
+        width: 600px; 
+        height: 680px; 
+        overflow: hidden;
+        margin-top: 40px;
+        background: transparent !important;
+        box-shadow: none !important;
     }
 
-    .overlay-right {
-        right: 0;
-        transform: translateX(0);
-    }
-
-    .container-custom.right-panel-active .overlay-right {
-        transform: translateX(20%);
-    }
-    
-    /* Password Eye Icon Adjustment */
-    .password-wrapper { position: relative; width: 100%; }
-    .password-wrapper input { width: 100%; margin: 8px 0; }
-    .toggle-password {
+    .login-container, .register-container {
         position: absolute;
-        right: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        cursor: pointer;
-        color: #7f8c8d;
+        width: 100%;
+        top: 0;
+        transition: .5s ease-in-out;
+        padding: 0 50px; 
     }
+
+    .login-container { left: 0; opacity: 1; }
+    .register-container { right: -620px; opacity: 0; pointer-events: none; } 
+
+    /* Titles */
+    .top { margin-bottom: 30px; text-align: center; }
+    .top span { color: #555; font-size: 14px; margin-bottom: 10px; display: block; }
+    .top span a { color: #005A9C; text-decoration: none; font-weight: 600; cursor: pointer; }
+    
+    .top h2 { 
+        font-size: 32px; 
+        color: #333 !important; 
+        font-weight: 600; 
+        margin: 0;
+        padding: 0;
+        background: none !important;
+        box-shadow: none !important;
+    }
+
+    /* --- 6. INPUT BOX STYLING --- */
+    .input-box {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 55px;
+        background: #e8e8e8 !important; 
+        border-radius: 30px !important; 
+        margin-bottom: 20px;
+        padding: 0 20px;
+        border: 1px solid transparent;
+        transition: .3s;
+    }
+
+    .input-box:focus-within {
+        background: #fff !important;
+        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15);
+        border: 1px solid #005A9C;
+    }
+
+    .input-box i {
+        font-size: 18px;
+        color: #888;
+        margin-right: 15px; 
+        transition: .3s;
+        position: static !important; 
+        transform: none !important;
+    }
+
+    .input-box:focus-within i { color: #005A9C; }
+
+    .input-field {
+        flex: 1; 
+        background: transparent !important;
+        border: none !important;
+        outline: none !important;
+        color: #333 !important;
+        font-size: 15px !important;
+        height: 100%;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .input-box .toggle-pass {
+        margin-right: 0;
+        margin-left: 10px; 
+        cursor: pointer;
+        color: #999;
+    }
+    .input-box .toggle-pass:hover { color: #005A9C; }
+
+    .submit {
+        width: 100%;
+        height: 55px;
+        background: #005A9C !important;
+        border: none !important;
+        border-radius: 30px !important;
+        color: #fff !important;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: .3s;
+        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
+        margin-top: 10px;
+    }
+    .submit:hover { background: #004a80 !important; transform: scale(1.02); }
+
+    .two-col {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        margin-top: 15px;
+        padding: 0 10px;
+    }
+    .two-col a { color: #005A9C; text-decoration: none; }
+    
+    select.input-field { cursor: pointer; color: #555 !important; }
 </style>
 
-<div class="container-custom" id="container">
+<div class="wrapper">
     
-    <div class="form-container sign-up-container">
-        <form action="" method="POST" onkeydown="return event.key != 'Enter';">
-            <h1>Create Account</h1>
-            <span>Use your MMU Student ID</span>
-            
-            <input type="text" name="reg_name" value="<?php echo htmlspecialchars($reg_name); ?>" required placeholder="Full Name" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
-            
-            <input type="text" name="reg_student_id" id="studentIDInput" value="<?php echo htmlspecialchars($reg_student_id); ?>" required placeholder="Student ID">
-            
-            <input type="email" name="reg_email" id="emailInput" value="<?php echo htmlspecialchars($reg_email); ?>" required placeholder="ID@student.mmu.edu.my" readonly>
-            
-            <select name="reg_gender" required style="color: #666;">
-                <option value="" disabled <?php echo ($reg_gender == "") ? 'selected' : ''; ?> hidden>Select Gender</option>
-                <option value="Male" <?php echo ($reg_gender == "Male") ? 'selected' : ''; ?>>Male</option>
-                <option value="Female" <?php echo ($reg_gender == "Female") ? 'selected' : ''; ?>>Female</option>
-            </select>
-
-            <div class="password-wrapper">
-                <input type="password" name="reg_password" id="regPassword" required placeholder="Password (Min 6 chars)" minlength="6">
-                <i class="fa-solid fa-eye-slash toggle-password" onclick="togglePass('regPassword', this)"></i>
-            </div>
-            
-            <div class="password-wrapper">
-                <input type="password" name="reg_confirm_password" id="regConfirmPassword" required placeholder="Confirm Password">
-                <i class="fa-solid fa-eye-slash toggle-password" onclick="togglePass('regConfirmPassword', this)"></i>
-            </div>
-
-            <button type="submit" name="register" class="btn-action">Sign Up</button>
-        </form>
+    <div class="back-nav">
+        <a href="index.php" class="btn-back">
+            <i class="fa-solid fa-arrow-left"></i> Back
+        </a>
     </div>
 
-    <div class="form-container sign-in-container">
-        <form action="" method="POST">
-            <h1>Sign in</h1>
-            <span>Welcome back to U-Transport</span>
-            
-            <input type="email" name="login_email" id="loginEmailInput" required placeholder="Email">
-            
-            <div class="password-wrapper">
-                <input type="password" name="login_password" id="loginPassword" required placeholder="Password">
-                <i class="fa-solid fa-eye-slash toggle-password" onclick="togglePass('loginPassword', this)"></i>
-            </div>
-            
-            <a href="passanger_forgot_password.php" class="forgot-pass">Forgot your password?</a>
-            <button type="submit" name="login" class="btn-action">Sign In</button>
-        </form>
+    <div class="nav-button">
+        <button class="btn white-btn" id="loginBtn" onclick="login()">Sign In</button>
+        <button class="btn" id="registerBtn" onclick="register()">Sign Up</button>
     </div>
 
-    <div class="overlay-container">
-        <div class="overlay">
-            <div class="overlay-panel overlay-left">
-                <h1>Welcome Back!</h1>
-                <p>To keep connected with us please login with your personal info</p>
-                <button class="ghost" id="signIn">Sign In</button>
+    <div class="form-box">
+        
+        <div class="login-container" id="login">
+            <div class="top">
+                <span>Don't have an account? <a href="#" onclick="register()">Sign Up</a></span>
+                <h2>Login</h2>
             </div>
-            
-            <div class="overlay-panel overlay-right">
-                <h1>Hello, Student!</h1>
-                <p>Enter your personal details and start your journey with us</p>
-                <button class="ghost" id="signUp">Sign Up</button>
+
+            <form action="" method="POST">
+                <div class="input-box">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" name="login_email" class="input-field" placeholder="Username or Email" required>
+                </div>
+
+                <div class="input-box">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" name="login_password" id="loginPass" class="input-field" placeholder="Password" required>
+                    <i class="fa-solid fa-eye-slash toggle-pass" onclick="togglePass('loginPass', this)"></i>
+                </div>
+
+                <input type="submit" name="login" class="submit" value="Sign In">
+
+                <div class="two-col">
+                    <div class="one">
+                        <input type="checkbox" id="login-check">
+                        <label for="login-check"> Remember Me</label>
+                    </div>
+                    <div class="two">
+                        <label><a href="passanger_forgot_password.php">Forgot password?</a></label>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="register-container" id="register">
+            <div class="top">
+                <span>Have an account? <a href="#" onclick="login()">Login</a></span>
+                <h2>Sign Up</h2>
             </div>
+
+            <form action="" method="POST" onkeydown="return event.key != 'Enter';">
+                
+                <div class="input-box">
+                    <i class="fa-regular fa-user"></i>
+                    <input type="text" name="reg_name" class="input-field" value="<?php echo htmlspecialchars($reg_name); ?>" placeholder="Full Name" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" required>
+                </div>
+
+                <div class="input-box">
+                    <i class="fa-solid fa-id-card"></i>
+                    <input type="text" name="reg_student_id" id="studentIDInput" class="input-field" value="<?php echo htmlspecialchars($reg_student_id); ?>" placeholder="Student ID" required>
+                </div>
+
+                <div class="input-box">
+                    <i class="fa-solid fa-envelope"></i>
+                    <input type="email" name="reg_email" id="emailInput" class="input-field" value="<?php echo htmlspecialchars($reg_email); ?>" placeholder="ID@student.mmu.edu.my" readonly required>
+                </div>
+
+                <div class="input-box">
+                    <i class="fa-solid fa-venus-mars"></i>
+                    <select name="reg_gender" class="input-field" required>
+                        <option value="" disabled <?php echo ($reg_gender == "") ? 'selected' : ''; ?> hidden>Select Gender</option>
+                        <option value="Male" <?php echo ($reg_gender == "Male") ? 'selected' : ''; ?>>Male</option>
+                        <option value="Female" <?php echo ($reg_gender == "Female") ? 'selected' : ''; ?>>Female</option>
+                    </select>
+                </div>
+
+                <div class="input-box">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" name="reg_password" id="regPass" class="input-field" placeholder="Password (Min 6 chars)" minlength="6" required>
+                    <i class="fa-solid fa-eye-slash toggle-pass" onclick="togglePass('regPass', this)"></i>
+                </div>
+
+                <div class="input-box">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" name="reg_confirm_password" id="regConfPass" class="input-field" placeholder="Confirm Password" required>
+                    <i class="fa-solid fa-eye-slash toggle-pass" onclick="togglePass('regConfPass', this)"></i>
+                </div>
+
+                <input type="submit" name="register" class="submit" value="Register">
+            </form>
         </div>
     </div>
 </div>
@@ -457,25 +438,35 @@ if(isset($_POST['login'])){
 <?php include "footer.php"; ?>
 
 <script>
-    // --- Sliding Logic ---
-    const signUpButton = document.getElementById('signUp');
-    const signInButton = document.getElementById('signIn');
-    const container = document.getElementById('container');
+    var a = document.getElementById("loginBtn");
+    var b = document.getElementById("registerBtn");
+    var x = document.getElementById("login");
+    var y = document.getElementById("register");
 
-    // Add class to show Register panel
-    signUpButton.addEventListener('click', () => {
-        container.classList.add("right-panel-active");
-    });
+    function login() {
+        x.style.left = "0px";
+        y.style.right = "-620px";
+        x.style.opacity = 1;
+        x.style.pointerEvents = "auto";
+        y.style.opacity = 0;
+        y.style.pointerEvents = "none";
+        a.className += " white-btn";
+        b.className = "btn";
+    }
 
-    // Remove class to show Login panel
-    signInButton.addEventListener('click', () => {
-        container.classList.remove("right-panel-active");
-    });
+    function register() {
+        x.style.left = "-610px";
+        y.style.right = "0px";
+        x.style.opacity = 0;
+        x.style.pointerEvents = "none";
+        y.style.opacity = 1;
+        y.style.pointerEvents = "auto";
+        a.className = "btn";
+        b.className += " white-btn";
+    }
 
-    // --- Auto-fill Email based on Student ID (From your original register code) ---
     const studentIdInput = document.getElementById('studentIDInput');
     const emailInput = document.getElementById('emailInput');
-
     if(studentIdInput){
         studentIdInput.addEventListener('input', function() {
             const id = this.value.trim();
@@ -484,7 +475,6 @@ if(isset($_POST['login'])){
         });
     }
 
-    // --- Password Toggle Function (Generic) ---
     function togglePass(inputId, icon) {
         const input = document.getElementById(inputId);
         if (input.type === "password") {
@@ -492,23 +482,7 @@ if(isset($_POST['login'])){
             icon.classList.replace('fa-eye-slash', 'fa-eye');
         } else {
             input.type = "password";
-            icon.classList.replace('fa-eye', 'fa-eye-slash');
+            icon.classList.replace('fa-eye', 'fa-eye-slash'); 
         }
     }
-
-    // --- Prevent Enter key on Registration form to avoid accidental submit ---
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Enter' && event.target.tagName !== 'BUTTON') {
-            // Only block if we are in the registration context (container has active class)
-            if(container.classList.contains("right-panel-active")) {
-                event.preventDefault();
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Action Required',
-                    text: 'Please click the Sign Up button to submit.',
-                    confirmButtonColor: '#005A9C'
-                });
-            }
-        }
-    });
 </script>
