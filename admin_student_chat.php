@@ -4,7 +4,8 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once 'db_connect.php';
 
 // 2. Security Check
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+// Allow both Admin AND Staff
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'staff'])) {
     header("Location: admin_login.php");
     exit();
 }

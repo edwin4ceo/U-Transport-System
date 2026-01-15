@@ -2,7 +2,8 @@
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 // Global Security Check
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+// Allow both Admin AND Staff
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'staff'])) {
     header("Location: admin_login.php");
     exit();
 }
@@ -49,14 +50,18 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <li><a href="view_bookings.php" class="<?= $current_page == 'view_bookings.php' ? 'active' : '' ?>">Bookings</a></li>
                 <li><a href="manage_reviews.php" class="<?= $current_page == 'manage_reviews.php' ? 'active' : '' ?>">Reviews</a></li>
                 <li><a href="reports.php" class="<?= $current_page == 'reports.php' ? 'active' : '' ?>">Reports</a></li>
-                
+
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                    <li><a href="admin_register.php" class="<?= $current_page == 'admin_register.php' ? 'active' : '' ?>" style="color:#f1c40f;">Add Staff</a></li>
+                    <li><a href="manage_staff.php" class="<?= $current_page == 'manage_staff.php' ? 'active' : '' ?>" style="color:#e67e22;">Manage Staff</a></li>
+                <?php endif; ?>
+
                 <li class="nav-divider"></li>
                 
-                <li><a href="admin_driver_chat.php" class="<?= $current_page == 'admin_driver_chat.php' ? 'active' : '' ?>" title="Driver Chat"><i class="fa-solid fa-headset"></i></a></li>
-                <li><a href="admin_student_chat.php" class="<?= $current_page == 'admin_student_chat.php' ? 'active' : '' ?>" title="Student Chat"><i class="fa-solid fa-user-graduate"></i></a></li>
-                
-                <li><a href="admin_profile.php" class="<?= $current_page == 'admin_profile.php' ? 'active' : '' ?>" title="My Profile"><i class="fa-solid fa-user-circle"></i> Profile</a></li>
-                <li><a href="admin_login.php" style="color:#e74c3c;" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></a></li>
+                <li><a href="admin_driver_chat.php" class="<?= $current_page == 'admin_driver_chat.php' ? 'active' : '' ?>"><i class="fa-solid fa-headset"></i></a></li>
+                <li><a href="admin_student_chat.php" class="<?= $current_page == 'admin_student_chat.php' ? 'active' : '' ?>"><i class="fa-solid fa-user-graduate"></i></a></li>
+                <li><a href="admin_profile.php" class="<?= $current_page == 'admin_profile.php' ? 'active' : '' ?>"><i class="fa-solid fa-user-circle"></i> Profile</a></li>
+                <li><a href="admin_login.php" style="color:#e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></a></li>
             </ul>
         </nav>
     </div>

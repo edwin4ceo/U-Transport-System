@@ -6,6 +6,50 @@ include "function.php";
 if(!isset($_SESSION['student_id'])) redirect("passanger_login.php");
 $student_id = $_SESSION['student_id'];
 
+// --- [LOGIC] Handle Add Favourite Driver ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_fav_driver_id'])) {
+    $fav_driver_id = $_POST['add_fav_driver_id'];
+
+    // 1. Check if driver is already in favourites
+    $check_stmt = $conn->prepare("SELECT id FROM favourite_drivers WHERE student_id = ? AND driver_id = ?");
+    $check_stmt->bind_param("ss", $student_id, $fav_driver_id);
+    $check_stmt->execute();
+    $check_result = $check_stmt->get_result();
+
+    if ($check_result->num_rows == 0) {
+        // 2. Insert into favourites if not exists
+        $ins_stmt = $conn->prepare("INSERT INTO favourite_drivers (student_id, driver_id) VALUES (?, ?)");
+        $ins_stmt->bind_param("ss", $student_id, $fav_driver_id);
+        
+        if ($ins_stmt->execute()) {
+            echo "<script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Driver added to your favourites.',
+                        icon: 'success',
+                        confirmButtonColor: '#3182ce'
+                    });
+                });
+            </script>";
+        } else {
+            echo "<script>alert('Error adding driver.');</script>";
+        }
+    } else {
+        // Optional: Alert if already added
+        echo "<script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    title: 'Info',
+                    text: 'This driver is already in your favourites.',
+                    icon: 'info',
+                    confirmButtonColor: '#3182ce'
+                });
+            });
+        </script>";
+    }
+}
+
 // --- HANDLE REVIEW UPDATE (PHP) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_review'])) {
     $review_id = $_POST['review_id'];
@@ -36,12 +80,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_review'])) {
 }
 
 // Fetch ALL Reviews for this passenger
+// Added 'r.driver_id' to SELECT to allow adding to favourites
 $reviews_sql = "
     SELECT 
         r.review_id, 
         r.rating, 
         r.comment, 
         r.created_at, 
+        r.driver_id, 
         d.full_name AS driver_name,
         v.vehicle_model,
         v.plate_number
@@ -126,9 +172,17 @@ include "header.php";
         font-size: 12px; color: #718096; margin-top: 2px;
     }
     
+    /* Container for Date and Action Buttons (Right side) */
+    .action-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px; /* Space between buttons */
+    }
+
     .review-date {
         font-size: 12px; color: #a0aec0;
-        margin-bottom: 8px; /* Added spacing for button */
+        margin-bottom: 2px;
         text-align: right;
     }
 
@@ -155,32 +209,45 @@ include "header.php";
         color: #a0aec0;
     }
 
-    /* --- NEW BUTTON STYLES (Matching Rides Page) --- */
+    /* --- BUTTON STYLES --- */
     .btn-common {
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         padding: 6px 14px;
-        border-radius: 50px; font-size: 12px; font-weight: 600;
+        border-radius: 50px; font-size: 11px; font-weight: 600;
         cursor: pointer; text-decoration: none; transition: all 0.2s ease; line-height: 1;
+        width: 110px; /* Fixed width for alignment */
     }
 
     /* Blue Edit Button Style */
     .btn-edit-blue {
-        background-color: #ebf8ff; /* Light Blue BG */
-        color: #2b6cb0;            /* Blue Text */
-        border: 1px solid #90cdf4; /* Blue Border */
+        background-color: #ebf8ff; 
+        color: #2b6cb0;           
+        border: 1px solid #90cdf4; 
     }
     .btn-edit-blue:hover {
         background-color: #bee3f8;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(49, 130, 206, 0.15);
         color: #2c5282;
+        transform: translateY(-1px);
+    }
+
+    /* Pink/Green Favourite Button Style */
+    .btn-fav-pink {
+        background-color: #fff5f7; 
+        color: #d53f8c; 
+        border: 1px solid #fbb6ce;
+    }
+    .btn-fav-pink:hover {
+        background-color: #fed7e2;
+        color: #b83280;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(213, 63, 140, 0.15);
     }
 
     /* Modal Styles */
     .modal-overlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.5);
-        display: none; /* Hidden by default */
+        display: none; 
         justify-content: center; align-items: center;
         z-index: 1000;
     }
@@ -243,7 +310,7 @@ include "header.php";
                             </div>
                         </div>
                         
-                        <div style="text-align: right;">
+                        <div class="action-container">
                             <div class="review-date">
                                 <?php echo date("d M Y, h:i A", strtotime($rv['created_at'])); ?>
                             </div>
@@ -251,6 +318,13 @@ include "header.php";
                             <button class="btn-common btn-edit-blue" onclick="openEditModal(<?php echo $rv['review_id']; ?>)">
                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                             </button>
+
+                            <form method="POST" style="margin:0;">
+                                <input type="hidden" name="add_fav_driver_id" value="<?php echo $rv['driver_id']; ?>">
+                                <button type="submit" class="btn-common btn-fav-pink" title="Add to Favourites">
+                                    <i class="fa-solid fa-heart-circle-plus"></i> Add Fav
+                                </button>
+                            </form>
                         </div>
                     </div>
                     
