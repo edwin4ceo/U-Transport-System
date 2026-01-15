@@ -6,7 +6,7 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
-// --- INCLUDE PHPMAILER ---
+// --- INCLUDE PHPMAILER LIBRARY ---
 require 'PHPMailer/Exception.php';
 require 'PHPMailer/PHPMailer.php';
 require 'PHPMailer/SMTP.php';
@@ -36,7 +36,7 @@ if(isset($_POST['register'])){
     $reg_confirm_password = $_POST['reg_confirm_password'];
     $reg_gender           = $_POST['reg_gender']; 
 
-    // Validation Logic
+    // 1. Validation Logic
     if (empty($reg_student_id)) {
         $_SESSION['swal_title'] = "Invalid Student ID";
         $_SESSION['swal_msg'] = "Student ID cannot be empty.";
@@ -64,7 +64,7 @@ if(isset($_POST['register'])){
         $_SESSION['swal_type'] = "error";
     }
     else {
-        // Check for duplicate email
+        // 2. Check for duplicate email in database
         $check = $conn->query("SELECT * FROM students WHERE email='$reg_email'");
         if($check->num_rows > 0){
             $_SESSION['swal_title'] = "Registration Failed";
@@ -72,11 +72,11 @@ if(isset($_POST['register'])){
             $_SESSION['swal_type'] = "warning";
         } 
         else {
-            // Generate OTP & Hash Password
+            // 3. Generate OTP & Hash Password
             $otp_code = rand(1000, 9999);
             $password_hash = password_hash($reg_password, PASSWORD_BCRYPT);
 
-            // Store temporary data for verification
+            // 4. Store temporary data for verification page
             $_SESSION['temp_register_data'] = [
                 'name' => $reg_name, 
                 'student_id' => $reg_student_id,
@@ -88,7 +88,7 @@ if(isset($_POST['register'])){
                 'resend_count' => 0 
             ];
 
-            // Send Email via PHPMailer
+            // 5. Send Email via PHPMailer
             $mail = new PHPMailer(true);
             try {
                 $mail->isSMTP();
@@ -114,7 +114,7 @@ if(isset($_POST['register'])){
             }
         }
     }
-    // JS to keep register form active if error occurs
+    // JS to force the register tab to stay open if an error occurs
     echo "<script>window.onload = function() { register(); }</script>";
 }
 
@@ -150,7 +150,11 @@ if(isset($_POST['login'])){
 <?php include "header.php"; ?>
 
 <style>
-    /* --- 1. HEADER FIX (Keep it visible but transparent container) --- */
+    /* --- 1. HEADER CONTAINER OVERRIDE --- */
+    /* The header.php opens a .content-area div with default styling.
+       We override it here to be transparent and full-width so our
+       custom login form can float freely without being "boxed in".
+    */
     .content-area {
         background: transparent !important;
         box-shadow: none !important;
@@ -161,43 +165,46 @@ if(isset($_POST['login'])){
         margin: 0 !important;
     }
 
-    /* --- 2. PAGE WRAPPER --- */
+    /* --- 2. PAGE WRAPPER (MOVED UP) --- */
     .wrapper {
         width: 100%;
-        min-height: 700px;
+        min-height: 700px; /* Reduced min-height to reduce bottom gap */
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        padding-top: 30px; 
+        /* REDUCED padding-top to move everything UP closer to header */
+        padding-top: 10px; 
         position: relative;
         overflow: hidden;
         background-color: #f6f5f7; 
     }
 
-    /* --- 3. TOGGLE BUTTONS (Right Side) --- */
+    /* --- 3. TOP NAVIGATION BUTTONS --- */
+    
+    /* Toggle Buttons (Sign In / Sign Up) - Right Side */
     .nav-button {
         position: absolute;
-        top: 10px;
+        top: 0px; /* Flush with top */
         right: 10%; 
         display: flex;
         gap: 15px;
         z-index: 100;
     }
 
-    /* --- 4. BACK BUTTON (Left Side) - NEW ADDITION --- */
+    /* Back Button - Left Side */
     .back-nav {
         position: absolute;
-        top: 10px;
-        left: 10%; /* Symmetrical to the right buttons */
+        top: 0px; /* Flush with top */
+        left: 10%; 
         z-index: 100;
     }
 
-    /* Shared Button Style (Applies to Toggle & Back buttons) */
+    /* Shared Button Styling */
     .btn, .btn-back {
         height: 40px;
         border: none;
         border-radius: 30px !important; 
-        background: rgba(0, 90, 156, 0.1); /* Light Blue Transparent */
+        background: #ffffff; 
         color: #005A9C;
         font-weight: 600;
         cursor: pointer;
@@ -205,33 +212,46 @@ if(isset($_POST['login'])){
         display: flex;
         align-items: center;
         justify-content: center;
-        text-decoration: none; /* For the link */
+        text-decoration: none;
         font-size: 14px;
         font-family: 'Poppins', sans-serif;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-
+    
     /* Specific Widths */
     .btn { width: 110px; }
-    .btn-back { padding: 0 30px; gap: 8px; } /* Auto width with padding */
+    .btn-back { padding: 0 30px; gap: 8px; }
 
-    /* Active/Hover State */
+    /* Hover & Active States */
     .btn.white-btn, .btn:hover, .btn-back:hover {
         background: #005A9C; 
         color: #fff;
         box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
     }
 
-    /* --- 5. FORM CONTAINER --- */
+    /* --- 4. MAIN FORM CONTAINER --- */
     .form-box {
         position: relative;
         width: 600px; 
         height: 680px; 
         overflow: hidden;
-        margin-top: 40px;
+        /* Adjusted margin-top to pull the form up closer to buttons */
+        margin-top: 50px; 
         background: transparent !important;
         box-shadow: none !important;
     }
 
+    /* Mobile Responsive Logic */
+    @media (max-width: 768px) {
+        .form-box { width: 95%; height: 750px; margin-top: 60px; }
+        .nav-button { right: 5%; top: 10px; gap: 10px; }
+        .back-nav { left: 5%; top: 10px; }
+        .btn { width: 90px; font-size: 12px; }
+        .btn-back { padding: 0 15px; font-size: 12px; }
+        .login-container, .register-container { padding: 0 20px; }
+    }
+
+    /* Sliding Containers */
     .login-container, .register-container {
         position: absolute;
         width: 100%;
@@ -241,11 +261,11 @@ if(isset($_POST['login'])){
     }
 
     .login-container { left: 0; opacity: 1; }
-    .register-container { right: -620px; opacity: 0; pointer-events: none; } 
+    .register-container { right: -120%; opacity: 0; pointer-events: none; } 
 
-    /* Titles */
-    .top { margin-bottom: 30px; text-align: center; }
-    .top span { color: #555; font-size: 14px; margin-bottom: 10px; display: block; }
+    /* Headings */
+    .top { margin-bottom: 20px; text-align: center; }
+    .top span { color: #555; font-size: 14px; margin-bottom: 5px; display: block; }
     .top span a { color: #005A9C; text-decoration: none; font-weight: 600; cursor: pointer; }
     
     .top h2 { 
@@ -258,26 +278,28 @@ if(isset($_POST['login'])){
         box-shadow: none !important;
     }
 
-    /* --- 6. INPUT BOX STYLING --- */
+    /* --- 5. INPUT FIELDS (Clean White Design) --- */
     .input-box {
         display: flex;
         align-items: center;
         width: 100%;
         height: 55px;
-        background: #e8e8e8 !important; 
+        background: #ffffff !important; /* Pure White Background */
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05) !important; /* Soft Shadow */
         border-radius: 30px !important; 
         margin-bottom: 20px;
         padding: 0 20px;
-        border: 1px solid transparent;
+        border: 1px solid #eeeeee; 
         transition: .3s;
     }
 
     .input-box:focus-within {
-        background: #fff !important;
-        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15);
+        background: #ffffff !important;
+        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15) !important;
         border: 1px solid #005A9C;
     }
 
+    /* Icons */
     .input-box i {
         font-size: 18px;
         color: #888;
@@ -289,6 +311,7 @@ if(isset($_POST['login'])){
 
     .input-box:focus-within i { color: #005A9C; }
 
+    /* Text Input */
     .input-field {
         flex: 1; 
         background: transparent !important;
@@ -302,6 +325,9 @@ if(isset($_POST['login'])){
         box-shadow: none !important;
     }
 
+    .input-field::placeholder { color: #999; font-weight: 400; }
+
+    /* Toggle Password Eye */
     .input-box .toggle-pass {
         margin-right: 0;
         margin-left: 10px; 
@@ -310,6 +336,7 @@ if(isset($_POST['login'])){
     }
     .input-box .toggle-pass:hover { color: #005A9C; }
 
+    /* Submit Button */
     .submit {
         width: 100%;
         height: 55px;
@@ -321,19 +348,29 @@ if(isset($_POST['login'])){
         font-weight: 600;
         cursor: pointer;
         transition: .3s;
-        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
+        box-shadow: 0 8px 15px rgba(0, 90, 156, 0.2);
         margin-top: 10px;
+        display: flex; align-items: center; justify-content: center;
     }
-    .submit:hover { background: #004a80 !important; transform: scale(1.02); }
+    .submit:hover { 
+        background: #004a80 !important; 
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 90, 156, 0.3);
+    }
+    /* Loading state style */
+    .submit:disabled { background: #ccc !important; cursor: not-allowed; transform: none; box-shadow: none; }
 
+    /* Footer Links */
     .two-col {
         display: flex;
         justify-content: space-between;
         font-size: 14px;
         margin-top: 15px;
         padding: 0 10px;
+        color: #555;
     }
-    .two-col a { color: #005A9C; text-decoration: none; }
+    .two-col a { color: #005A9C; text-decoration: none; font-weight: 600; }
+    .two-col a:hover { text-decoration: underline; }
     
     select.input-field { cursor: pointer; color: #555 !important; }
 </style>
@@ -359,7 +396,7 @@ if(isset($_POST['login'])){
                 <h2>Login</h2>
             </div>
 
-            <form action="" method="POST">
+            <form action="" method="POST" onsubmit="handleLoading(this)">
                 <div class="input-box">
                     <i class="fa-regular fa-envelope"></i>
                     <input type="email" name="login_email" class="input-field" placeholder="Username or Email" required>
@@ -371,7 +408,7 @@ if(isset($_POST['login'])){
                     <i class="fa-solid fa-eye-slash toggle-pass" onclick="togglePass('loginPass', this)"></i>
                 </div>
 
-                <input type="submit" name="login" class="submit" value="Sign In">
+                <button type="submit" name="login" class="submit">Sign In</button>
 
                 <div class="two-col">
                     <div class="one">
@@ -391,7 +428,7 @@ if(isset($_POST['login'])){
                 <h2>Sign Up</h2>
             </div>
 
-            <form action="" method="POST" onkeydown="return event.key != 'Enter';">
+            <form action="" method="POST" onsubmit="handleLoading(this)">
                 
                 <div class="input-box">
                     <i class="fa-regular fa-user"></i>
@@ -429,7 +466,7 @@ if(isset($_POST['login'])){
                     <i class="fa-solid fa-eye-slash toggle-pass" onclick="togglePass('regConfPass', this)"></i>
                 </div>
 
-                <input type="submit" name="register" class="submit" value="Register">
+                <button type="submit" name="register" class="submit">Register</button>
             </form>
         </div>
     </div>
@@ -438,6 +475,7 @@ if(isset($_POST['login'])){
 <?php include "footer.php"; ?>
 
 <script>
+    // --- JS: SLIDING ANIMATION LOGIC ---
     var a = document.getElementById("loginBtn");
     var b = document.getElementById("registerBtn");
     var x = document.getElementById("login");
@@ -445,7 +483,7 @@ if(isset($_POST['login'])){
 
     function login() {
         x.style.left = "0px";
-        y.style.right = "-620px";
+        y.style.right = "-120%"; 
         x.style.opacity = 1;
         x.style.pointerEvents = "auto";
         y.style.opacity = 0;
@@ -455,7 +493,7 @@ if(isset($_POST['login'])){
     }
 
     function register() {
-        x.style.left = "-610px";
+        x.style.left = "-120%"; 
         y.style.right = "0px";
         x.style.opacity = 0;
         x.style.pointerEvents = "none";
@@ -465,6 +503,7 @@ if(isset($_POST['login'])){
         b.className += " white-btn";
     }
 
+    // --- JS: EMAIL AUTOFILL ---
     const studentIdInput = document.getElementById('studentIDInput');
     const emailInput = document.getElementById('emailInput');
     if(studentIdInput){
@@ -475,6 +514,7 @@ if(isset($_POST['login'])){
         });
     }
 
+    // --- JS: TOGGLE PASSWORD VISIBILITY ---
     function togglePass(inputId, icon) {
         const input = document.getElementById(inputId);
         if (input.type === "password") {
@@ -484,5 +524,25 @@ if(isset($_POST['login'])){
             input.type = "password";
             icon.classList.replace('fa-eye', 'fa-eye-slash'); 
         }
+    }
+
+    // --- JS: LOADING EFFECT ON SUBMIT ---
+    function handleLoading(form) {
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+        
+        // Prevent double submission
+        if(btn.disabled) return false;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+        
+        // Re-enable if server takes too long (timeout safety)
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }, 10000);
+        
+        return true;
     }
 </script>
