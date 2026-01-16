@@ -337,7 +337,7 @@ if(isset($_POST['login_email'])){
             <form action="" method="POST" onsubmit="handleLoading(this)">
                 <div class="input-box">
                     <i class="fa-regular fa-envelope"></i>
-                    <input type="email" name="login_email" class="input-field" placeholder="Username or Email" required>
+                    <input type="email" name="login_email" class="input-field" placeholder="Email" required>
                 </div>
 
                 <div class="input-box">

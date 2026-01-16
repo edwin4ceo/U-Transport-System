@@ -15,20 +15,23 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 // FUNCTION: CHECK LOGIN STATUS
-// Redirect to home if already logged in
 if(isset($_SESSION['student_id'])){
     echo "<script>window.location.href='passenger_home.php';</script>";
     exit();
 }
 
+// Initialize Sticky Form Variables (Retain data if error occurs)
+$student_id = isset($_POST['student_id']) ? $_POST['student_id'] : "";
+$email      = isset($_POST['email']) ? $_POST['email'] : "";
+
 // =========================================================
 // FUNCTION: RESET PASSWORD LOGIC
-// Handles form submission, validation, and OTP sending
 // =========================================================
-if(isset($_POST['reset_password'])){
-    $student_id = $_POST['student_id'];
-    $email = $_POST['email']; 
-    $new_password = $_POST['new_password'];
+// FIX: Check for hidden input 'action' instead of button name
+if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
+    $student_id       = $_POST['student_id'];
+    $email            = $_POST['email']; 
+    $new_password     = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
 
     // 1. Validate Email Domain
@@ -81,8 +84,8 @@ if(isset($_POST['reset_password'])){
                 $mail->isSMTP();
                 $mail->Host       = 'smtp.gmail.com';
                 $mail->SMTPAuth   = true;
-                $mail->Username   = 'soonkit0726@gmail.com'; // Check your config
-                $mail->Password   = 'oprh ldrk nwvg eyiv';   // Check your config
+                $mail->Username   = 'soonkit0726@gmail.com'; 
+                $mail->Password   = 'oprh ldrk nwvg eyiv';   
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port       = 587;
                 $mail->setFrom('soonkit0726@gmail.com', 'U-Transport System');
@@ -112,6 +115,13 @@ if(isset($_POST['reset_password'])){
 <?php include "header.php"; ?>
 
 <style>
+    /* GLOBAL FIX: Prevent Text Selection */
+    body, h2, h3, p, span, label, a, .top, .back-nav, .warning-text {
+        user-select: none; -webkit-user-select: none; cursor: default;
+    }
+    input { user-select: text !important; -webkit-user-select: text !important; cursor: text !important; }
+    a, button, .btn-back, .submit, .toggle-pass { cursor: pointer !important; }
+
     /* CSS: HEADER OVERRIDE */
     .content-area {
         background: transparent !important;
@@ -194,19 +204,18 @@ if(isset($_POST['reset_password'])){
         box-shadow: none !important;
     }
     
-    /* CSS: WARNING TEXT (MOVED FROM TOP TO FORM) */
     .warning-text {
         color: #e74c3c; /* Red color */
         font-size: 12px;
-        margin-top: 2px; /* Very tight top margin */
-        margin-bottom: 15px; /* Spacing before next input */
-        margin-left: 20px; /* Align with text start inside pill */
+        margin-top: 2px; 
+        margin-bottom: 15px; 
+        margin-left: 20px; 
         text-align: left;
         font-weight: 500;
         display: block;
     }
 
-    /* CSS: INPUT BOXES (Darker Border) */
+    /* CSS: INPUT BOXES (2px Border) */
     .input-box {
         display: flex;
         align-items: center;
@@ -217,14 +226,14 @@ if(isset($_POST['reset_password'])){
         border-radius: 30px !important; 
         margin-bottom: 20px;
         padding: 0 20px;
-        border: 1px solid #c4c4c4 !important; /* Matches Login Page */
+        border: 2px solid #c4c4c4 !important; /* Thick Border */
         transition: .3s;
     }
 
     .input-box:focus-within {
         background: #ffffff !important;
         box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15) !important;
-        border: 1px solid #005A9C !important;
+        border: 2px solid #005A9C !important;
     }
 
     .input-box i {
@@ -243,7 +252,6 @@ if(isset($_POST['reset_password'])){
     input:-webkit-autofill:active {
         -webkit-box-shadow: 0 0 0 30px white inset !important;
         -webkit-text-fill-color: #333 !important;
-        transition: background-color 5000s ease-in-out 0s;
     }
 
     .input-field {
@@ -306,18 +314,19 @@ if(isset($_POST['reset_password'])){
         
         <div class="top">
             <h2>Reset Password</h2>
-            </div>
+        </div>
 
         <form action="" method="POST" onsubmit="handleLoading(this)">
-            
+            <input type="hidden" name="action" value="reset_password">
+
             <div class="input-box">
                 <i class="fa-solid fa-id-card"></i>
-                <input type="text" name="student_id" id="studentIDInput" class="input-field" placeholder="Student ID" required>
+                <input type="text" name="student_id" id="studentIDInput" class="input-field" value="<?php echo htmlspecialchars($student_id); ?>" placeholder="Student ID" required>
             </div>
 
             <div class="input-box" style="margin-bottom: 5px;">
                 <i class="fa-solid fa-envelope"></i>
-                <input type="email" name="email" id="emailInput" class="input-field" placeholder="ID@student.mmu.edu.my" required>
+                <input type="email" name="email" id="emailInput" class="input-field" value="<?php echo htmlspecialchars($email); ?>" placeholder="ID@student.mmu.edu.my" required>
             </div>
             
             <span class="warning-text">* You will need to verify your email in the next step.</span>
@@ -374,3 +383,21 @@ if(isset($_POST['reset_password'])){
         return true;
     }
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<?php if(isset($_SESSION['swal_title'])): ?>
+<script>
+    Swal.fire({
+        title: '<?php echo $_SESSION['swal_title']; ?>',
+        text: '<?php echo $_SESSION['swal_msg']; ?>',
+        icon: '<?php echo $_SESSION['swal_type']; ?>',
+        confirmButtonColor: '#005A9C'
+    });
+</script>
+<?php 
+    // Clear session after displaying
+    unset($_SESSION['swal_title']);
+    unset($_SESSION['swal_msg']);
+    unset($_SESSION['swal_type']);
+endif; 
+?>
