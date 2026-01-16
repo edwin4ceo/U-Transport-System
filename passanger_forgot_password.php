@@ -34,7 +34,7 @@ if(isset($_POST['reset_password'])){
     // 1. Validate Email Domain
     if (!str_contains($email, "@student.mmu.edu.my")) {
         $_SESSION['swal_title'] = "Invalid Email Domain";
-        $_SESSION['swal_msg'] = "Please confirm if you entered the correct Student ID.";
+        $_SESSION['swal_msg'] = "Please use your MMU student email (@student.mmu.edu.my).";
         $_SESSION['swal_type'] = "error";
     }
     // 2. Validate Password Match
@@ -102,7 +102,7 @@ if(isset($_POST['reset_password'])){
             }
         } else {
             $_SESSION['swal_title'] = "Verification Failed";
-            $_SESSION['swal_msg'] = "The Student ID provided does not match our records.";
+            $_SESSION['swal_msg'] = "The Student ID and Email provided do not match our records.";
             $_SESSION['swal_type'] = "error";
         }
     }
@@ -188,25 +188,25 @@ if(isset($_POST['reset_password'])){
         font-size: 30px; 
         color: #333 !important; 
         font-weight: 600; 
-        margin: 0 0 10px 0;
+        margin: 0;
         padding: 0;
         background: none !important;
         box-shadow: none !important;
     }
-    .top p {
-        font-size: 14px;
-        color: #666;
-        margin: 0;
-        line-height: 1.5;
-    }
-    .top .warning-text {
-        color: #e74c3c; 
-        font-size: 13px;
-        margin-top: 5px;
+    
+    /* CSS: WARNING TEXT (MOVED FROM TOP TO FORM) */
+    .warning-text {
+        color: #e74c3c; /* Red color */
+        font-size: 12px;
+        margin-top: 2px; /* Very tight top margin */
+        margin-bottom: 15px; /* Spacing before next input */
+        margin-left: 20px; /* Align with text start inside pill */
+        text-align: left;
         font-weight: 500;
+        display: block;
     }
 
-    /* CSS: INPUT BOXES (DARKER BORDER) */
+    /* CSS: INPUT BOXES (Darker Border) */
     .input-box {
         display: flex;
         align-items: center;
@@ -217,10 +217,7 @@ if(isset($_POST['reset_password'])){
         border-radius: 30px !important; 
         margin-bottom: 20px;
         padding: 0 20px;
-        
-        /* --- CHANGED HERE: DARKER BORDER --- */
-        border: 1px solid #c4c4c4 !important; 
-        
+        border: 1px solid #c4c4c4 !important; /* Matches Login Page */
         transition: .3s;
     }
 
@@ -262,12 +259,6 @@ if(isset($_POST['reset_password'])){
         box-shadow: none !important;
     }
     .input-field::placeholder { color: #999; font-weight: 400; }
-
-    /* Readonly Email Input Style */
-    .input-field[readonly] {
-        cursor: not-allowed;
-        color: #777 !important;
-    }
 
     /* Password Toggle */
     .input-box .toggle-pass {
@@ -315,20 +306,21 @@ if(isset($_POST['reset_password'])){
         
         <div class="top">
             <h2>Reset Password</h2>
-            <p class="warning-text">* You will need to verify your email in the next step.</p>
-        </div>
+            </div>
 
         <form action="" method="POST" onsubmit="handleLoading(this)">
             
             <div class="input-box">
                 <i class="fa-solid fa-id-card"></i>
-                <input type="text" name="student_id" id="studentIDInput" class="input-field" placeholder="Student ID (e.g. 1234567890)" required>
+                <input type="text" name="student_id" id="studentIDInput" class="input-field" placeholder="Student ID" required>
             </div>
 
-            <div class="input-box" style="background: #f9f9f9 !important;">
+            <div class="input-box" style="margin-bottom: 5px;">
                 <i class="fa-solid fa-envelope"></i>
-                <input type="email" name="email" id="emailInput" class="input-field" placeholder="ID@student.mmu.edu.my" readonly>
+                <input type="email" name="email" id="emailInput" class="input-field" placeholder="ID@student.mmu.edu.my" required>
             </div>
+            
+            <span class="warning-text">* You will need to verify your email in the next step.</span>
 
             <div class="input-box">
                 <i class="fa-solid fa-lock"></i>
@@ -351,18 +343,6 @@ if(isset($_POST['reset_password'])){
 <?php include "footer.php"; ?>
 
 <script>
-    // FUNCTION: AUTOFILL EMAIL
-    const studentIdInput = document.getElementById('studentIDInput');
-    const emailInput = document.getElementById('emailInput');
-
-    if(studentIdInput){
-        studentIdInput.addEventListener('input', function() {
-            const id = this.value.trim();
-            if (id.length > 0) { emailInput.value = id + "@student.mmu.edu.my"; }
-            else { emailInput.value = ""; }
-        });
-    }
-
     // FUNCTION: TOGGLE PASSWORD VISIBILITY
     function togglePass(inputId, icon) {
         const input = document.getElementById(inputId);
