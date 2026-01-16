@@ -167,7 +167,6 @@ if (isset($_POST['verify_btn'])) {
     const hiddenInput = document.getElementById("full_otp_input");
     const form = document.getElementById("otpForm");
 
-    // 关键点 2: JavaScript 全局拦截 Enter 键
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' && event.target.tagName !== 'BUTTON') {
             event.preventDefault();

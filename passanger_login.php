@@ -150,9 +150,29 @@ if(isset($_POST['login_email'])){
             $_SESSION['student_id'] = $row['student_id']; 
             $_SESSION['student_name'] = $row['name'];
             
-            // SUB-FUNCTION: REDIRECT TO HOME
-            // Using JS redirect to ensure it works even if headers are sent
-            echo "<script>window.location.href = 'passenger_home.php';</script>";
+            // --- MODIFIED: SWEETALERT SUCCESS & REDIRECT ---
+            // We echo a mini HTML page with SweetAlert just for this action.
+            // This ensures the user SEES the success message before redirecting.
+            echo "
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+            </head>
+            <body>
+                <script>
+                    Swal.fire({
+                        title: 'Login Successful!',
+                        text: 'Welcome back, " . htmlspecialchars($row['name']) . "!',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(function() {
+                        window.location.href = 'passenger_home.php';
+                    });
+                </script>
+            </body>
+            </html>";
             exit(); 
         } else {
             $_SESSION['swal_title'] = "Incorrect Password";
@@ -288,7 +308,7 @@ if(isset($_POST['login_email'])){
         box-shadow: none !important;
     }
 
-    /* CSS: INPUT BOXES */
+    /* CSS: INPUT BOXES (Darker Border) */
     .input-box {
         display: flex;
         align-items: center;
@@ -299,7 +319,7 @@ if(isset($_POST['login_email'])){
         border-radius: 30px !important; 
         margin-bottom: 20px;
         padding: 0 20px;
-        border: 1px solid #c4c4c4 !important; /* Darker border for visibility */
+        border: 1px solid #c4c4c4 !important; /* Darker border */
         transition: .3s;
     }
 
