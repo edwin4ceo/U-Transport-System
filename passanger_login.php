@@ -17,76 +17,96 @@ require 'PHPMailer/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// FUNCTION: CHECK LOGIN STATUS
-// If user is already logged in, redirect them to dashboard immediately
-if(isset($_SESSION['student_id'])){
+// =========================================================
+// FUNCTION: CHECK LOGIN STATUS (CRITICAL FIX)
+// =========================================================
+// Logic: If user is logged in, normally we redirect them to home immediately.
+// BUT, if they just logged in successfully (login_success is set), we must NOT redirect yet.
+// We need to stay on this page to let the HTML/JS render the SweetAlert success popup.
+if(isset($_SESSION['student_id']) && !isset($_SESSION['login_success'])){
     echo "<script>window.location.href='passenger_home.php';</script>";
     exit();
 }
 
-// Initialize variables with Sticky Data (Retain values if POST exists)
-// This ensures that if validation fails, the user doesn't have to re-type everything.
-$reg_name       = isset($_POST['reg_name']) ? strtoupper($_POST['reg_name']) : "";
-$reg_student_id = isset($_POST['reg_student_id']) ? $_POST['reg_student_id'] : "";
-$reg_email      = isset($_POST['reg_email']) ? $_POST['reg_email'] : "";
-$reg_gender     = isset($_POST['reg_gender']) ? $_POST['reg_gender'] : "";
+// --- STICKY DATA RETRIEVAL (FROM SESSION) ---
+// Retrieve previous inputs if an error occurred (so user doesn't re-type)
+$reg_name       = isset($_SESSION['sticky']['reg_name']) ? $_SESSION['sticky']['reg_name'] : "";
+$reg_student_id = isset($_SESSION['sticky']['reg_student_id']) ? $_SESSION['sticky']['reg_student_id'] : "";
+$reg_email      = isset($_SESSION['sticky']['reg_email']) ? $_SESSION['sticky']['reg_email'] : "";
+$reg_gender     = isset($_SESSION['sticky']['reg_gender']) ? $_SESSION['sticky']['reg_gender'] : "";
+$login_email_val= isset($_SESSION['sticky']['login_email']) ? $_SESSION['sticky']['login_email'] : "";
+
+// Clear sticky data immediately so it doesn't persist on manual refresh
+unset($_SESSION['sticky']);
 
 // =========================================================
 // FUNCTION: REGISTER LOGIC
 // Handles the sign-up process, validation, and OTP sending
 // =========================================================
-// NOTE: We check for 'reg_email' because disabled buttons don't send POST data
-if(isset($_POST['reg_email'])){
-    // Retrieve password inputs (we do NOT retain these for security)
+if(isset($_POST['action']) && $_POST['action'] === 'register'){
+    // Retrieve inputs
+    $reg_name             = strtoupper($_POST['reg_name']); 
+    $reg_student_id       = $_POST['reg_student_id'];
+    $reg_email            = $_POST['reg_email'];
+    $reg_gender           = $_POST['reg_gender'];
     $reg_password         = $_POST['reg_password'];
     $reg_confirm_password = $_POST['reg_confirm_password'];
 
-    // SUB-FUNCTION: VALIDATION
-    if (empty($reg_student_id)) {
-        $_SESSION['swal_title'] = "Invalid Student ID";
-        $_SESSION['swal_msg'] = "Student ID cannot be empty.";
+    // Helper function to handle errors and redirect (PRG Pattern)
+    function registerError($title, $msg, $data) {
+        $_SESSION['swal_title'] = $title;
+        $_SESSION['swal_msg'] = $msg;
         $_SESSION['swal_type'] = "error";
+        $_SESSION['sticky'] = $data; // Save inputs to sticky session
+        $_SESSION['active_tab'] = 'register'; // Keep register tab open
+        header("Location: passanger_login.php"); // Redirect to self
+        exit();
+    }
+
+    // VALIDATION CHECKS
+    if (empty($reg_student_id)) {
+        registerError("Invalid Student ID", "Student ID cannot be empty.", $_POST);
     }
     elseif (preg_match('/\d/', $reg_name)) {
-        $_SESSION['swal_title'] = "Invalid Name";
-        $_SESSION['swal_msg'] = "Name cannot contain numbers.";
-        $_SESSION['swal_type'] = "error";
+        registerError("Invalid Name", "Name cannot contain numbers.", $_POST);
     }
     elseif (strlen($reg_password) < 6) {
-        $_SESSION['swal_title'] = "Weak Password";
-        $_SESSION['swal_msg'] = "Password must be at least 6 characters long.";
-        $_SESSION['swal_type'] = "error";
+        registerError("Weak Password", "Password must be at least 6 characters long.", $_POST);
     }
     elseif ($reg_password !== $reg_confirm_password) {
-        $_SESSION['swal_title'] = "Password Mismatch";
-        $_SESSION['swal_msg'] = "Please ensure your confirm password is entered correctly."; 
-        $_SESSION['swal_type'] = "error";
+        registerError("Password Mismatch", "Please ensure your confirm password is entered correctly.", $_POST);
     }
     elseif (!str_contains($reg_email, "@student.mmu.edu.my")) {
-        $_SESSION['swal_title'] = "Invalid Email";
-        $_SESSION['swal_msg'] = "Only MMU student emails (@student.mmu.edu.my) are allowed!";
-        $_SESSION['swal_type'] = "error";
+        registerError("Invalid Email", "Only MMU student emails (@student.mmu.edu.my) are allowed!", $_POST);
     }
-    // NEW: GENDER VALIDATION
     elseif (empty($reg_gender)) {
+        // Gender specific warning
         $_SESSION['swal_title'] = "Gender Required";
         $_SESSION['swal_msg'] = "Please select your gender to proceed.";
         $_SESSION['swal_type'] = "warning";
+        $_SESSION['sticky'] = $_POST;
+        $_SESSION['active_tab'] = 'register';
+        header("Location: passanger_login.php");
+        exit();
     }
     else {
-        // SUB-FUNCTION: CHECK DUPLICATE EMAIL
+        // CHECK DUPLICATE EMAIL
         $check = $conn->query("SELECT * FROM students WHERE email='$reg_email'");
         if($check->num_rows > 0){
             $_SESSION['swal_title'] = "Registration Failed";
             $_SESSION['swal_msg'] = "This email is already registered. Please login instead.";
             $_SESSION['swal_type'] = "warning";
+            $_SESSION['sticky'] = $_POST;
+            $_SESSION['active_tab'] = 'register';
+            header("Location: passanger_login.php");
+            exit();
         } 
         else {
-            // SUB-FUNCTION: GENERATE OTP
+            // GENERATE OTP & HASH PASSWORD
             $otp_code = rand(1000, 9999);
             $password_hash = password_hash($reg_password, PASSWORD_BCRYPT);
 
-            // Save temp data to session
+            // Store temporary registration data in session
             $_SESSION['temp_register_data'] = [
                 'name' => $reg_name, 
                 'student_id' => $reg_student_id,
@@ -98,7 +118,7 @@ if(isset($_POST['reg_email'])){
                 'resend_count' => 0 
             ];
 
-            // SUB-FUNCTION: SEND EMAIL
+            // SEND EMAIL
             $mail = new PHPMailer(true);
             try {
                 $mail->isSMTP();
@@ -115,26 +135,27 @@ if(isset($_POST['reg_email'])){
                 $mail->Body    = "<h3>Hello $reg_name,</h3><p>Your verification code is: <b>$otp_code</b></p>";
                 $mail->send();
                 
-                // Redirect to OTP Page
-                echo "<script>window.location.href='verify_email.php';</script>";
+                // Redirect to Verify OTP Page
+                header("Location: verify_email.php");
                 exit();
             } catch (Exception $e) {
                 $_SESSION['swal_title'] = "Email Error";
                 $_SESSION['swal_msg'] = "Mailer Error: {$mail->ErrorInfo}";
                 $_SESSION['swal_type'] = "error";
+                $_SESSION['sticky'] = $_POST;
+                $_SESSION['active_tab'] = 'register';
+                header("Location: passanger_login.php");
+                exit();
             }
         }
     }
-    // Keep register tab open if error occurs (Sticky Behavior)
-    echo "<script>window.onload = function() { register(); }</script>";
 }
 
 // =========================================================
 // FUNCTION: LOGIN LOGIC
-// Handles user authentication and redirection
+// Handles user authentication
 // =========================================================
-// NOTE: Check for 'login_email' to avoid disabled button issues
-if(isset($_POST['login_email'])){
+if(isset($_POST['action']) && $_POST['action'] === 'login'){
     $email = $_POST['login_email'];
     $password = $_POST['login_password'];
 
@@ -148,39 +169,32 @@ if(isset($_POST['login_email'])){
             $_SESSION['student_id'] = $row['student_id']; 
             $_SESSION['student_name'] = $row['name'];
             
-            // --- SWEETALERT SUCCESS (Standard Style) ---
-            echo "
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-                <style>body { font-family: 'Poppins', sans-serif; background-color: #f6f5f7; }</style>
-            </head>
-            <body>
-                <script>
-                    Swal.fire({
-                        title: 'Login Successful!',
-                        text: 'Welcome back, " . htmlspecialchars($row['name']) . "!',
-                        icon: 'success',
-                        timer: 2000,
-                        showConfirmButton: false,
-                        confirmButtonColor: '#005A9C'
-                    }).then(function() {
-                        window.location.href = 'passenger_home.php';
-                    });
-                </script>
-            </body>
-            </html>";
+            // SET SUCCESS FLAG FOR JS REDIRECT (This is key for the fix)
+            $_SESSION['login_success'] = true;
+            $_SESSION['user_name'] = $row['name'];
+            
+            // Redirect to self to clear POST data and show alert
+            header("Location: passanger_login.php");
             exit(); 
         } else {
+            // Incorrect Password
             $_SESSION['swal_title'] = "Incorrect Password";
             $_SESSION['swal_msg'] = "The password you entered is incorrect.";
             $_SESSION['swal_type'] = "error";
+            $_SESSION['sticky']['login_email'] = $email; // Retain email
+            $_SESSION['active_tab'] = 'login';
+            header("Location: passanger_login.php");
+            exit();
         }
     } else {
+        // Email Not Found
         $_SESSION['swal_title'] = "Email Not Found";
         $_SESSION['swal_msg'] = "This email is not registered.";
         $_SESSION['swal_type'] = "warning";
+        $_SESSION['active_tab'] = 'login';
+        // Do NOT retain email for security/UX preference
+        header("Location: passanger_login.php");
+        exit();
     }
 }
 ?>
@@ -188,6 +202,26 @@ if(isset($_POST['login_email'])){
 <?php include "header.php"; ?>
 
 <style>
+    /* IMPORT POPPINS FONT (Ensures consistency for SweetAlert too) */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+    /* GLOBAL FIX: Prevent Text Selection & Force Font */
+    body, h2, h3, p, span, label, a, .top, .back-nav, .nav-button, .role-card, .swal2-popup {
+        font-family: 'Poppins', sans-serif !important; 
+        user-select: none;           
+        -webkit-user-select: none;   
+        cursor: default;             
+    }
+
+    input, select { 
+        user-select: text !important; -webkit-user-select: text !important; cursor: text !important; 
+        font-family: 'Poppins', sans-serif !important;
+    }
+    
+    a, button, .btn, .btn-back, .submit, .toggle-pass, .gender-option label { 
+        cursor: pointer !important; 
+    }
+
     /* CSS: HEADER OVERRIDE */
     .content-area {
         background: transparent !important; box-shadow: none !important; border: none !important;
@@ -209,7 +243,7 @@ if(isset($_POST['login_email'])){
         height: 40px; border: none; border-radius: 30px !important; 
         background: #ffffff; color: #005A9C; font-weight: 600; cursor: pointer; transition: .3s;
         display: flex; align-items: center; justify-content: center; text-decoration: none;
-        font-size: 14px; font-family: 'Poppins', sans-serif; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     .btn { width: 110px; }
     .btn-back { padding: 0 30px; gap: 8px; }
@@ -240,40 +274,36 @@ if(isset($_POST['login_email'])){
     .login-container { left: 0; opacity: 1; }
     .register-container { right: -120%; opacity: 0; pointer-events: none; } 
 
-    /* CSS: TYPOGRAPHY (FIX: User Select None) */
+    /* CSS: TYPOGRAPHY */
     .top { margin-bottom: 20px; text-align: center; }
-    .top span { 
-        color: #555; font-size: 14px; margin-bottom: 5px; display: block; 
-        user-select: none; cursor: default; 
-    }
-    .top span a { color: #005A9C; text-decoration: none; font-weight: 600; cursor: pointer; }
-    
+    .top span { color: #555; font-size: 14px; margin-bottom: 5px; display: block; }
+    .top span a { color: #005A9C; text-decoration: none; font-weight: 600; }
     .top h2 { 
         font-size: 32px; color: #333 !important; font-weight: 600; margin: 0; padding: 0; 
         background: none !important; box-shadow: none !important;
-        user-select: none; cursor: default;
     }
 
-    /* CSS: INPUT BOXES */
+    /* CSS: INPUT BOXES (2px Border for Consistency) */
     .input-box {
         display: flex; align-items: center; width: 100%; height: 55px;
         background: #ffffff !important; box-shadow: 0 5px 15px rgba(0,0,0,0.05) !important; 
         border-radius: 30px !important; margin-bottom: 20px; padding: 0 20px;
-        border: 1px solid #c4c4c4 !important; transition: .3s;
+        border: 2px solid #c4c4c4 !important; transition: .3s;
     }
     .input-box:focus-within {
-        background: #ffffff !important; box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15) !important; border: 1px solid #005A9C !important;
+        background: #ffffff !important; box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15) !important; 
+        border: 2px solid #005A9C !important;
     }
-    .input-box i { font-size: 18px; color: #888; margin-right: 15px; transition: .3s; position: static !important; transform: none !important; }
+    .input-box i { font-size: 18px; color: #888; margin-right: 15px; transition: .3s; }
     .input-box:focus-within i { color: #005A9C; }
 
-    /* CSS: GENDER SELECTION (PINK & BLUE) */
+    /* CSS: GENDER SELECTION */
     .gender-box { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 20px; width: 100%; }
     .gender-option { flex: 1; position: relative; }
     .gender-option input[type="radio"] { display: none; }
     .gender-option label {
         display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 55px;
-        background: #ffffff; border: 1px solid #c4c4c4; border-radius: 30px;
+        background: #ffffff; border: 2px solid #c4c4c4; border-radius: 30px;
         font-size: 15px; color: #555; cursor: pointer; transition: all 0.3s ease;
         box-shadow: 0 5px 15px rgba(0,0,0,0.05);
     }
@@ -308,7 +338,7 @@ if(isset($_POST['login_email'])){
     .submit:disabled { background: #ccc !important; cursor: not-allowed; transform: none; box-shadow: none; }
 
     /* CSS: FOOTER LINKS */
-    .two-col { display: flex; justify-content: flex-end; font-size: 14px; margin-top: 15px; padding: 0 10px; color: #555; }
+    .two-col { display: flex; justify-content: flex-end; font-size: 14px; margin-top: 15px; padding: 0 10px; color: #555; position: relative; z-index: 10; }
     .two-col a { color: #005A9C; text-decoration: none; font-weight: 600; }
     .two-col a:hover { text-decoration: underline; }
 </style>
@@ -335,9 +365,11 @@ if(isset($_POST['login_email'])){
             </div>
 
             <form action="" method="POST" onsubmit="handleLoading(this)">
+                <input type="hidden" name="action" value="login">
+                
                 <div class="input-box">
                     <i class="fa-regular fa-envelope"></i>
-                    <input type="email" name="login_email" class="input-field" placeholder="Email" required>
+                    <input type="email" name="login_email" class="input-field" placeholder="Username or Email" value="<?php echo htmlspecialchars($login_email_val); ?>" required>
                 </div>
 
                 <div class="input-box">
@@ -350,7 +382,7 @@ if(isset($_POST['login_email'])){
 
                 <div class="two-col">
                     <div class="two">
-                        <label><a href="passanger_forgot_password.php">Forgot password?</a></label>
+                        <a href="passanger_forgot_password.php">Forgot password?</a>
                     </div>
                 </div>
             </form>
@@ -363,6 +395,7 @@ if(isset($_POST['login_email'])){
             </div>
 
             <form action="" method="POST" onsubmit="handleLoading(this)">
+                <input type="hidden" name="action" value="register">
                 
                 <div class="input-box">
                     <i class="fa-regular fa-user"></i>
@@ -420,7 +453,12 @@ if(isset($_POST['login_email'])){
     var x = document.getElementById("login");
     var y = document.getElementById("register");
 
-    // FUNCTION: SHOW LOGIN FORM
+    // Default: Check if we should show Register tab (from Sticky session)
+    <?php if(isset($_SESSION['active_tab']) && $_SESSION['active_tab'] == 'register'): ?>
+        window.onload = function() { register(); };
+        <?php unset($_SESSION['active_tab']); ?>
+    <?php endif; ?>
+
     function login() {
         x.style.left = "0px";
         y.style.right = "-120%"; 
@@ -432,7 +470,6 @@ if(isset($_POST['login_email'])){
         b.className = "btn";
     }
 
-    // FUNCTION: SHOW REGISTER FORM
     function register() {
         x.style.left = "-120%"; 
         y.style.right = "0px";
@@ -444,7 +481,6 @@ if(isset($_POST['login_email'])){
         b.className += " white-btn";
     }
 
-    // FUNCTION: TOGGLE PASSWORD VISIBILITY
     function togglePass(inputId, icon) {
         const input = document.getElementById(inputId);
         if (input.type === "password") {
@@ -456,7 +492,6 @@ if(isset($_POST['login_email'])){
         }
     }
 
-    // FUNCTION: HANDLE BUTTON LOADING STATE
     function handleLoading(form) {
         const btn = form.querySelector('button[type="submit"]');
         const originalText = btn.innerHTML;
@@ -476,6 +511,7 @@ if(isset($_POST['login_email'])){
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <?php if(isset($_SESSION['swal_title'])): ?>
 <script>
     Swal.fire({
@@ -490,5 +526,25 @@ if(isset($_POST['login_email'])){
     unset($_SESSION['swal_title']);
     unset($_SESSION['swal_msg']);
     unset($_SESSION['swal_type']);
+endif; 
+?>
+
+<?php if(isset($_SESSION['login_success'])): ?>
+<script>
+    Swal.fire({
+        title: 'Login Successful!',
+        text: 'Welcome back, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false,
+        confirmButtonColor: '#005A9C'
+    }).then(function() {
+        window.location.href = 'passenger_home.php';
+    });
+</script>
+<?php 
+    // Clear success flags
+    unset($_SESSION['login_success']);
+    unset($_SESSION['user_name']);
 endif; 
 ?>

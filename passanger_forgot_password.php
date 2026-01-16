@@ -27,7 +27,6 @@ $email      = isset($_POST['email']) ? $_POST['email'] : "";
 // =========================================================
 // FUNCTION: RESET PASSWORD LOGIC
 // =========================================================
-// FIX: Check for hidden input 'action' instead of button name
 if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
     $student_id       = $_POST['student_id'];
     $email            = $_POST['email']; 
@@ -61,47 +60,57 @@ if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
 
         if($result->num_rows === 1){
             $row = $result->fetch_assoc();
-            $name = $row['name']; 
             
-            // 5. Generate OTP
-            $otp = rand(1000, 9999);
-            $new_password_hash = password_hash($new_password, PASSWORD_BCRYPT);
-            
-            // Store temp data for verification step
-            $_SESSION['temp_reset_data'] = [
-                'email' => $email,
-                'name' => $name,
-                'student_id' => $student_id,
-                'new_password_hash' => $new_password_hash,
-                'otp_code' => $otp,
-                'otp_timestamp' => time(),
-                'resend_count' => 0
-            ];
-
-            // 6. Send OTP Email
-            $mail = new PHPMailer(true);
-            try {
-                $mail->isSMTP();
-                $mail->Host       = 'smtp.gmail.com';
-                $mail->SMTPAuth   = true;
-                $mail->Username   = 'soonkit0726@gmail.com'; 
-                $mail->Password   = 'oprh ldrk nwvg eyiv';   
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port       = 587;
-                $mail->setFrom('soonkit0726@gmail.com', 'U-Transport System');
-                $mail->addAddress($email, $name);
-                $mail->isHTML(true);
-                $mail->Subject = 'Reset Password Verification Code';
-                $mail->Body    = "<h3>Hello $name,</h3><p>Your verification code is: <b>$otp</b></p>";
-                $mail->send();
+            // --- NEW CHECK: PREVENT REUSING OLD PASSWORD ---
+            if(password_verify($new_password, $row['password'])) {
+                $_SESSION['swal_title'] = "Password Exists";
+                $_SESSION['swal_msg'] = "You cannot use your current password. Please choose a new one.";
+                $_SESSION['swal_type'] = "warning";
+            }
+            else {
+                // Only proceed if password is NEW
+                $name = $row['name']; 
                 
-                // Redirect to OTP page
-                echo "<script>window.location.href='verify_reset_otp.php';</script>";
-                exit();
-            } catch (Exception $e) {
-                $_SESSION['swal_title'] = "Email Error";
-                $_SESSION['swal_msg'] = "Mailer Error: {$mail->ErrorInfo}";
-                $_SESSION['swal_type'] = "error";
+                // 5. Generate OTP
+                $otp = rand(1000, 9999);
+                $new_password_hash = password_hash($new_password, PASSWORD_BCRYPT);
+                
+                // Store temp data for verification step
+                $_SESSION['temp_reset_data'] = [
+                    'email' => $email,
+                    'name' => $name,
+                    'student_id' => $student_id,
+                    'new_password_hash' => $new_password_hash,
+                    'otp_code' => $otp,
+                    'otp_timestamp' => time(),
+                    'resend_count' => 0
+                ];
+
+                // 6. Send OTP Email
+                $mail = new PHPMailer(true);
+                try {
+                    $mail->isSMTP();
+                    $mail->Host       = 'smtp.gmail.com';
+                    $mail->SMTPAuth   = true;
+                    $mail->Username   = 'soonkit0726@gmail.com'; 
+                    $mail->Password   = 'oprh ldrk nwvg eyiv';   
+                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port       = 587;
+                    $mail->setFrom('soonkit0726@gmail.com', 'U-Transport System');
+                    $mail->addAddress($email, $name);
+                    $mail->isHTML(true);
+                    $mail->Subject = 'Reset Password Verification Code';
+                    $mail->Body    = "<h3>Hello $name,</h3><p>Your verification code is: <b>$otp</b></p>";
+                    $mail->send();
+                    
+                    // Redirect to OTP page
+                    echo "<script>window.location.href='verify_reset_otp.php';</script>";
+                    exit();
+                } catch (Exception $e) {
+                    $_SESSION['swal_title'] = "Email Error";
+                    $_SESSION['swal_msg'] = "Mailer Error: {$mail->ErrorInfo}";
+                    $_SESSION['swal_type'] = "error";
+                }
             }
         } else {
             $_SESSION['swal_title'] = "Verification Failed";
@@ -202,6 +211,7 @@ if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
         padding: 0;
         background: none !important;
         box-shadow: none !important;
+        user-select: none; cursor: default;
     }
     
     .warning-text {
