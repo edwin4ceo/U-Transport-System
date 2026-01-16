@@ -70,26 +70,40 @@ if (isset($_SESSION['student_id'])) {
         color: #666 !important;
     }
     
-    /* Confirm Button (Blue) */
+    /* ACTIONS BAR (Container for buttons) */
+    .swal2-actions {
+        gap: 15px !important; /* Space between buttons */
+    }
+
+    /* Confirm Button (Blue - Matches Theme) */
     .swal2-confirm {
-        background-color: #005A9C !important; /* Theme Blue */
+        background-color: #005A9C !important;
+        color: #fff !important; /* White Text */
         border-radius: 10px !important;
         font-weight: 600 !important;
         padding: 12px 30px !important;
         font-size: 15px !important;
-        box-shadow: none !important;
+        box-shadow: 0 4px 6px rgba(0, 90, 156, 0.2) !important;
+        border: none !important;
+        outline: none !important;
     }
     
-    /* Cancel Button (Red - for Logout) */
+    /* Cancel Button (Red - Standard for Cancel) */
     .swal2-cancel {
-        background-color: #e74c3c !important; /* Soft Red */
+        background-color: #e74c3c !important;
+        color: #fff !important; /* White Text */
         border-radius: 10px !important;
         font-weight: 600 !important;
         padding: 12px 30px !important;
         font-size: 15px !important;
-        box-shadow: none !important;
-        margin-left: 15px !important; /* Gap between buttons */
+        box-shadow: 0 4px 6px rgba(231, 76, 60, 0.2) !important;
+        border: none !important;
+        outline: none !important;
     }
+
+    /* Hover Effects */
+    .swal2-confirm:hover { background-color: #004a80 !important; }
+    .swal2-cancel:hover { background-color: #c0392b !important; }
 
     /* Remove focus outlines */
     .swal2-confirm:focus, .swal2-cancel:focus {
@@ -145,8 +159,9 @@ if (isset($_SESSION['student_id'])) {
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-    // Helper Function for Consistent Logout Alert
+    // Helper Function: Show Logout Confirmation -> Then Success -> Then Redirect
     function showLogoutAlert(redirectUrl) {
+        // Step 1: Confirmation Alert
         Swal.fire({
             title: "Confirm Logout?",
             text: "Are you sure you want to logout?",
@@ -154,17 +169,34 @@ document.addEventListener("DOMContentLoaded", function () {
             showCancelButton: true,
             confirmButtonText: "Yes, Logout",
             cancelButtonText: "Cancel",
-            buttonsStyling: false, // Important: Disable default styles to use customClass
+            buttonsStyling: false, // Use custom CSS
             customClass: {
                 popup: 'swal2-popup',
                 title: 'swal2-title',
                 htmlContainer: 'swal2-html-container',
                 confirmButton: 'swal2-confirm',
-                cancelButton: 'swal2-cancel'
+                cancelButton: 'swal2-cancel',
+                actions: 'swal2-actions'
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = redirectUrl;
+                // Step 2: Show "Logout Successful" Alert (Matches Login Success Style)
+                Swal.fire({
+                    title: 'Logout Successful!',
+                    text: 'You have been logged out safely.',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    buttonsStyling: false,
+                    customClass: {
+                        popup: 'swal2-popup',
+                        title: 'swal2-title',
+                        htmlContainer: 'swal2-html-container'
+                    }
+                }).then(() => {
+                    // Step 3: Redirect to actual logout script
+                    window.location.href = redirectUrl;
+                });
             }
         });
     }
