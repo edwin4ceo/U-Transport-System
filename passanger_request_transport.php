@@ -1,9 +1,12 @@
 <?php
+// FUNCTION: START SESSION
 session_start();
+
+// SECTION: INCLUDES
 include "db_connect.php";
 include "function.php";
 
-// 1. Check Login
+// 1. CHECK LOGIN STATUS
 if(!isset($_SESSION['student_id'])){
     redirect("passanger_login.php");
 }
@@ -27,7 +30,7 @@ $is_join_mode = !empty($pre_driver_id);
 
 // --- LOGIC: Calculate Available Seats & Lock Vehicle ---
 $locked_vehicle = "";
-$available_seats = 4; // Default fallback
+$available_seats = 4; 
 
 if ($is_join_mode) {
     $locked_vehicle = $pre_vehicle;
@@ -69,26 +72,21 @@ $swal_type = "";
 $swal_message = "";
 $swal_redirect = "";
 
-// 2. Handle Form Submission
+// 2. HANDLE FORM SUBMISSION
 if(isset($_POST['request'])){
     $student_id   = $_SESSION['student_id'];
-    
     $state        = isset($_POST['state']) ? $_POST['state'] : "";
     $region       = $_POST['region'];
     $address      = $_POST['address'];
     $destination  = $state . ", " . $region . " - " . $address;
-    
     $datetime     = $_POST['date_time'];
     $passengers   = (int)$_POST['passengers']; 
     $vehicle_type = $_POST['vehicle_type']; 
-    
     $pickup       = $_POST['pickup']; 
     $remark       = $_POST['remark'];
     $fare         = isset($_POST['hidden_fare']) ? $_POST['hidden_fare'] : "0.00";
-    
     $target_driver = isset($_POST['target_driver_id']) ? $_POST['target_driver_id'] : NULL;
 
-    // Validation
     if(empty($state) || empty($region) || empty($address) || empty($datetime) || empty($pickup) || empty($passengers) || empty($vehicle_type)){
         $swal_type = "warning";
         $swal_message = "Please fill in all required fields.";
@@ -103,7 +101,6 @@ if(isset($_POST['request'])){
     }
     else {
         $status = 'Pending'; 
-        
         $stmt = $conn->prepare("INSERT INTO bookings (student_id, driver_id, destination, date_time, passengers, vehicle_type, pickup_point, remark, status, fare) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("sssssssssd", $student_id, $target_driver, $destination, $datetime, $passengers, $vehicle_type, $pickup, $remark, $status, $fare);
 
@@ -121,132 +118,247 @@ if(isset($_POST['request'])){
 
 include "header.php"; 
 ?>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <style>
-    .request-wrapper { min-height: calc(100vh - 160px); padding: 30px 10px 40px; max-width: 800px; margin: 0 auto; background: #f5f7fb; font-family: 'Inter', sans-serif; }
-    .request-header-title h1 { margin: 0; font-size: 26px; font-weight: 800; color: #004b82; }
-    .request-header-title p { margin: 6px 0 0; font-size: 14px; color: #718096; }
-    .request-card { background: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 35px; margin-top: 25px; }
-    
-    label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 700; color: #2d3748; margin-top: 20px; }
-    
-    input[type="text"], select { width: 100%; padding: 14px; font-size: 15px; border: 1.5px solid #e2e8f0; border-radius: 12px; transition: all 0.2s; box-sizing: border-box; }
-    input:focus, select:focus { border-color: #004b82; outline: none; box-shadow: 0 0 0 3px rgba(0,75,130,0.1); }
-    
-    input:read-only, select:disabled, .readonly-select { background-color: #f1f5f9; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; pointer-events: none; }
+    /* ========================================================= */
+    /* 1. CRITICAL FIX: REMOVE DEFAULT HEADER WRAPPER STYLES     */
+    /* ========================================================= */
+    .content-area {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
 
-    /* --- DATE PICKER STYLE --- */
-    .date-picker-container { 
-        position: relative; 
-        width: 100%; 
+    /* 2. PAGE ENTRANCE ANIMATION */
+    @keyframes fadeInUpPage {
+        0% { opacity: 0; transform: translateY(40px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 3. LAYOUT WRAPPER (Grey Background) */
+    .request-wrapper { 
+        min-height: calc(100vh - 160px); 
+        padding: 40px 20px; 
+        max-width: 800px; 
+        margin: 0 auto; 
+        background: #f5f7fb; 
+        font-family: 'Poppins', sans-serif;
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    }
+
+    /* 4. HEADER TEXT */
+    .request-header-title h1 { margin: 0; font-size: 28px; font-weight: 700; color: #004b82; text-align: center; }
+    .request-header-title p { margin: 8px 0 30px; font-size: 15px; color: #64748b; text-align: center; }
+
+    /* 5. MAIN FORM CARD */
+    .request-card { 
+        background: #ffffff;          
+        border-radius: 24px;          
+        border: 1px solid #e2e8f0;    
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+        padding: 40px;                
     }
     
-    .date-input-field {
-        width: 100%; padding: 14px; font-size: 15px; border: 1.5px solid #e2e8f0; border-radius: 12px; background-color: #fff;
-        display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; box-sizing: border-box;
+    /* 6. FORM ELEMENTS */
+    label { 
+        display: block; 
+        margin-bottom: 8px; 
+        font-size: 14px; 
+        font-weight: 600; 
+        color: #333; 
+        margin-top: 20px; 
     }
-    .date-input-field:hover { border-color: #cbd5e0; }
-    .date-input-field span { color: #718096; font-weight: 500; }
-    .date-input-field.has-value span { color: #2d3748; font-weight: 600; }
+    label:first-child { margin-top: 0; }
+    
+    /* Input Fields */
+    input[type="text"], select, .date-input-field { 
+        width: 100%; 
+        height: 52px; 
+        padding: 0 15px; 
+        font-size: 15px; 
+        border: 1.5px solid #e2e8f0; 
+        border-radius: 12px; 
+        transition: all 0.2s; 
+        box-sizing: border-box; 
+        display: flex; 
+        align-items: center;
+        background-color: #fff;
+        color: #333;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    input:focus, select:focus { 
+        border-color: #004b82; 
+        outline: none; 
+    }
+    
+    /* Read-only styling */
+    input:read-only, select:disabled, .readonly-select { 
+        background-color: #f8fafc; 
+        color: #94a3b8; 
+        cursor: not-allowed; 
+        border-color: #e2e8f0; 
+        pointer-events: none; 
+    }
+
+    /* 7. DATE PICKER STYLE */
+    .date-picker-container { position: relative; width: 100%; }
+    .date-input-field { cursor: pointer; justify-content: space-between; }
+    .date-input-field:hover { border-color: #004b82; }
+    .date-input-field span { color: #333; }
     .date-input-field i { color: #004b82; font-size: 18px; }
 
+    /* Calendar Popup */
     .calendar-popup {
-        display: none; 
-        position: absolute; top: 100%; left: 0; 
+        display: none; position: absolute; top: 110%; left: 0; 
         width: 100%; max-width: 350px;
-        background: #fff; border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        z-index: 1000; margin-top: 10px;
-        border: 1px solid #e2e8f0;
-        overflow: hidden;
+        background: #fff; border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        z-index: 1000; 
+        border: 1px solid #e2e8f0; overflow: hidden;
     }
     .calendar-popup.active { display: block; }
     
     .calendar-header { background-color: #004b82; color: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
     .calendar-nav { cursor: pointer; font-size: 18px; padding: 5px 10px; user-select: none; }
     .current-date { font-size: 16px; font-weight: 700; }
-    
-    .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 10px 15px 5px; text-align: center; color: #888; font-weight: 600; font-size: 13px; }
-    .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 15px; grid-auto-rows: 38px; }
-    
+    .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 15px 15px 5px; text-align: center; color: #94a3b8; font-weight: 600; font-size: 13px; }
+    .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 15px; grid-auto-rows: 40px; }
     .calendar-days div { display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 50%; font-size: 14px; color: #333; margin: 2px; }
-    .calendar-days div:hover { background-color: #f0f0f0; }
-    .calendar-days div.selected { background-color: #004b82 !important; color: #fff !important; font-weight: bold; }
-    .calendar-days div.today { border: 1px solid #004b82; color: #004b82; font-weight: bold; }
-    .calendar-days div.disabled { color: #d0d0d0 !important; pointer-events: none; }
+    .calendar-days div:hover { background-color: #f1f5f9; }
+    
+    /* --- MODIFIED CALENDAR STYLES FOR DISTINCTION --- */
+    
+    /* Selected Date: Solid Blue Circle */
+    .calendar-days div.selected { 
+        background-color: #004b82 !important; 
+        color: #fff !important; 
+        font-weight: bold; 
+    }
+    
+    /* Today's Date: Hollow Blue Ring (Empty Circle) */
+    .calendar-days div.today { 
+        background-color: transparent; /* No Fill */
+        border: 2px solid #004b82;     /* Blue Border */
+        color: #004b82;                /* Blue Text */
+        font-weight: bold; 
+    }
+    
+    /* Disabled Dates */
+    .calendar-days div.disabled { color: #cbd5e1 !important; pointer-events: none; }
 
-    /* --- Time Picker Styles (Perfectly Aligned) --- */
+    /* Time Picker */
     .time-picker-simple {
-        border-top: 1px solid #e2e8f0;
-        padding: 15px;
-        display: flex;
-        justify-content: center;
-        align-items: center; /* Critical for vertical alignment */
-        gap: 8px;
-        background: #f8fafc;
+        border-top: 1px solid #e2e8f0; 
+        padding: 12px 15px 5px 15px; /* Reduced bottom padding */
+        display: flex; justify-content: center; align-items: center; gap: 8px; background: #f8fafc;
     }
     .time-select-simple {
-        padding: 0 10px;
-        height: 40px; /* Fixed height */
-        border: 1px solid #cbd5e0;
-        border-radius: 8px;
-        background: white;
-        font-size: 15px;
-        color: #2d3748;
-        cursor: pointer;
-        outline: none;
+        padding: 0 10px; height: 40px; border: 1px solid #cbd5e0;
+        border-radius: 8px; background: white; font-size: 15px;
+        color: #2d3748; cursor: pointer; outline: none; width: auto;
     }
+    
+    /* Alignment Fix for Colon */
     .time-separator { 
         font-weight: 700; 
         color: #4a5568; 
         font-size: 20px; 
-        height: 40px; /* Same height as inputs */
+        height: 40px; 
         display: flex; 
-        align-items: center; /* Center text vertically in the box */
+        align-items: center; 
         justify-content: center;
-        transform: translateY(-10px); /* VISUAL TWEAK: Lift colon slightly */
+        transform: translateY(-5px); 
+        padding-bottom: 2px;
     }
-    /* ----------------------------------------------- */
 
-    .join-box { background-color: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 12px; margin-bottom: 25px; font-size: 14px; line-height: 1.6; }
+    /* DONE BUTTON */
+    .btn-calendar-done {
+        width: 100%;
+        padding: 12px;
+        background-color: #004b82;
+        color: white;
+        border: none;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-top: 0; 
+    }
+    .btn-calendar-done:hover {
+        background-color: #003660;
+    }
 
-    .fare-container { background: #f0fdf4; border: 2px solid #bbf7d0; padding: 25px; border-radius: 16px; margin-top: 30px; border-left: 8px solid #16a34a; }
+    /* 8. JOIN INFO BOX */
+    .join-box { 
+        background-color: #f0fdf4; border: 1px solid #bbf7d0; 
+        padding: 20px; border-radius: 12px; margin-bottom: 30px; 
+        font-size: 14px; line-height: 1.6; 
+    }
+
+    /* 9. FARE ESTIMATOR CARD */
+    .fare-container { 
+        background: #f8fafc; 
+        border: 1px solid #e2e8f0; 
+        padding: 25px; border-radius: 16px; margin-top: 40px; 
+        border-left: 6px solid #16a34a; 
+    }
     .fare-flex { display: flex; justify-content: space-between; align-items: flex-end; }
-    .fare-label { font-weight: 800; color: #166534; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .fare-label { font-weight: 700; color: #166534; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
     
-    .price-breakdown { font-size: 13px; color: #718096; margin-top: 4px; display: none; }
+    .price-breakdown { font-size: 13px; color: #64748b; margin-top: 4px; display: none; }
     .original-strike { text-decoration: line-through; opacity: 0.7; }
     .surcharge-text { color: #e53e3e; font-weight: 700; margin-left: 5px; }
     .surcharge-badge { display: none; font-size: 11px; font-weight: 700; color: #c53030; background: #fff5f5; border: 1px solid #feb2b2; padding: 4px 10px; border-radius: 8px; margin-top: 8px; width: fit-content; }
 
-    .fare-amount { font-size: 36px; font-weight: 900; color: #15803d; line-height: 1; }
-    .rate-tag { display: inline-block; font-size: 13px; color: #065f46; font-weight: 700; background: #dcfce7; padding: 5px 12px; border-radius: 8px; margin-top: 10px; }
+    .fare-amount { font-size: 32px; font-weight: 800; color: #15803d; line-height: 1; }
+    .rate-tag { display: inline-block; font-size: 13px; color: #065f46; font-weight: 600; background: #dcfce7; padding: 5px 12px; border-radius: 8px; margin-top: 10px; }
 
-    .btn-submit { width: 100%; padding: 18px; background: #004b82; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: 700; cursor: pointer; margin-top: 30px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,75,130,0.2); }
-    .btn-submit:hover { background: #003660; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,75,130,0.3); }
+    /* 10. SUBMIT BUTTON */
+    .btn-submit { 
+        width: 100%; padding: 16px; 
+        background: #004b82; color: white; 
+        border: none; border-radius: 50px; 
+        font-size: 16px; font-weight: 600; 
+        cursor: pointer; margin-top: 30px; 
+        transition: all 0.3s ease; 
+        box-shadow: 0 4px 15px rgba(0, 75, 130, 0.2);
+    }
+    .btn-submit:hover { 
+        background: #003660; 
+        transform: translateY(-2px); 
+        box-shadow: 0 6px 20px rgba(0, 75, 130, 0.3); 
+    }
 </style>
 
 <div class="request-wrapper">
+    
     <div class="request-header-title">
         <h1><?php echo $is_join_mode ? "Join This Ride" : "Request Your Ride"; ?></h1>
         <p>Door-to-door transport from MMU Melaka</p>
     </div>
 
     <div class="request-card">
+        
         <?php if($is_join_mode): ?>
             <div class="join-box">
-                <strong style="color: #2e7d32; display:block; margin-bottom:5px;"><i class="fa-solid fa-check-circle"></i> You are joining a ride to:</strong>
-                <span style="font-size: 15px; font-weight: 600; color: #1b5e20;"><?php echo htmlspecialchars($pre_dest); ?></span><br>
-                <span style="color: #555;">Date: <?php echo htmlspecialchars($pre_date); ?></span><br>
+                <strong style="color: #166534; display:block; margin-bottom:5px;"><i class="fa-solid fa-check-circle"></i> You are joining a ride to:</strong>
+                <span style="font-size: 15px; font-weight: 600; color: #333;"><?php echo htmlspecialchars($pre_dest); ?></span><br>
+                <span style="color: #64748b;">Date: <?php echo htmlspecialchars($pre_date); ?></span><br>
                 
                 <?php if($available_seats > 0): ?>
-                    <span style="color: #d84315; font-weight:bold; margin-top:5px; display:inline-block;">
+                    <span style="color: #ea580c; font-weight:600; margin-top:5px; display:inline-block;">
                         <i class="fa-solid fa-chair"></i> Seats Remaining: <?php echo $available_seats; ?>
                     </span>
                 <?php else: ?>
-                    <span style="color: red; font-weight:bold; margin-top:5px; display:inline-block;">
+                    <span style="color: #dc2626; font-weight:600; margin-top:5px; display:inline-block;">
                         <i class="fa-solid fa-circle-xmark"></i> This ride is FULL
                     </span>
                 <?php endif; ?>
@@ -268,7 +380,6 @@ include "header.php";
             <?php endif; ?>
 
             <label>Date & Time</label>
-            
             <div class="date-picker-container">
                 <div class="date-input-field <?php echo !empty($pre_date) ? 'has-value' : ''; ?>" id="customDateTrigger" onclick="toggleCalendar()">
                     <span id="selected-date-text">
@@ -317,6 +428,8 @@ include "header.php";
                             <option value="PM" selected>PM</option>
                         </select>
                     </div>
+
+                    <button type="button" class="btn-calendar-done" onclick="closeCalendar(event)">Done</button>
                 </div>
             </div>
 
@@ -426,41 +539,29 @@ include "header.php";
     const monthDisplay = document.getElementById("month-display");
     const yearDisplay = document.getElementById("year-display");
     
-    // Initial State Check (e.g., Joining a ride)
     let initialVal = dateInput.value;
     let currDate = new Date();
     let selectedDay = null;
-
-    // Time defaults
     let selHour = "12";
     let selMin = "00";
     let selAmPm = "PM";
 
-    // If there is an existing date value, parse it
     if(initialVal) {
         let d = new Date(initialVal);
         if(!isNaN(d.getTime())) {
             currDate = d;
             selectedDay = d.getDate();
-            
-            // Extract Time
             let h = d.getHours();
             let m = d.getMinutes();
             selAmPm = h >= 12 ? 'PM' : 'AM';
             h = h % 12;
             h = h ? h : 12; 
             selHour = h;
-            
-            // Round manual input to nearest 5 for display, or just display exact
-            // Here we just set exact for logic, but dropdown will select nearest if exact exists
             selMin = m < 10 ? '0'+m : m;
         }
     }
     
-    // Set Time Pickers
     document.getElementById('hourSelect').value = selHour;
-    
-    // Ensure minute exists in our 5-min steps, else fallback to 00
     let minSelect = document.getElementById('minuteSelect');
     let found = false;
     for(let i=0; i<minSelect.options.length; i++){
@@ -471,7 +572,6 @@ include "header.php";
         }
     }
     if(!found) minSelect.value = "00";
-
     document.getElementById('ampmSelect').value = selAmPm;
 
     let currMonth = currDate.getMonth();
@@ -488,13 +588,11 @@ include "header.php";
         monthDisplay.innerText = months[currMonth];
         yearDisplay.innerText = currYear;
 
-        // Blank days
         for (let i = 0; i < firstDay; i++) {
             const div = document.createElement("div");
             daysContainer.appendChild(div);
         }
 
-        // Days
         for (let i = 1; i <= lastDate; i++) {
             const div = document.createElement("div");
             div.innerText = i;
@@ -508,10 +606,7 @@ include "header.php";
                 if (selectedDay && i === selectedDay && currMonth === currDate.getMonth() && currYear === currDate.getFullYear()) div.classList.add("selected");
                 
                 if(!isJoinMode) {
-                    div.onclick = (e) => { 
-                        e.stopPropagation(); 
-                        selectDay(i); 
-                    };
+                    div.onclick = (e) => { e.stopPropagation(); selectDay(i); };
                 }
             }
             daysContainer.appendChild(div);
@@ -536,27 +631,21 @@ include "header.php";
 
     function updateDateTimeValue() {
         if (!selectedDay) return;
-
         const h = document.getElementById('hourSelect').value;
         const m = document.getElementById('minuteSelect').value;
         const ap = document.getElementById('ampmSelect').value;
-
-        // Display
         const monthShort = months[currMonth].substring(0,3);
         const display = `${selectedDay} ${monthShort} ${currYear}, ${String(h).padStart(2,'0')}:${m} ${ap}`;
         dateText.innerText = display;
-        dateText.style.color = "#2d3748";
+        dateText.style.color = "#333";
         document.getElementById("customDateTrigger").classList.add("has-value");
 
-        // Real Value (24h format for SQL)
         let h24 = parseInt(h);
         if (ap === "PM" && h24 < 12) h24 += 12;
         if (ap === "AM" && h24 === 12) h24 = 0;
-        
         let mm = String(currMonth + 1).padStart(2, '0');
         let dd = String(selectedDay).padStart(2, '0');
         let hh = String(h24).padStart(2, '0');
-
         dateInput.value = `${currYear}-${mm}-${dd} ${hh}:${m}`;
     }
 
@@ -565,6 +654,12 @@ include "header.php";
         event.stopPropagation();
         calendarPopup.classList.toggle("active");
         if(calendarPopup.classList.contains("active")) renderCalendar();
+    }
+
+    // NEW: Close Calendar Function for the Done Button
+    function closeCalendar(e) {
+        e.stopPropagation();
+        calendarPopup.classList.remove("active");
     }
 
     document.addEventListener('click', function(e) {
@@ -662,10 +757,6 @@ include "header.php";
             return;
         }
 
-        let rate = (state === "Melaka") ? 12.00 : (state === "Johor" ? 85.00 : 60.00);
-        let base = (rate * pax).toFixed(2);
-        let extra = (fare - base).toFixed(2);
-
         Swal.fire({
             title: 'Confirm Your Booking?',
             html: `
@@ -684,7 +775,7 @@ include "header.php";
 
 <?php 
 if($swal_type) {
-    echo "<script>Swal.fire({ title: '".ucfirst($swal_type)."', text: '$swal_message', icon: '$swal_type' }).then(() => { window.location.href='$swal_redirect'; });</script>";
+    echo "<script>Swal.fire({ title: '".ucfirst($swal_type)."', text: '$swal_message', icon: '$swal_type', confirmButtonColor: '#004b82' }).then(() => { window.location.href='$swal_redirect'; });</script>";
 }
 include "footer.php"; 
 ?>
