@@ -44,7 +44,21 @@ include "header.php";
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
 <style>
-    /* 1. RESET HEADER CONTAINER (CRITICAL FIX) */
+    /* ========================================= */
+    /* 1. PAGE ENTRANCE ANIMATION (NEW!)         */
+    /* ========================================= */
+    @keyframes fadeInUpPage {
+        0% {
+            opacity: 0;
+            transform: translateY(60px); /* Start 60px below */
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);    /* End at normal position */
+        }
+    }
+
+    /* 2. RESET HEADER CONTAINER (CRITICAL FIX) */
     /* This overrides the default 'full page' white box from header.php */
     .content-area {
         background: transparent !important; /* Make the main page bg transparent */
@@ -56,7 +70,7 @@ include "header.php";
         max-width: 100% !important;
     }
 
-    /* 2. DASHBOARD MAIN CARD (The "White Box" you requested) */
+    /* 3. DASHBOARD MAIN CARD (The "White Box" you requested) */
     .dashboard-wrapper {
         background: #ffffff;          /* White background */
         max-width: 1000px;
@@ -66,9 +80,12 @@ include "header.php";
         border-radius: 24px;          /* Nice rounded corners */
         box-shadow: 0 15px 40px rgba(0,0,0,0.08); /* Float effect */
         font-family: 'Poppins', sans-serif;
+
+        /* Apply the entrance animation here */
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
 
-    /* 3. WELCOME SECTION */
+    /* 4. WELCOME SECTION */
     .welcome-section {
         margin-bottom: 30px;
         text-align: left; 
@@ -86,7 +103,7 @@ include "header.php";
         margin: 0;
     }
 
-    /* 4. STATUS CARD (Upcoming Trip Widget) */
+    /* 5. STATUS CARD (Upcoming Trip Widget) */
     .status-card {
         background: #f8fafc; /* Very light grey to contrast with white dashboard */
         border-radius: 20px;
@@ -151,7 +168,7 @@ include "header.php";
         color: #9a3412; 
     }
 
-    /* 5. QUICK ACCESS GRID */
+    /* 6. QUICK ACCESS GRID */
     .section-title {
         font-size: 18px;
         font-weight: 600;
