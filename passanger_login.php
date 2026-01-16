@@ -1,12 +1,15 @@
 <?php
-// Start session to manage user login state
+// FUNCTION: START SESSION
+// Starts the session to handle user login states
 session_start();
 
-// Include database connection and helper functions
+// SECTION: INCLUDES
+// Connect to database and load helper functions
 include "db_connect.php";
 include "function.php";
 
-// --- INCLUDE PHPMAILER LIBRARY ---
+// SECTION: PHPMAILER SETUP
+// Required libraries for sending verification emails
 require 'PHPMailer/Exception.php';
 require 'PHPMailer/PHPMailer.php';
 require 'PHPMailer/SMTP.php';
@@ -14,21 +17,25 @@ require 'PHPMailer/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Redirect if already logged in -> Go to Dashboard
+// FUNCTION: CHECK LOGIN STATUS
+// If user is already logged in, redirect them to dashboard immediately
 if(isset($_SESSION['student_id'])){
-    redirect("passenger_home.php");
+    echo "<script>window.location.href='passenger_home.php';</script>";
+    exit();
 }
 
-// Initialize variables to prevent undefined errors
+// Initialize variables to avoid PHP notices
 $reg_name = "";
 $reg_student_id = "";
 $reg_email = "";
 $reg_gender = "";
 
-// ---------------------------------------------------------
-// PHP LOGIC: REGISTER
-// ---------------------------------------------------------
-if(isset($_POST['register'])){
+// =========================================================
+// FUNCTION: REGISTER LOGIC
+// Handles the sign-up process, validation, and OTP sending
+// =========================================================
+// NOTE: We check for 'reg_email' because disabled buttons don't send POST data
+if(isset($_POST['reg_email'])){
     $reg_name             = strtoupper($_POST['reg_name']); 
     $reg_student_id       = $_POST['reg_student_id'];
     $reg_email            = $_POST['reg_email'];
@@ -36,7 +43,7 @@ if(isset($_POST['register'])){
     $reg_confirm_password = $_POST['reg_confirm_password'];
     $reg_gender           = $_POST['reg_gender']; 
 
-    // 1. Validation Logic
+    // SUB-FUNCTION: VALIDATION
     if (empty($reg_student_id)) {
         $_SESSION['swal_title'] = "Invalid Student ID";
         $_SESSION['swal_msg'] = "Student ID cannot be empty.";
@@ -64,7 +71,7 @@ if(isset($_POST['register'])){
         $_SESSION['swal_type'] = "error";
     }
     else {
-        // 2. Check for duplicate email in database
+        // SUB-FUNCTION: CHECK DUPLICATE EMAIL
         $check = $conn->query("SELECT * FROM students WHERE email='$reg_email'");
         if($check->num_rows > 0){
             $_SESSION['swal_title'] = "Registration Failed";
@@ -72,11 +79,11 @@ if(isset($_POST['register'])){
             $_SESSION['swal_type'] = "warning";
         } 
         else {
-            // 3. Generate OTP & Hash Password
+            // SUB-FUNCTION: GENERATE OTP
             $otp_code = rand(1000, 9999);
             $password_hash = password_hash($reg_password, PASSWORD_BCRYPT);
 
-            // 4. Store temporary data for verification page
+            // Save temp data to session
             $_SESSION['temp_register_data'] = [
                 'name' => $reg_name, 
                 'student_id' => $reg_student_id,
@@ -88,7 +95,7 @@ if(isset($_POST['register'])){
                 'resend_count' => 0 
             ];
 
-            // 5. Send Email via PHPMailer
+            // SUB-FUNCTION: SEND EMAIL
             $mail = new PHPMailer(true);
             try {
                 $mail->isSMTP();
@@ -105,7 +112,8 @@ if(isset($_POST['register'])){
                 $mail->Body    = "<h3>Hello $reg_name,</h3><p>Your verification code is: <b>$otp_code</b></p>";
                 $mail->send();
                 
-                header("Location: verify_email.php");
+                // Redirect to OTP Page
+                echo "<script>window.location.href='verify_email.php';</script>";
                 exit();
             } catch (Exception $e) {
                 $_SESSION['swal_title'] = "Email Error";
@@ -114,14 +122,16 @@ if(isset($_POST['register'])){
             }
         }
     }
-    // JS to force the register tab to stay open if an error occurs
+    // Keep register tab open if error occurs
     echo "<script>window.onload = function() { register(); }</script>";
 }
 
-// ---------------------------------------------------------
-// PHP LOGIC: LOGIN
-// ---------------------------------------------------------
-if(isset($_POST['login'])){
+// =========================================================
+// FUNCTION: LOGIN LOGIC
+// Handles user authentication and redirection
+// =========================================================
+// NOTE: Check for 'login_email' to avoid disabled button issues
+if(isset($_POST['login_email'])){
     $email = $_POST['login_email'];
     $password = $_POST['login_password'];
 
@@ -129,11 +139,16 @@ if(isset($_POST['login'])){
 
     if($result->num_rows == 1){
         $row = $result->fetch_assoc();
+        // Verify Password
         if(password_verify($password, $row['password'])){
+            // Login Success: Set Session
             $_SESSION['student_id'] = $row['student_id']; 
             $_SESSION['student_name'] = $row['name'];
-            alert("Login successful! Redirecting...");
-            redirect("passenger_home.php"); 
+            
+            // SUB-FUNCTION: REDIRECT TO HOME
+            // Using JS redirect to ensure it works even if headers are sent
+            echo "<script>window.location.href = 'passenger_home.php';</script>";
+            exit(); 
         } else {
             $_SESSION['swal_title'] = "Incorrect Password";
             $_SESSION['swal_msg'] = "The password you entered is incorrect.";
@@ -150,11 +165,8 @@ if(isset($_POST['login'])){
 <?php include "header.php"; ?>
 
 <style>
-    /* --- 1. HEADER CONTAINER OVERRIDE --- */
-    /* The header.php opens a .content-area div with default styling.
-       We override it here to be transparent and full-width so our
-       custom login form can float freely without being "boxed in".
-    */
+    /* CSS: HEADER OVERRIDE */
+    /* Force the header container to be transparent */
     .content-area {
         background: transparent !important;
         box-shadow: none !important;
@@ -165,47 +177,43 @@ if(isset($_POST['login'])){
         margin: 0 !important;
     }
 
-    /* --- 2. PAGE WRAPPER (MOVED UP) --- */
+    /* CSS: PAGE LAYOUT */
     .wrapper {
         width: 100%;
-        min-height: 700px; /* Reduced min-height to reduce bottom gap */
+        min-height: 700px;
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        /* REDUCED padding-top to move everything UP closer to header */
-        padding-top: 10px; 
+        padding-top: 10px; /* Moves content up */
         position: relative;
         overflow: hidden;
         background-color: #f6f5f7; 
     }
 
-    /* --- 3. TOP NAVIGATION BUTTONS --- */
-    
-    /* Toggle Buttons (Sign In / Sign Up) - Right Side */
+    /* CSS: NAVIGATION BUTTONS */
     .nav-button {
         position: absolute;
-        top: 0px; /* Flush with top */
+        top: 0px; 
         right: 10%; 
         display: flex;
         gap: 15px;
         z-index: 100;
     }
 
-    /* Back Button - Left Side */
     .back-nav {
         position: absolute;
-        top: 0px; /* Flush with top */
+        top: 0px; 
         left: 10%; 
         z-index: 100;
     }
 
-    /* Shared Button Styling */
+    /* CSS: BUTTON STYLING */
     .btn, .btn-back {
         height: 40px;
         border: none;
         border-radius: 30px !important; 
         background: #ffffff; 
-        color: #005A9C;
+        color: #005A9C; 
         font-weight: 600;
         cursor: pointer;
         transition: .3s;
@@ -218,30 +226,27 @@ if(isset($_POST['login'])){
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     
-    /* Specific Widths */
     .btn { width: 110px; }
     .btn-back { padding: 0 30px; gap: 8px; }
 
-    /* Hover & Active States */
     .btn.white-btn, .btn:hover, .btn-back:hover {
         background: #005A9C; 
         color: #fff;
         box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
     }
 
-    /* --- 4. MAIN FORM CONTAINER --- */
+    /* CSS: FORM CONTAINER */
     .form-box {
         position: relative;
         width: 600px; 
         height: 680px; 
         overflow: hidden;
-        /* Adjusted margin-top to pull the form up closer to buttons */
         margin-top: 50px; 
         background: transparent !important;
         box-shadow: none !important;
     }
 
-    /* Mobile Responsive Logic */
+    /* CSS: MOBILE RESPONSIVE */
     @media (max-width: 768px) {
         .form-box { width: 95%; height: 750px; margin-top: 60px; }
         .nav-button { right: 5%; top: 10px; gap: 10px; }
@@ -251,7 +256,7 @@ if(isset($_POST['login'])){
         .login-container, .register-container { padding: 0 20px; }
     }
 
-    /* Sliding Containers */
+    /* CSS: SLIDING ANIMATION */
     .login-container, .register-container {
         position: absolute;
         width: 100%;
@@ -263,7 +268,7 @@ if(isset($_POST['login'])){
     .login-container { left: 0; opacity: 1; }
     .register-container { right: -120%; opacity: 0; pointer-events: none; } 
 
-    /* Headings */
+    /* CSS: TYPOGRAPHY */
     .top { margin-bottom: 20px; text-align: center; }
     .top span { color: #555; font-size: 14px; margin-bottom: 5px; display: block; }
     .top span a { color: #005A9C; text-decoration: none; font-weight: 600; cursor: pointer; }
@@ -278,14 +283,14 @@ if(isset($_POST['login'])){
         box-shadow: none !important;
     }
 
-    /* --- 5. INPUT FIELDS (Clean White Design) --- */
+    /* CSS: INPUT BOXES (WHITE & CLEAN) */
     .input-box {
         display: flex;
         align-items: center;
         width: 100%;
         height: 55px;
-        background: #ffffff !important; /* Pure White Background */
-        box-shadow: 0 5px 15px rgba(0,0,0,0.05) !important; /* Soft Shadow */
+        background: #ffffff !important; 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05) !important; 
         border-radius: 30px !important; 
         margin-bottom: 20px;
         padding: 0 20px;
@@ -299,7 +304,6 @@ if(isset($_POST['login'])){
         border: 1px solid #005A9C;
     }
 
-    /* Icons */
     .input-box i {
         font-size: 18px;
         color: #888;
@@ -311,7 +315,16 @@ if(isset($_POST['login'])){
 
     .input-box:focus-within i { color: #005A9C; }
 
-    /* Text Input */
+    /* CSS: AUTOFILL FIX (REMOVES BLUE BG) */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover, 
+    input:-webkit-autofill:focus, 
+    input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px white inset !important;
+        -webkit-text-fill-color: #333 !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+
     .input-field {
         flex: 1; 
         background: transparent !important;
@@ -327,7 +340,6 @@ if(isset($_POST['login'])){
 
     .input-field::placeholder { color: #999; font-weight: 400; }
 
-    /* Toggle Password Eye */
     .input-box .toggle-pass {
         margin-right: 0;
         margin-left: 10px; 
@@ -336,7 +348,7 @@ if(isset($_POST['login'])){
     }
     .input-box .toggle-pass:hover { color: #005A9C; }
 
-    /* Submit Button */
+    /* CSS: SUBMIT BUTTON */
     .submit {
         width: 100%;
         height: 55px;
@@ -357,13 +369,12 @@ if(isset($_POST['login'])){
         transform: translateY(-2px);
         box-shadow: 0 10px 20px rgba(0, 90, 156, 0.3);
     }
-    /* Loading state style */
     .submit:disabled { background: #ccc !important; cursor: not-allowed; transform: none; box-shadow: none; }
 
-    /* Footer Links */
+    /* CSS: FOOTER LINKS */
     .two-col {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-end; 
         font-size: 14px;
         margin-top: 15px;
         padding: 0 10px;
@@ -411,10 +422,6 @@ if(isset($_POST['login'])){
                 <button type="submit" name="login" class="submit">Sign In</button>
 
                 <div class="two-col">
-                    <div class="one">
-                        <input type="checkbox" id="login-check">
-                        <label for="login-check"> Remember Me</label>
-                    </div>
                     <div class="two">
                         <label><a href="passanger_forgot_password.php">Forgot password?</a></label>
                     </div>
@@ -475,12 +482,12 @@ if(isset($_POST['login'])){
 <?php include "footer.php"; ?>
 
 <script>
-    // --- JS: SLIDING ANIMATION LOGIC ---
     var a = document.getElementById("loginBtn");
     var b = document.getElementById("registerBtn");
     var x = document.getElementById("login");
     var y = document.getElementById("register");
 
+    // FUNCTION: SHOW LOGIN FORM
     function login() {
         x.style.left = "0px";
         y.style.right = "-120%"; 
@@ -492,6 +499,7 @@ if(isset($_POST['login'])){
         b.className = "btn";
     }
 
+    // FUNCTION: SHOW REGISTER FORM
     function register() {
         x.style.left = "-120%"; 
         y.style.right = "0px";
@@ -503,7 +511,7 @@ if(isset($_POST['login'])){
         b.className += " white-btn";
     }
 
-    // --- JS: EMAIL AUTOFILL ---
+    // FUNCTION: AUTOFILL EMAIL FROM STUDENT ID
     const studentIdInput = document.getElementById('studentIDInput');
     const emailInput = document.getElementById('emailInput');
     if(studentIdInput){
@@ -514,7 +522,7 @@ if(isset($_POST['login'])){
         });
     }
 
-    // --- JS: TOGGLE PASSWORD VISIBILITY ---
+    // FUNCTION: TOGGLE PASSWORD VISIBILITY
     function togglePass(inputId, icon) {
         const input = document.getElementById(inputId);
         if (input.type === "password") {
@@ -526,18 +534,16 @@ if(isset($_POST['login'])){
         }
     }
 
-    // --- JS: LOADING EFFECT ON SUBMIT ---
+    // FUNCTION: HANDLE BUTTON LOADING STATE
     function handleLoading(form) {
         const btn = form.querySelector('button[type="submit"]');
         const originalText = btn.innerHTML;
         
-        // Prevent double submission
         if(btn.disabled) return false;
 
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
         
-        // Re-enable if server takes too long (timeout safety)
         setTimeout(() => {
             btn.disabled = false;
             btn.innerHTML = originalText;
