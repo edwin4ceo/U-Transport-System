@@ -165,20 +165,18 @@ include "header.php";
     }
 
     /* --- ALIGNMENT FIX: LABELS --- */
-    /* Ensure all labels have exact same spacing and height */
-    .request-card form label, /* Fallback */
+    .request-card form label, 
     .filter-card label { 
         display: block !important; 
         margin-bottom: 8px !important; 
         font-size: 14px !important; 
         font-weight: 600 !important; 
         color: #333 !important; 
-        margin-top: 0 !important; /* Reset margin */
-        line-height: 1.2 !important; /* Consistent text height */
+        margin-top: 0 !important; 
+        line-height: 1.2 !important; 
     }
 
     /* --- ALIGNMENT FIX: INPUTS & SELECTS --- */
-    /* Force exact same height and box model */
     .filter-card select, 
     .date-input-field { 
         width: 100% !important; 
@@ -202,9 +200,8 @@ include "header.php";
         outline: none !important;
     }
 
-    /* Fix Date Picker Inner Text Alignment */
     .date-input-field span {
-        flex: 1; /* Push icon to right */
+        flex: 1; 
     }
 
     /* Search Button */
@@ -286,9 +283,25 @@ include "header.php";
     .current-date { font-size: 16px; font-weight: 700; }
     .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 15px 15px 5px; text-align: center; color: #94a3b8; font-weight: 600; font-size: 13px; }
     .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 15px; grid-auto-rows: 40px; }
+    
     .calendar-days div { display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 50%; font-size: 14px; color: #333; margin: 2px; }
     .calendar-days div:hover { background-color: #f1f5f9; }
-    .calendar-days div.selected, .calendar-days div.today { background-color: #004b82 !important; color: #fff !important; font-weight: bold; }
+    
+    /* --- UPDATED CALENDAR STYLE (Distinct Today vs Selected) --- */
+    /* Selected Date: Solid Blue */
+    .calendar-days div.selected { 
+        background-color: #004b82 !important; 
+        color: #fff !important; 
+        font-weight: bold; 
+    }
+    /* Today's Date: Hollow Blue Ring */
+    .calendar-days div.today { 
+        background-color: transparent !important; 
+        border: 2px solid #004b82; 
+        color: #004b82 !important; 
+        font-weight: bold; 
+    }
+    
     .calendar-days div.inactive { visibility: hidden; pointer-events: none; }
     .calendar-days div.disabled { color: #cbd5e1 !important; pointer-events: none; }
 
@@ -426,7 +439,7 @@ include "header.php";
 </div>
 
 <script>
-    // --- 1. Form Validation (Prevent Empty Search if absolutely no filter) ---
+    // --- 1. Form Validation ---
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         const state = document.getElementById('stateSelect').value;
         const region = document.getElementById('regionSelect').value;
@@ -487,6 +500,7 @@ include "header.php";
             if (checkDate < todayDate) {
                 dayDiv.classList.add("disabled"); 
             } else {
+                // HIGHLIGHT LOGIC: Separate classes
                 if (i === new Date().getDate() && currMonth === new Date().getMonth() && currYear === new Date().getFullYear()) {
                     dayDiv.classList.add("today");
                 }
@@ -504,7 +518,7 @@ include "header.php";
         currDate = new Date(currYear, currMonth, day);
         renderCalendar(); 
         updateDateValue(); 
-        calendarPopup.classList.remove("active");
+        calendarPopup.classList.remove("active"); // AUTO CLOSE (Keep as is)
     }
 
     function changeMonth(direction) {
