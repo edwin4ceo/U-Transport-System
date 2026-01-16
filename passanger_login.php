@@ -151,13 +151,13 @@ if(isset($_POST['login_email'])){
             $_SESSION['student_name'] = $row['name'];
             
             // --- MODIFIED: SWEETALERT SUCCESS & REDIRECT ---
-            // We echo a mini HTML page with SweetAlert just for this action.
-            // This ensures the user SEES the success message before redirecting.
+            // Displays a success modal before redirecting
             echo "
             <!DOCTYPE html>
             <html>
             <head>
                 <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+                <style>body { font-family: 'Poppins', sans-serif; background-color: #f6f5f7; }</style>
             </head>
             <body>
                 <script>
@@ -166,7 +166,8 @@ if(isset($_POST['login_email'])){
                         text: 'Welcome back, " . htmlspecialchars($row['name']) . "!',
                         icon: 'success',
                         timer: 2000,
-                        showConfirmButton: false
+                        showConfirmButton: false,
+                        confirmButtonColor: '#005A9C'
                     }).then(function() {
                         window.location.href = 'passenger_home.php';
                     });
@@ -308,7 +309,7 @@ if(isset($_POST['login_email'])){
         box-shadow: none !important;
     }
 
-    /* CSS: INPUT BOXES (Darker Border) */
+    /* CSS: INPUT BOXES (Darker Border #c4c4c4) */
     .input-box {
         display: flex;
         align-items: center;
@@ -640,3 +641,21 @@ if(isset($_POST['login_email'])){
         return true;
     }
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<?php if(isset($_SESSION['swal_title'])): ?>
+<script>
+    Swal.fire({
+        title: '<?php echo $_SESSION['swal_title']; ?>',
+        text: '<?php echo $_SESSION['swal_msg']; ?>',
+        icon: '<?php echo $_SESSION['swal_type']; ?>',
+        confirmButtonColor: '#005A9C'
+    });
+</script>
+<?php 
+    // Clear session after displaying
+    unset($_SESSION['swal_title']);
+    unset($_SESSION['swal_msg']);
+    unset($_SESSION['swal_type']);
+endif; 
+?>

@@ -1,8 +1,12 @@
 <?php
+// FUNCTION: START SESSION
 session_start();
+
+// SECTION: INCLUDES
 include "db_connect.php";
 include "function.php";
 
+// SECTION: PHPMAILER SETUP
 require 'PHPMailer/Exception.php';
 require 'PHPMailer/PHPMailer.php';
 require 'PHPMailer/SMTP.php';
@@ -15,12 +19,14 @@ if (!isset($_SESSION['temp_reset_data'])) {
     exit();
 }
 
+// 1. CALCULATE REMAINING TIME
 $otp_start_time = isset($_SESSION['temp_reset_data']['otp_timestamp']) ? $_SESSION['temp_reset_data']['otp_timestamp'] : time();
 $current_time = time();
 $time_limit = 600; 
 $remaining_seconds = $time_limit - ($current_time - $otp_start_time);
 if ($remaining_seconds < 0) $remaining_seconds = 0;
 
+// 2. HANDLE RESEND CODE
 if (isset($_POST['resend_btn'])) {
     $current_count = isset($_SESSION['temp_reset_data']['resend_count']) ? $_SESSION['temp_reset_data']['resend_count'] : 0;
     if ($current_count >= 3) {
@@ -64,6 +70,7 @@ if (isset($_POST['resend_btn'])) {
     exit();
 }
 
+// 3. HANDLE VERIFICATION
 if (isset($_POST['verify_btn'])) {
     $user_entered_code = $_POST['otp_input'];
     $correct_code = $_SESSION['temp_reset_data']['otp_code'];
@@ -78,10 +85,25 @@ if (isset($_POST['verify_btn'])) {
         $update_stmt->bind_param("ss", $new_pass_hash, $email);
         if ($update_stmt->execute()) {
             unset($_SESSION['temp_reset_data']);
-            $_SESSION['swal_title'] = "Success!";
-            $_SESSION['swal_msg'] = "Password updated. Please login.";
-            $_SESSION['swal_type'] = "success";
-            header("Location: passanger_login.php");
+            
+            // --- SWEETALERT SUCCESS & REDIRECT ---
+            echo "
+            <!DOCTYPE html>
+            <html>
+            <head><script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script></head>
+            <style>body { font-family: 'Poppins', sans-serif; background-color: #f6f5f7; }</style>
+            <body>
+            <script>
+                Swal.fire({
+                    title: 'Password Reset Successful!',
+                    text: 'Your password has been updated. Please login.',
+                    icon: 'success',
+                    confirmButtonColor: '#005A9C'
+                }).then(() => {
+                    window.location.href = 'passanger_login.php';
+                });
+            </script>
+            </body></html>";
             exit();
         }
     } else {
@@ -95,75 +117,195 @@ if (isset($_POST['verify_btn'])) {
 <?php include "header.php"; ?>
 
 <style>
-    body { background-color: #f4f7f6; }
-    .verify-container { max-width: 420px; margin: 60px auto; padding: 40px 30px; background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
-    .otp-field { display: flex; justify-content: center; gap: 12px; margin-bottom: 25px; }
-    .otp-field input { width: 55px; height: 60px; font-size: 24px; font-weight: 700; text-align: center; border: 2px solid #e0e0e0; border-radius: 10px; outline: none; }
+    /* CSS: HEADER OVERRIDE */
+    .content-area {
+        background: transparent !important; box-shadow: none !important; border: none !important;
+        width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important;
+    }
+
+    /* CSS: PAGE WRAPPER */
+    .wrapper {
+        width: 100%; min-height: 700px; display: flex; justify-content: center; align-items: flex-start;
+        padding-top: 10px; position: relative; overflow: hidden; background-color: #f6f5f7; 
+    }
+
+    /* CSS: FORM CONTAINER */
+    .verify-box {
+        width: 500px; margin-top: 60px; padding: 40px 30px; 
+        background: #ffffff; border-radius: 20px; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+        text-align: center;
+        position: relative;
+    }
+
+    @media (max-width: 768px) {
+        .verify-box { width: 90%; margin-top: 60px; padding: 30px 20px; }
+    }
+
+    /* CSS: TYPOGRAPHY */
+    .top h2 { 
+        font-size: 30px; color: #333 !important; font-weight: 600; margin-bottom: 10px;
+    }
+    .top p {
+        font-size: 15px; color: #666; margin-bottom: 30px; line-height: 1.6;
+    }
+    .top strong { color: #005A9C; }
+
+    /* CSS: OTP INPUT FIELDS */
+    .otp-field { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+    .otp-field input { 
+        width: 60px; height: 60px; 
+        font-size: 24px; font-weight: 700; text-align: center; color: #333;
+        border: 1px solid #c4c4c4; /* Darker border */
+        border-radius: 12px; outline: none; background: #fff;
+        transition: .3s;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    .otp-field input:focus { 
+        border-color: #005A9C; box-shadow: 0 4px 10px rgba(0, 90, 156, 0.2); transform: translateY(-2px);
+    }
+
+    /* CSS: ACTION AREA */
+    .action-area { margin-bottom: 25px; font-size: 14px; color: #666; }
+    #time { font-weight: 700; color: #333; }
+    
+    .resend-btn { 
+        background: none; border: none; color: #005A9C; cursor: pointer; 
+        text-decoration: none; font-weight: 600; font-size: 14px; 
+        transition: .3s; 
+    }
+    .resend-btn:hover { text-decoration: underline; color: #004a80; }
+
+    /* CSS: VERIFY BUTTON */
+    .btn-verify {
+        width: 100%; height: 55px; background: #005A9C !important; border: none !important; border-radius: 30px !important;
+        color: #fff !important; font-size: 16px; font-weight: 600; cursor: pointer; transition: .3s;
+        box-shadow: 0 8px 15px rgba(0, 90, 156, 0.2); display: flex; align-items: center; justify-content: center;
+    }
+    .btn-verify:hover { background: #004a80 !important; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0, 90, 156, 0.3); }
+
+    /* CSS: BACK LINK */
+    .back-link { display: block; margin-top: 20px; font-size: 14px; color: #999; text-decoration: none; transition: .3s; }
+    .back-link:hover { color: #005A9C; }
+
 </style>
 
-<div class="verify-container">
-    <h2>Verify Password Reset</h2>
-    <p>Please enter the code sent to:<br> <strong><?php echo htmlspecialchars($_SESSION['temp_reset_data']['email']); ?></strong></p>
+<div class="wrapper">
+    <div class="verify-box">
+        
+        <div class="top">
+            <h2>Verify Reset</h2>
+            <p>Please enter the code sent to:<br> <strong><?php echo htmlspecialchars($_SESSION['temp_reset_data']['email']); ?></strong></p>
+        </div>
 
-    <form action="" method="POST" id="otpForm" onkeydown="return event.key != 'Enter';">
-        <input type="hidden" name="otp_input" id="full_otp_input">
-        <div class="otp-field">
-            <input type="number" class="otp-box" maxlength="1" required autofocus>
-            <input type="number" class="otp-box" maxlength="1" required>
-            <input type="number" class="otp-box" maxlength="1" required>
-            <input type="number" class="otp-box" maxlength="1" required>
-        </div>
-        <div class="action-area" style="margin-bottom: 20px;">
-            <div id="timer-box">Code expires in: <span id="time" style="font-weight:700;">10:00</span></div>
-            <div id="resend-box" style="display:none; flex-direction:column;">
-                <span>Didn't receive the code?</span>
-                <button type="submit" name="resend_btn" style="background:none; border:none; color:#007bff; cursor:pointer; text-decoration:underline; font-weight:700;" formnovalidate>Resend Code</button>
+        <form action="" method="POST" id="otpForm" onkeydown="return event.key != 'Enter';">
+            <input type="hidden" name="otp_input" id="full_otp_input">
+            
+            <div class="otp-field">
+                <input type="number" class="otp-box" maxlength="1" required autofocus>
+                <input type="number" class="otp-box" maxlength="1" required>
+                <input type="number" class="otp-box" maxlength="1" required>
+                <input type="number" class="otp-box" maxlength="1" required>
             </div>
-        </div>
-        <button type="submit" name="verify_btn" style="width:100%; padding:14px; background-color:#28a745; color:white; border:none; border-radius:10px; font-weight:700; cursor:pointer;">Confirm Update Password</button>
-    </form>
+            
+            <div class="action-area">
+                <div id="timer-box">
+                    Code expires in: <span id="time">10:00</span>
+                </div>
+                <div id="resend-box" style="display: none; flex-direction: column; gap: 5px;">
+                    <span>Didn't receive the code?</span>
+                    <button type="submit" name="resend_btn" class="resend-btn" formnovalidate>Resend Code</button>
+                </div>
+            </div>
+
+            <button type="submit" name="verify_btn" class="btn-verify">Confirm Update Password</button>
+        </form>
+
+        <a href="passanger_login.php" class="back-link">Back to Login</a>
+    </div>
 </div>
 
+<?php include "footer.php"; ?>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const inputs = document.querySelectorAll(".otp-box");
     const hiddenInput = document.getElementById("full_otp_input");
+    const form = document.getElementById("otpForm");
 
-    // 全局拦截 Enter
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' && event.target.tagName !== 'BUTTON') {
             event.preventDefault();
-            Swal.fire({ icon: 'info', title: 'Action Required', text: 'Please enter the OTP number.', confirmButtonColor: '#005A9C' });
+            Swal.fire({
+                icon: 'info',
+                title: 'Action Required',
+                text: 'Please enter the OTP number and click the button.',
+                confirmButtonColor: '#005A9C'
+            });
         }
     });
 
     inputs.forEach((input, index) => {
-        input.addEventListener("input", () => {
+        input.addEventListener("input", (e) => {
             if (input.value.length > 1) input.value = input.value.slice(-1);
-            if (input.value.length === 1 && index < inputs.length - 1) inputs[index+1].focus();
+            if (input.value.length === 1 && index < inputs.length - 1) inputs[index + 1].focus();
             updateHiddenInput();
         });
-        input.addEventListener("keydown", (e) => { if (e.key === "Backspace" && input.value === "" && index > 0) inputs[index-1].focus(); });
+
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Backspace" && input.value === "" && index > 0) inputs[index - 1].focus();
+        });
     });
+
     function updateHiddenInput() {
         let code = "";
         inputs.forEach((input) => code += input.value);
         hiddenInput.value = code;
     }
-    document.getElementById("otpForm").addEventListener("submit", () => updateHiddenInput());
 
+    form.addEventListener("submit", () => updateHiddenInput());
+
+    // Timer Logic
     let timeLeft = <?php echo $remaining_seconds; ?>;
-    const countdown = setInterval(() => {
-        if (timeLeft <= 0) {
-            clearInterval(countdown);
-            document.getElementById('timer-box').style.display = 'none';
-            document.getElementById('resend-box').style.display = 'flex';
-        } else {
-            let m = Math.floor(timeLeft / 60);
-            let s = timeLeft % 60;
-            document.getElementById('time').textContent = m + ":" + (s < 10 ? '0' + s : s);
-            timeLeft--;
-        }
-    }, 1000);
+    const timeDisplay = document.getElementById('time');
+    const timerBox = document.getElementById('timer-box');
+    const resendBox = document.getElementById('resend-box');
+
+    function startTimer() {
+        if (timeLeft <= 0) { showResend(); return; }
+        const timerInterval = setInterval(function() {
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                showResend();
+            } else {
+                let minutes = Math.floor(timeLeft / 60);
+                let seconds = timeLeft % 60;
+                timeDisplay.textContent = minutes + ":" + (seconds < 10 ? '0' + seconds : seconds);
+                timeLeft--;
+            }
+        }, 1000);
+    }
+
+    function showResend() {
+        timerBox.style.display = 'none';
+        resendBox.style.display = 'flex';
+    }
+
+    startTimer();
 </script>
 
-<?php include "footer.php"; ?>
+<?php if(isset($_SESSION['swal_title'])): ?>
+<script>
+    Swal.fire({
+        title: '<?php echo $_SESSION['swal_title']; ?>',
+        text: '<?php echo $_SESSION['swal_msg']; ?>',
+        icon: '<?php echo $_SESSION['swal_type']; ?>',
+        confirmButtonColor: '#005A9C'
+    });
+</script>
+<?php 
+    unset($_SESSION['swal_title']);
+    unset($_SESSION['swal_msg']);
+    unset($_SESSION['swal_type']);
+endif; 
+?>
