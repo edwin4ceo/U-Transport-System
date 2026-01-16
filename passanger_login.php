@@ -283,7 +283,7 @@ if(isset($_POST['login_email'])){
         box-shadow: none !important;
     }
 
-    /* CSS: INPUT BOXES (WHITE & CLEAN) */
+    /* CSS: INPUT BOXES (WHITE & DARKER BORDER) */
     .input-box {
         display: flex;
         align-items: center;
@@ -294,14 +294,17 @@ if(isset($_POST['login_email'])){
         border-radius: 30px !important; 
         margin-bottom: 20px;
         padding: 0 20px;
-        border: 1px solid #eeeeee; 
+        
+        /* --- CHANGED: DARKER BORDER TO MATCH RESET PAGE --- */
+        border: 1px solid #c4c4c4 !important; 
+        
         transition: .3s;
     }
 
     .input-box:focus-within {
         background: #ffffff !important;
         box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15) !important;
-        border: 1px solid #005A9C;
+        border: 1px solid #005A9C !important;
     }
 
     .input-box i {
