@@ -26,6 +26,77 @@ if (isset($_SESSION['student_id'])) {
 </head>
 <body>
 
+<style>
+    /* 1. IMPORT POPPINS FONT */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+    /* 2. GLOBAL FIX: Prevent Text Selection & Force Font */
+    body, h1, h2, h3, h4, h5, h6, p, span, label, a, li, button, .swal2-popup {
+        font-family: 'Poppins', sans-serif !important; 
+        user-select: none;           
+        -webkit-user-select: none;   
+        cursor: default;             
+    }
+
+    /* Exception: Allow typing in inputs */
+    input, select, textarea { 
+        user-select: text !important; -webkit-user-select: text !important; cursor: text !important; 
+        font-family: 'Poppins', sans-serif !important;
+    }
+    
+    /* Exception: Pointers for clickable items */
+    a, button, .btn, .submit { 
+        cursor: pointer !important; 
+    }
+
+    /* 3. SWEETALERT CUSTOMIZATION (Unified Style) */
+    
+    /* Popup Card */
+    .swal2-popup {
+        border-radius: 20px !important;
+        padding: 30px !important;
+    }
+    
+    /* Title */
+    .swal2-title {
+        font-weight: 600 !important;
+        color: #333 !important;
+        font-size: 24px !important;
+    }
+    
+    /* Content Text */
+    .swal2-html-container {
+        font-size: 15px !important;
+        color: #666 !important;
+    }
+    
+    /* Confirm Button (Blue) */
+    .swal2-confirm {
+        background-color: #005A9C !important; /* Theme Blue */
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        padding: 12px 30px !important;
+        font-size: 15px !important;
+        box-shadow: none !important;
+    }
+    
+    /* Cancel Button (Red - for Logout) */
+    .swal2-cancel {
+        background-color: #e74c3c !important; /* Soft Red */
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        padding: 12px 30px !important;
+        font-size: 15px !important;
+        box-shadow: none !important;
+        margin-left: 15px !important; /* Gap between buttons */
+    }
+
+    /* Remove focus outlines */
+    .swal2-confirm:focus, .swal2-cancel:focus {
+        box-shadow: none !important;
+    }
+</style>
+
 <header>
     <div class="container">
         <div class="logo">
@@ -70,50 +141,49 @@ if (isset($_SESSION['student_id'])) {
     </div>
 </header>
 
-<!-- SweetAlert2 for logout confirmation -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
+    // Helper Function for Consistent Logout Alert
+    function showLogoutAlert(redirectUrl) {
+        Swal.fire({
+            title: "Confirm Logout?",
+            text: "Are you sure you want to logout?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes, Logout",
+            cancelButtonText: "Cancel",
+            buttonsStyling: false, // Important: Disable default styles to use customClass
+            customClass: {
+                popup: 'swal2-popup',
+                title: 'swal2-title',
+                htmlContainer: 'swal2-html-container',
+                confirmButton: 'swal2-confirm',
+                cancelButton: 'swal2-cancel'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = redirectUrl;
+            }
+        });
+    }
+
+    // Passenger Logout Listener
     const passengerLogout = document.getElementById("passengerLogoutLink");
     if (passengerLogout) {
         passengerLogout.addEventListener("click", function (e) {
             e.preventDefault();
-            Swal.fire({
-                title: "Confirm Logout?",
-                text: "Are you sure you want to logout?",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonColor: "#e74c3c",
-                cancelButtonColor: "#3085d6",
-                confirmButtonText: "Yes",
-                cancelButtonText: "Cancel"
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = "logout.php"; // passenger logout
-                }
-            });
+            showLogoutAlert("logout.php");
         });
     }
 
+    // Driver Logout Listener
     const driverLogout = document.getElementById("driverLogoutLink");
     if (driverLogout) {
         driverLogout.addEventListener("click", function (e) {
             e.preventDefault();
-            Swal.fire({
-                title: "Confirm Logout?",
-                text: "Are you sure you want to logout?",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonColor: "#e74c3c",
-                cancelButtonColor: "#3085d6",
-                confirmButtonText: "Yes",
-                cancelButtonText: "Cancel"
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = "driver_logout.php"; // driver logout
-                }
-            });
+            showLogoutAlert("driver_logout.php");
         });
     }
 
