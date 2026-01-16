@@ -24,11 +24,12 @@ if(isset($_SESSION['student_id'])){
     exit();
 }
 
-// Initialize variables to avoid PHP notices
-$reg_name = "";
-$reg_student_id = "";
-$reg_email = "";
-$reg_gender = "";
+// Initialize variables with Sticky Data (Retain values if POST exists)
+// This ensures that if validation fails, the user doesn't have to re-type everything.
+$reg_name       = isset($_POST['reg_name']) ? strtoupper($_POST['reg_name']) : "";
+$reg_student_id = isset($_POST['reg_student_id']) ? $_POST['reg_student_id'] : "";
+$reg_email      = isset($_POST['reg_email']) ? $_POST['reg_email'] : "";
+$reg_gender     = isset($_POST['reg_gender']) ? $_POST['reg_gender'] : "";
 
 // =========================================================
 // FUNCTION: REGISTER LOGIC
@@ -36,12 +37,9 @@ $reg_gender = "";
 // =========================================================
 // NOTE: We check for 'reg_email' because disabled buttons don't send POST data
 if(isset($_POST['reg_email'])){
-    $reg_name             = strtoupper($_POST['reg_name']); 
-    $reg_student_id       = $_POST['reg_student_id'];
-    $reg_email            = $_POST['reg_email'];
+    // Retrieve password inputs (we do NOT retain these for security)
     $reg_password         = $_POST['reg_password'];
     $reg_confirm_password = $_POST['reg_confirm_password'];
-    $reg_gender           = $_POST['reg_gender']; 
 
     // SUB-FUNCTION: VALIDATION
     if (empty($reg_student_id)) {
@@ -53,7 +51,6 @@ if(isset($_POST['reg_email'])){
         $_SESSION['swal_title'] = "Invalid Name";
         $_SESSION['swal_msg'] = "Name cannot contain numbers.";
         $_SESSION['swal_type'] = "error";
-        $reg_name = ""; 
     }
     elseif (strlen($reg_password) < 6) {
         $_SESSION['swal_title'] = "Weak Password";
@@ -70,10 +67,11 @@ if(isset($_POST['reg_email'])){
         $_SESSION['swal_msg'] = "Only MMU student emails (@student.mmu.edu.my) are allowed!";
         $_SESSION['swal_type'] = "error";
     }
+    // NEW: GENDER VALIDATION
     elseif (empty($reg_gender)) {
         $_SESSION['swal_title'] = "Gender Required";
-        $_SESSION['swal_msg'] = "Please select your gender.";
-        $_SESSION['swal_type'] = "error";
+        $_SESSION['swal_msg'] = "Please select your gender to proceed.";
+        $_SESSION['swal_type'] = "warning";
     }
     else {
         // SUB-FUNCTION: CHECK DUPLICATE EMAIL
@@ -127,7 +125,7 @@ if(isset($_POST['reg_email'])){
             }
         }
     }
-    // Keep register tab open if error occurs
+    // Keep register tab open if error occurs (Sticky Behavior)
     echo "<script>window.onload = function() { register(); }</script>";
 }
 
@@ -150,8 +148,7 @@ if(isset($_POST['login_email'])){
             $_SESSION['student_id'] = $row['student_id']; 
             $_SESSION['student_name'] = $row['name'];
             
-            // --- MODIFIED: SWEETALERT SUCCESS & REDIRECT ---
-            // Displays a success modal before redirecting
+            // --- SWEETALERT SUCCESS (Standard Style) ---
             echo "
             <!DOCTYPE html>
             <html>
@@ -192,84 +189,38 @@ if(isset($_POST['login_email'])){
 
 <style>
     /* CSS: HEADER OVERRIDE */
-    /* Force the header container to be transparent */
     .content-area {
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
+        background: transparent !important; box-shadow: none !important; border: none !important;
+        width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important;
     }
 
     /* CSS: PAGE LAYOUT */
     .wrapper {
-        width: 100%;
-        min-height: 700px;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        padding-top: 10px; /* Moves content up */
-        position: relative;
-        overflow: hidden;
-        background-color: #f6f5f7; 
+        width: 100%; min-height: 700px; display: flex; justify-content: center; align-items: flex-start;
+        padding-top: 10px; position: relative; overflow: hidden; background-color: #f6f5f7; 
     }
 
     /* CSS: NAVIGATION BUTTONS */
-    .nav-button {
-        position: absolute;
-        top: 0px; 
-        right: 10%; 
-        display: flex;
-        gap: 15px;
-        z-index: 100;
-    }
-
-    .back-nav {
-        position: absolute;
-        top: 0px; 
-        left: 10%; 
-        z-index: 100;
-    }
+    .nav-button { position: absolute; top: 0px; right: 10%; display: flex; gap: 15px; z-index: 100; }
+    .back-nav { position: absolute; top: 0px; left: 10%; z-index: 100; }
 
     /* CSS: BUTTON STYLING */
     .btn, .btn-back {
-        height: 40px;
-        border: none;
-        border-radius: 30px !important; 
-        background: #ffffff; 
-        color: #005A9C; 
-        font-weight: 600;
-        cursor: pointer;
-        transition: .3s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-        font-size: 14px;
-        font-family: 'Poppins', sans-serif;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        height: 40px; border: none; border-radius: 30px !important; 
+        background: #ffffff; color: #005A9C; font-weight: 600; cursor: pointer; transition: .3s;
+        display: flex; align-items: center; justify-content: center; text-decoration: none;
+        font-size: 14px; font-family: 'Poppins', sans-serif; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    
     .btn { width: 110px; }
     .btn-back { padding: 0 30px; gap: 8px; }
-
     .btn.white-btn, .btn:hover, .btn-back:hover {
-        background: #005A9C; 
-        color: #fff;
-        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
+        background: #005A9C; color: #fff; box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
     }
 
     /* CSS: FORM CONTAINER */
     .form-box {
-        position: relative;
-        width: 600px; 
-        height: 720px; 
-        overflow: hidden;
-        margin-top: 50px; 
-        background: transparent !important;
-        box-shadow: none !important;
+        position: relative; width: 600px; height: 720px; overflow: hidden;
+        margin-top: 50px; background: transparent !important; box-shadow: none !important;
     }
 
     /* CSS: MOBILE RESPONSIVE */
@@ -284,198 +235,80 @@ if(isset($_POST['login_email'])){
 
     /* CSS: SLIDING ANIMATION */
     .login-container, .register-container {
-        position: absolute;
-        width: 100%;
-        top: 0;
-        transition: .5s ease-in-out;
-        padding: 0 50px; 
+        position: absolute; width: 100%; top: 0; transition: .5s ease-in-out; padding: 0 50px; 
     }
-
     .login-container { left: 0; opacity: 1; }
     .register-container { right: -120%; opacity: 0; pointer-events: none; } 
 
-    /* CSS: TYPOGRAPHY */
+    /* CSS: TYPOGRAPHY (FIX: User Select None) */
     .top { margin-bottom: 20px; text-align: center; }
-    .top span { color: #555; font-size: 14px; margin-bottom: 5px; display: block; }
+    .top span { 
+        color: #555; font-size: 14px; margin-bottom: 5px; display: block; 
+        user-select: none; cursor: default; 
+    }
     .top span a { color: #005A9C; text-decoration: none; font-weight: 600; cursor: pointer; }
     
     .top h2 { 
-        font-size: 32px; 
-        color: #333 !important; 
-        font-weight: 600; 
-        margin: 0;
-        padding: 0;
-        background: none !important;
-        box-shadow: none !important;
+        font-size: 32px; color: #333 !important; font-weight: 600; margin: 0; padding: 0; 
+        background: none !important; box-shadow: none !important;
+        user-select: none; cursor: default;
     }
 
-    /* CSS: INPUT BOXES (Darker Border #c4c4c4) */
+    /* CSS: INPUT BOXES */
     .input-box {
-        display: flex;
-        align-items: center;
-        width: 100%;
-        height: 55px;
-        background: #ffffff !important; 
-        box-shadow: 0 5px 15px rgba(0,0,0,0.05) !important; 
-        border-radius: 30px !important; 
-        margin-bottom: 20px;
-        padding: 0 20px;
-        border: 1px solid #c4c4c4 !important; /* Darker border */
-        transition: .3s;
+        display: flex; align-items: center; width: 100%; height: 55px;
+        background: #ffffff !important; box-shadow: 0 5px 15px rgba(0,0,0,0.05) !important; 
+        border-radius: 30px !important; margin-bottom: 20px; padding: 0 20px;
+        border: 1px solid #c4c4c4 !important; transition: .3s;
     }
-
     .input-box:focus-within {
-        background: #ffffff !important;
-        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15) !important;
-        border: 1px solid #005A9C !important;
+        background: #ffffff !important; box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15) !important; border: 1px solid #005A9C !important;
     }
-
-    .input-box i {
-        font-size: 18px;
-        color: #888;
-        margin-right: 15px; 
-        transition: .3s;
-        position: static !important; 
-        transform: none !important;
-    }
-
+    .input-box i { font-size: 18px; color: #888; margin-right: 15px; transition: .3s; position: static !important; transform: none !important; }
     .input-box:focus-within i { color: #005A9C; }
 
-    /* =========================================
-       CSS: STYLISH GENDER SELECTION (PINK & BLUE)
-       ========================================= */
-    .gender-box {
-        display: flex;
-        justify-content: space-between;
-        gap: 15px;
-        margin-bottom: 20px;
-        width: 100%;
-    }
-
-    .gender-option {
-        flex: 1; 
-        position: relative;
-    }
-
-    /* Hide the actual radio button */
-    .gender-option input[type="radio"] {
-        display: none;
-    }
-
-    /* Style the label to look like a button */
+    /* CSS: GENDER SELECTION (PINK & BLUE) */
+    .gender-box { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 20px; width: 100%; }
+    .gender-option { flex: 1; position: relative; }
+    .gender-option input[type="radio"] { display: none; }
     .gender-option label {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        width: 100%;
-        height: 55px;
-        background: #ffffff;
-        border: 1px solid #c4c4c4;
-        border-radius: 30px;
-        font-size: 15px;
-        color: #555;
-        cursor: pointer;
-        transition: all 0.3s ease;
+        display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 55px;
+        background: #ffffff; border: 1px solid #c4c4c4; border-radius: 30px;
+        font-size: 15px; color: #555; cursor: pointer; transition: all 0.3s ease;
         box-shadow: 0 5px 15px rgba(0,0,0,0.05);
     }
-
-    /* --- MALE BUTTON STYLES --- */
-    /* Hover */
-    label[for="gender-male"]:hover {
-        background: #f0f8ff; /* Light Blue Tint */
-        border-color: #005A9C;
-    }
-    /* Selected (Blue) */
+    label[for="gender-male"]:hover { background: #f0f8ff; border-color: #005A9C; }
     #gender-male:checked + label {
-        background: #005A9C; /* Theme Blue */
-        color: #ffffff;
-        border-color: #005A9C;
-        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
-        transform: translateY(-2px);
+        background: #005A9C; color: #ffffff; border-color: #005A9C; box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3); transform: translateY(-2px);
     }
-
-    /* --- FEMALE BUTTON STYLES --- */
-    /* Hover */
-    label[for="gender-female"]:hover {
-        background: #fff0f5; /* Light Pink Tint */
-        border-color: #E91E63;
-    }
-    /* Selected (Pink) */
+    label[for="gender-female"]:hover { background: #fff0f5; border-color: #E91E63; }
     #gender-female:checked + label {
-        background: #E91E63; /* Hot Pink */
-        color: #ffffff;
-        border-color: #E91E63;
-        box-shadow: 0 4px 10px rgba(233, 30, 99, 0.3);
-        transform: translateY(-2px);
+        background: #E91E63; color: #ffffff; border-color: #E91E63; box-shadow: 0 4px 10px rgba(233, 30, 99, 0.3); transform: translateY(-2px);
     }
 
     /* CSS: AUTOFILL FIX */
-    input:-webkit-autofill,
-    input:-webkit-autofill:hover, 
-    input:-webkit-autofill:focus, 
-    input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px white inset !important;
-        -webkit-text-fill-color: #333 !important;
-        transition: background-color 5000s ease-in-out 0s;
+    input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px white inset !important; -webkit-text-fill-color: #333 !important; transition: background-color 5000s ease-in-out 0s;
     }
-
     .input-field {
-        flex: 1; 
-        background: transparent !important;
-        border: none !important;
-        outline: none !important;
-        color: #333 !important;
-        font-size: 15px !important;
-        height: 100%;
-        padding: 0 !important;
-        margin: 0 !important;
-        box-shadow: none !important;
+        flex: 1; background: transparent !important; border: none !important; outline: none !important;
+        color: #333 !important; font-size: 15px !important; height: 100%; padding: 0 !important; margin: 0 !important; box-shadow: none !important;
     }
-
     .input-field::placeholder { color: #999; font-weight: 400; }
-
-    /* Password Toggle */
-    .input-box .toggle-pass {
-        margin-right: 0;
-        margin-left: 10px; 
-        cursor: pointer;
-        color: #999;
-    }
+    .input-box .toggle-pass { margin-right: 0; margin-left: 10px; cursor: pointer; color: #999; }
     .input-box .toggle-pass:hover { color: #005A9C; }
 
     /* CSS: SUBMIT BUTTON */
     .submit {
-        width: 100%;
-        height: 55px;
-        background: #005A9C !important;
-        border: none !important;
-        border-radius: 30px !important;
-        color: #fff !important;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: .3s;
-        box-shadow: 0 8px 15px rgba(0, 90, 156, 0.2);
-        margin-top: 10px;
-        display: flex; align-items: center; justify-content: center;
+        width: 100%; height: 55px; background: #005A9C !important; border: none !important; border-radius: 30px !important;
+        color: #fff !important; font-size: 16px; font-weight: 600; cursor: pointer; transition: .3s;
+        box-shadow: 0 8px 15px rgba(0, 90, 156, 0.2); margin-top: 10px; display: flex; align-items: center; justify-content: center;
     }
-    .submit:hover { 
-        background: #004a80 !important; 
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(0, 90, 156, 0.3);
-    }
+    .submit:hover { background: #004a80 !important; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0, 90, 156, 0.3); }
     .submit:disabled { background: #ccc !important; cursor: not-allowed; transform: none; box-shadow: none; }
 
     /* CSS: FOOTER LINKS */
-    .two-col {
-        display: flex;
-        justify-content: flex-end; 
-        font-size: 14px;
-        margin-top: 15px;
-        padding: 0 10px;
-        color: #555;
-    }
+    .two-col { display: flex; justify-content: flex-end; font-size: 14px; margin-top: 15px; padding: 0 10px; color: #555; }
     .two-col a { color: #005A9C; text-decoration: none; font-weight: 600; }
     .two-col a:hover { text-decoration: underline; }
 </style>
@@ -548,13 +381,13 @@ if(isset($_POST['login_email'])){
 
                 <div class="gender-box">
                     <div class="gender-option">
-                        <input type="radio" name="reg_gender" id="gender-male" value="Male" required>
+                        <input type="radio" name="reg_gender" id="gender-male" value="Male" <?php echo ($reg_gender == 'Male') ? 'checked' : ''; ?>>
                         <label for="gender-male">
                             <i class="fa-solid fa-mars"></i> Male
                         </label>
                     </div>
                     <div class="gender-option">
-                        <input type="radio" name="reg_gender" id="gender-female" value="Female">
+                        <input type="radio" name="reg_gender" id="gender-female" value="Female" <?php echo ($reg_gender == 'Female') ? 'checked' : ''; ?>>
                         <label for="gender-female">
                             <i class="fa-solid fa-venus"></i> Female
                         </label>

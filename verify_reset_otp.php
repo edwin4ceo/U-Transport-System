@@ -90,14 +90,18 @@ if (isset($_POST['verify_btn'])) {
             echo "
             <!DOCTYPE html>
             <html>
-            <head><script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script></head>
-            <style>body { font-family: 'Poppins', sans-serif; background-color: #f6f5f7; }</style>
+            <head>
+                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+                <style>body { font-family: 'Poppins', sans-serif; background-color: #f6f5f7; }</style>
+            </head>
             <body>
             <script>
                 Swal.fire({
                     title: 'Password Reset Successful!',
                     text: 'Your password has been updated. Please login.',
                     icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false,
                     confirmButtonColor: '#005A9C'
                 }).then(() => {
                     window.location.href = 'passanger_login.php';
@@ -142,17 +146,19 @@ if (isset($_POST['verify_btn'])) {
         .verify-box { width: 90%; margin-top: 60px; padding: 30px 20px; }
     }
 
-    /* CSS: TYPOGRAPHY */
+    /* CSS: TYPOGRAPHY (FIX: No Blinking Cursor) */
     .top h2 { 
         font-size: 30px; color: #333 !important; font-weight: 600; margin-bottom: 10px;
+        user-select: none; cursor: default;
     }
     .top p {
         font-size: 15px; color: #666; margin-bottom: 30px; line-height: 1.6;
+        user-select: none; cursor: default;
     }
     .top strong { color: #005A9C; }
 
-    /* CSS: OTP INPUT FIELDS */
-    .otp-field { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+    /* CSS: OTP INPUT FIELDS (FIX: No Arrows) */
+    .otp-field { display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; }
     .otp-field input { 
         width: 60px; height: 60px; 
         font-size: 24px; font-weight: 700; text-align: center; color: #333;
@@ -160,13 +166,25 @@ if (isset($_POST['verify_btn'])) {
         border-radius: 12px; outline: none; background: #fff;
         transition: .3s;
         box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        -moz-appearance: textfield; 
     }
+    
+    .otp-field input::-webkit-outer-spin-button,
+    .otp-field input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
     .otp-field input:focus { 
         border-color: #005A9C; box-shadow: 0 4px 10px rgba(0, 90, 156, 0.2); transform: translateY(-2px);
     }
 
     /* CSS: ACTION AREA */
-    .action-area { margin-bottom: 25px; font-size: 14px; color: #666; }
+    .action-area { 
+        margin-bottom: 25px; font-size: 14px; color: #666; 
+        display: flex; justify-content: center;
+    }
+    #timer-box { user-select: none; cursor: default; }
     #time { font-weight: 700; color: #333; }
     
     .resend-btn { 
@@ -185,8 +203,11 @@ if (isset($_POST['verify_btn'])) {
     .btn-verify:hover { background: #004a80 !important; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0, 90, 156, 0.3); }
 
     /* CSS: BACK LINK */
-    .back-link { display: block; margin-top: 20px; font-size: 14px; color: #999; text-decoration: none; transition: .3s; }
-    .back-link:hover { color: #005A9C; }
+    .back-link { 
+        display: block; margin-top: 20px; font-size: 14px; 
+        color: #005A9C; font-weight: 600; text-decoration: none; transition: .3s; 
+    }
+    .back-link:hover { text-decoration: underline; }
 
 </style>
 

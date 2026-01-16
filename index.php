@@ -49,6 +49,10 @@ include "header.php";
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         text-decoration: none; /* Remove underline from links */
         color: inherit;
+        
+        /* FIX: Prevent text selection highlighting on cards */
+        user-select: none;
+        -webkit-user-select: none;
     }
 
     .role-card:hover {
@@ -74,6 +78,13 @@ include "header.php";
     }
     .role-card.driver i {
         color: #27ae60;
+    }
+
+    /* FIX: Prevent text selection cursor on Headings & Paragraphs */
+    h2, p {
+        user-select: none;       /* Standard */
+        -webkit-user-select: none; /* Safari/Chrome */
+        cursor: default;         /* Arrow cursor instead of text bar */
     }
 </style>
 
