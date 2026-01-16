@@ -65,10 +65,14 @@ include "header.php";
     .dashboard-title h1 { margin: 0 0 5px 0; font-size: 26px; font-weight: 800; color: var(--text-main); }
     .dashboard-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
     .btn-edit-profile { background: white; color: var(--primary); border: 1px solid #cbd5e0; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
-    .dashboard-grid { display: grid; grid-template-columns: 350px 1fr; gap: 30px; }
+    
+    /* UPDATED: Changed from 2 columns to 1 column for top-bottom layout */
+    .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 30px; }
+    
     .modern-card { background: var(--card-bg); border-radius: 16px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; height: fit-content; }
     .card-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #f7fafc; }
     .card-title-text { font-size: 18px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+    .info-list { max-width: 600px; /* Optional: limits width so info doesn't stretch too wide on big screens */ } 
     .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px; }
     .info-val { color: var(--text-main); font-weight: 600; text-align: right; }
     .quick-actions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
@@ -77,6 +81,14 @@ include "header.php";
     .tile-icon { width: 50px; height: 50px; background: #f0f7ff; color: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 15px; }
     .tile-title { font-size: 14px; font-weight: 700; color: var(--text-main); }
     .tile-badge { position: absolute; top: -8px; right: -8px; background: #e53e3e; color: white; border: 2px solid white; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; box-shadow: 0 3px 8px rgba(229, 62, 62, 0.4); z-index: 10; }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .quick-actions-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+        .quick-actions-grid { grid-template-columns: 1fr; }
+    }
 </style>
 
 <div class="dashboard-wrapper">
@@ -100,7 +112,9 @@ include "header.php";
                 <div class="info-row"><span class="info-label">Email</span><span class="info-val"><?php echo htmlspecialchars($email); ?></span></div>
                 <div class="info-row"><span class="info-label">Vehicle</span><span class="info-val"><?php echo $vehicle_model ? htmlspecialchars($vehicle_model) : 'Not set'; ?></span></div>
             </div>
-            <a href="javascript:void(0)" onclick="editVehiclePopup()" style="display:block; text-align:center; margin-top:15px; font-size:13px; color:#004b82;">Manage Vehicle →</a>
+            <div style="max-width: 600px;">
+                <a href="javascript:void(0)" onclick="editVehiclePopup()" style="display:block; text-align:center; margin-top:15px; font-size:13px; color:#004b82;">Manage Vehicle →</a>
+            </div>
         </div>
 
         <div class="modern-card">
