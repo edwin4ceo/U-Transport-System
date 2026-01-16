@@ -1,10 +1,12 @@
 <?php
-// Start the session to handle login states
+// FUNCTION: START SESSION
+// Ensure session is started to handle login states
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// DETERMINE LOGO LINK based on who is logged in
+// LOGIC: DETERMINE LOGO LINK
+// Clicking the logo should take the user to their respective dashboard
 $logo_link = "index.php"; // Default for guests
 
 if (isset($_SESSION['student_id'])) {
@@ -30,7 +32,7 @@ if (isset($_SESSION['student_id'])) {
     /* 1. IMPORT POPPINS FONT */
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-    /* 2. GLOBAL FIX: Prevent Text Selection & Force Font */
+    /* 2. GLOBAL FIX: Force Font & Prevent Text Selection */
     body, h1, h2, h3, h4, h5, h6, p, span, label, a, li, button, .swal2-popup {
         font-family: 'Poppins', sans-serif !important; 
         user-select: none;           
@@ -49,36 +51,37 @@ if (isset($_SESSION['student_id'])) {
         cursor: pointer !important; 
     }
 
-    /* 3. SWEETALERT CUSTOMIZATION (Unified Style) */
+    /* 3. SWEETALERT DESIGN (Unified Style) */
     
-    /* Popup Card */
+    /* Popup Card: Rounded Corners */
     .swal2-popup {
         border-radius: 20px !important;
         padding: 30px !important;
     }
     
-    /* Title */
+    /* Title: Bold & Dark */
     .swal2-title {
         font-weight: 600 !important;
         color: #333 !important;
         font-size: 24px !important;
     }
     
-    /* Content Text */
+    /* Content Text: Standard Grey */
     .swal2-html-container {
         font-size: 15px !important;
         color: #666 !important;
     }
     
-    /* ACTIONS BAR (Container for buttons) */
+    /* Button Container: Add spacing */
     .swal2-actions {
-        gap: 15px !important; /* Space between buttons */
+        gap: 15px !important; 
     }
 
-    /* Confirm Button (Blue - Matches Theme) */
+    /* Confirm Button (Blue - Theme Color) */
+    /* NOTE: White text color forced */
     .swal2-confirm {
         background-color: #005A9C !important;
-        color: #fff !important; /* White Text */
+        color: #fff !important; 
         border-radius: 10px !important;
         font-weight: 600 !important;
         padding: 12px 30px !important;
@@ -88,10 +91,11 @@ if (isset($_SESSION['student_id'])) {
         outline: none !important;
     }
     
-    /* Cancel Button (Red - Standard for Cancel) */
+    /* Cancel Button (Red - Danger Color) */
+    /* NOTE: White text color forced */
     .swal2-cancel {
         background-color: #e74c3c !important;
-        color: #fff !important; /* White Text */
+        color: #fff !important; 
         border-radius: 10px !important;
         font-weight: 600 !important;
         padding: 12px 30px !important;
@@ -105,7 +109,7 @@ if (isset($_SESSION['student_id'])) {
     .swal2-confirm:hover { background-color: #004a80 !important; }
     .swal2-cancel:hover { background-color: #c0392b !important; }
 
-    /* Remove focus outlines */
+    /* Remove default focus outlines */
     .swal2-confirm:focus, .swal2-cancel:focus {
         box-shadow: none !important;
     }
@@ -124,26 +128,32 @@ if (isset($_SESSION['student_id'])) {
             <ul>
                 <?php
                 if (isset($_SESSION['student_id'])) {
-                    // Passenger menu
+                    // --- PASSENGER MENU ---
+                    // Added "Home" and shortened names to fit cleanly
                     ?>
-                    <li><a href="search_transport.php">Search Rides</a></li>
-                    <li><a href="passanger_request_transport.php">Request Ride</a></li>
+                    <li><a href="passenger_home.php"><i class="fa-solid fa-house"></i> Home</a></li>
+                    
+                    <li><a href="search_transport.php">Search</a></li>
+                    
+                    <li><a href="passanger_request_transport.php">Request</a></li>
+                    
                     <li><a href="passanger_rides.php">My Rides</a></li> 
-                    <li><a href="qa_forum.php">Q&amp;A</a></li>
+                    <li><a href="qa_forum.php">FAQ</a></li>
                     <li><a href="passanger_profile.php">Profile</a></li>
                     <li><a href="#" id="passengerLogoutLink" style="color: #ffcccb;">Logout</a></li>
                     <?php
                 } elseif (isset($_SESSION['driver_id'])) {
-                    // Driver menu
+                    // --- DRIVER MENU ---
+                    // Added "Home" for driver as well
                     ?>
-                    <li><a href="driver_dashboard.php">Dashboard</a></li>
+                    <li><a href="driver_dashboard.php"><i class="fa-solid fa-house"></i> Home</a></li>
                     <li><a href="driver_rides.php">My Rides</a></li>
                     <li><a href="driver_history.php">History</a></li>
                     <li><a href="driver_profile.php">Profile</a></li>
                     <li><a href="#" id="driverLogoutLink" style="color: #ffcccb;">Logout</a></li>
                     <?php
                 } else {
-                    // Guest menu
+                    // --- GUEST MENU ---
                     ?>
                     <li><a href="index.php">Home</a></li>
                     <li><a href="contact_us.php">Contact Us</a></li>
@@ -159,9 +169,9 @@ if (isset($_SESSION['student_id'])) {
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-    // Helper Function: Show Logout Confirmation -> Then Success -> Then Redirect
+    // FUNCTION: Show Logout Confirmation -> Then Success -> Then Redirect
     function showLogoutAlert(redirectUrl) {
-        // Step 1: Confirmation Alert
+        // Step 1: Show Confirmation Alert
         Swal.fire({
             title: "Confirm Logout?",
             text: "Are you sure you want to logout?",
@@ -169,7 +179,7 @@ document.addEventListener("DOMContentLoaded", function () {
             showCancelButton: true,
             confirmButtonText: "Yes, Logout",
             cancelButtonText: "Cancel",
-            buttonsStyling: false, // Use custom CSS
+            buttonsStyling: false, // DISABLE default styling to use custom classes
             customClass: {
                 popup: 'swal2-popup',
                 title: 'swal2-title',
@@ -180,7 +190,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                // Step 2: Show "Logout Successful" Alert (Matches Login Success Style)
+                // Step 2: Show "Logout Successful" Alert (Matches Login Style)
                 Swal.fire({
                     title: 'Logout Successful!',
                     text: 'You have been logged out safely.',
@@ -194,14 +204,14 @@ document.addEventListener("DOMContentLoaded", function () {
                         htmlContainer: 'swal2-html-container'
                     }
                 }).then(() => {
-                    // Step 3: Redirect to actual logout script
+                    // Step 3: Redirect to actual PHP logout script
                     window.location.href = redirectUrl;
                 });
             }
         });
     }
 
-    // Passenger Logout Listener
+    // LISTENER: Passenger Logout
     const passengerLogout = document.getElementById("passengerLogoutLink");
     if (passengerLogout) {
         passengerLogout.addEventListener("click", function (e) {
@@ -210,7 +220,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Driver Logout Listener
+    // LISTENER: Driver Logout
     const driverLogout = document.getElementById("driverLogoutLink");
     if (driverLogout) {
         driverLogout.addEventListener("click", function (e) {
