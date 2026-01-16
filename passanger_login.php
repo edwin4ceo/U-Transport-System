@@ -70,6 +70,11 @@ if(isset($_POST['reg_email'])){
         $_SESSION['swal_msg'] = "Only MMU student emails (@student.mmu.edu.my) are allowed!";
         $_SESSION['swal_type'] = "error";
     }
+    elseif (empty($reg_gender)) {
+        $_SESSION['swal_title'] = "Gender Required";
+        $_SESSION['swal_msg'] = "Please select your gender.";
+        $_SESSION['swal_type'] = "error";
+    }
     else {
         // SUB-FUNCTION: CHECK DUPLICATE EMAIL
         $check = $conn->query("SELECT * FROM students WHERE email='$reg_email'");
@@ -239,7 +244,7 @@ if(isset($_POST['login_email'])){
     .form-box {
         position: relative;
         width: 600px; 
-        height: 680px; 
+        height: 720px; 
         overflow: hidden;
         margin-top: 50px; 
         background: transparent !important;
@@ -248,7 +253,7 @@ if(isset($_POST['login_email'])){
 
     /* CSS: MOBILE RESPONSIVE */
     @media (max-width: 768px) {
-        .form-box { width: 95%; height: 750px; margin-top: 60px; }
+        .form-box { width: 95%; height: 800px; margin-top: 60px; }
         .nav-button { right: 5%; top: 10px; gap: 10px; }
         .back-nav { left: 5%; top: 10px; }
         .btn { width: 90px; font-size: 12px; }
@@ -283,7 +288,7 @@ if(isset($_POST['login_email'])){
         box-shadow: none !important;
     }
 
-    /* CSS: INPUT BOXES (WHITE & DARKER BORDER) */
+    /* CSS: INPUT BOXES */
     .input-box {
         display: flex;
         align-items: center;
@@ -294,10 +299,7 @@ if(isset($_POST['login_email'])){
         border-radius: 30px !important; 
         margin-bottom: 20px;
         padding: 0 20px;
-        
-        /* --- CHANGED: DARKER BORDER TO MATCH RESET PAGE --- */
-        border: 1px solid #c4c4c4 !important; 
-        
+        border: 1px solid #c4c4c4 !important; /* Darker border for visibility */
         transition: .3s;
     }
 
@@ -318,7 +320,76 @@ if(isset($_POST['login_email'])){
 
     .input-box:focus-within i { color: #005A9C; }
 
-    /* CSS: AUTOFILL FIX (REMOVES BLUE BG) */
+    /* =========================================
+       CSS: STYLISH GENDER SELECTION (PINK & BLUE)
+       ========================================= */
+    .gender-box {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+        margin-bottom: 20px;
+        width: 100%;
+    }
+
+    .gender-option {
+        flex: 1; 
+        position: relative;
+    }
+
+    /* Hide the actual radio button */
+    .gender-option input[type="radio"] {
+        display: none;
+    }
+
+    /* Style the label to look like a button */
+    .gender-option label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        height: 55px;
+        background: #ffffff;
+        border: 1px solid #c4c4c4;
+        border-radius: 30px;
+        font-size: 15px;
+        color: #555;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+
+    /* --- MALE BUTTON STYLES --- */
+    /* Hover */
+    label[for="gender-male"]:hover {
+        background: #f0f8ff; /* Light Blue Tint */
+        border-color: #005A9C;
+    }
+    /* Selected (Blue) */
+    #gender-male:checked + label {
+        background: #005A9C; /* Theme Blue */
+        color: #ffffff;
+        border-color: #005A9C;
+        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
+        transform: translateY(-2px);
+    }
+
+    /* --- FEMALE BUTTON STYLES --- */
+    /* Hover */
+    label[for="gender-female"]:hover {
+        background: #fff0f5; /* Light Pink Tint */
+        border-color: #E91E63;
+    }
+    /* Selected (Pink) */
+    #gender-female:checked + label {
+        background: #E91E63; /* Hot Pink */
+        color: #ffffff;
+        border-color: #E91E63;
+        box-shadow: 0 4px 10px rgba(233, 30, 99, 0.3);
+        transform: translateY(-2px);
+    }
+
+    /* CSS: AUTOFILL FIX */
     input:-webkit-autofill,
     input:-webkit-autofill:hover, 
     input:-webkit-autofill:focus, 
@@ -343,6 +414,7 @@ if(isset($_POST['login_email'])){
 
     .input-field::placeholder { color: #999; font-weight: 400; }
 
+    /* Password Toggle */
     .input-box .toggle-pass {
         margin-right: 0;
         margin-left: 10px; 
@@ -385,8 +457,6 @@ if(isset($_POST['login_email'])){
     }
     .two-col a { color: #005A9C; text-decoration: none; font-weight: 600; }
     .two-col a:hover { text-decoration: underline; }
-    
-    select.input-field { cursor: pointer; color: #555 !important; }
 </style>
 
 <div class="wrapper">
@@ -452,16 +522,22 @@ if(isset($_POST['login_email'])){
 
                 <div class="input-box">
                     <i class="fa-solid fa-envelope"></i>
-                    <input type="email" name="reg_email" id="emailInput" class="input-field" value="<?php echo htmlspecialchars($reg_email); ?>" placeholder="ID@student.mmu.edu.my" readonly required>
+                    <input type="email" name="reg_email" id="emailInput" class="input-field" value="<?php echo htmlspecialchars($reg_email); ?>" placeholder="ID@student.mmu.edu.my" required>
                 </div>
 
-                <div class="input-box">
-                    <i class="fa-solid fa-venus-mars"></i>
-                    <select name="reg_gender" class="input-field" required>
-                        <option value="" disabled <?php echo ($reg_gender == "") ? 'selected' : ''; ?> hidden>Select Gender</option>
-                        <option value="Male" <?php echo ($reg_gender == "Male") ? 'selected' : ''; ?>>Male</option>
-                        <option value="Female" <?php echo ($reg_gender == "Female") ? 'selected' : ''; ?>>Female</option>
-                    </select>
+                <div class="gender-box">
+                    <div class="gender-option">
+                        <input type="radio" name="reg_gender" id="gender-male" value="Male" required>
+                        <label for="gender-male">
+                            <i class="fa-solid fa-mars"></i> Male
+                        </label>
+                    </div>
+                    <div class="gender-option">
+                        <input type="radio" name="reg_gender" id="gender-female" value="Female">
+                        <label for="gender-female">
+                            <i class="fa-solid fa-venus"></i> Female
+                        </label>
+                    </div>
                 </div>
 
                 <div class="input-box">
@@ -512,17 +588,6 @@ if(isset($_POST['login_email'])){
         y.style.pointerEvents = "auto";
         a.className = "btn";
         b.className += " white-btn";
-    }
-
-    // FUNCTION: AUTOFILL EMAIL FROM STUDENT ID
-    const studentIdInput = document.getElementById('studentIDInput');
-    const emailInput = document.getElementById('emailInput');
-    if(studentIdInput){
-        studentIdInput.addEventListener('input', function() {
-            const id = this.value.trim();
-            if (id.length > 0) { emailInput.value = id + "@student.mmu.edu.my"; }
-            else { emailInput.value = ""; }
-        });
     }
 
     // FUNCTION: TOGGLE PASSWORD VISIBILITY
