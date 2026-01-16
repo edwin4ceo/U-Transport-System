@@ -18,11 +18,11 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 // =========================================================
-// FUNCTION: CHECK LOGIN STATUS (CRITICAL FIX)
+// FUNCTION: CHECK LOGIN STATUS
 // =========================================================
 // Logic: If user is logged in, normally we redirect them to home immediately.
 // BUT, if they just logged in successfully (login_success is set), we must NOT redirect yet.
-// We need to stay on this page to let the HTML/JS render the SweetAlert success popup.
+// We need to stay on this page to let the HTML/JS render the SweetAlert success popup first.
 if(isset($_SESSION['student_id']) && !isset($_SESSION['login_success'])){
     echo "<script>window.location.href='passenger_home.php';</script>";
     exit();
@@ -169,7 +169,7 @@ if(isset($_POST['action']) && $_POST['action'] === 'login'){
             $_SESSION['student_id'] = $row['student_id']; 
             $_SESSION['student_name'] = $row['name'];
             
-            // SET SUCCESS FLAG FOR JS REDIRECT (This is key for the fix)
+            // SET SUCCESS FLAG FOR JS REDIRECT (This triggers the success alert)
             $_SESSION['login_success'] = true;
             $_SESSION['user_name'] = $row['name'];
             
@@ -205,13 +205,44 @@ if(isset($_POST['action']) && $_POST['action'] === 'login'){
     /* IMPORT POPPINS FONT (Ensures consistency for SweetAlert too) */
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-    /* GLOBAL FIX: Prevent Text Selection & Force Font */
+    /* GLOBAL FIX: Force Font & Prevent Selection */
     body, h2, h3, p, span, label, a, .top, .back-nav, .nav-button, .role-card, .swal2-popup {
         font-family: 'Poppins', sans-serif !important; 
         user-select: none;           
         -webkit-user-select: none;   
         cursor: default;             
     }
+
+    /* === SWEETALERT CUSTOMIZATION (Unified Style) === */
+    /* 1. Make the popup rounder */
+    .swal2-popup {
+        border-radius: 20px !important;
+        padding: 30px !important;
+    }
+    /* 2. Make the title bolder */
+    .swal2-title {
+        font-weight: 600 !important;
+        color: #333 !important;
+        font-size: 24px !important;
+    }
+    /* 3. Make the content text standard grey */
+    .swal2-html-container {
+        font-size: 15px !important;
+        color: #666 !important;
+    }
+    /* 4. Style the Confirm Button (Blue & Rounded) */
+    .swal2-confirm {
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        padding: 12px 30px !important;
+        font-size: 15px !important;
+        background-color: #005A9C !important;
+        box-shadow: none !important;
+    }
+    .swal2-confirm:focus {
+        box-shadow: 0 0 0 3px rgba(0, 90, 156, 0.3) !important;
+    }
+    /* ================================================= */
 
     input, select { 
         user-select: text !important; -webkit-user-select: text !important; cursor: text !important; 
@@ -518,7 +549,14 @@ if(isset($_POST['action']) && $_POST['action'] === 'login'){
         title: '<?php echo $_SESSION['swal_title']; ?>',
         text: '<?php echo $_SESSION['swal_msg']; ?>',
         icon: '<?php echo $_SESSION['swal_type']; ?>',
-        confirmButtonColor: '#005A9C'
+        confirmButtonColor: '#005A9C', // Always use theme Blue
+        confirmButtonText: 'OK',
+        buttonsStyling: false,
+        customClass: {
+            popup: 'swal2-popup',
+            title: 'swal2-title',
+            confirmButton: 'swal2-confirm'
+        }
     });
 </script>
 <?php 
@@ -537,7 +575,13 @@ endif;
         icon: 'success',
         timer: 2000,
         showConfirmButton: false,
-        confirmButtonColor: '#005A9C'
+        confirmButtonColor: '#005A9C', // Always use theme Blue
+        buttonsStyling: false,
+        customClass: {
+            popup: 'swal2-popup',
+            title: 'swal2-title',
+            confirmButton: 'swal2-confirm'
+        }
     }).then(function() {
         window.location.href = 'passenger_home.php';
     });
