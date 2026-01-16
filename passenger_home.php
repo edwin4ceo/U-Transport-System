@@ -44,14 +44,31 @@ include "header.php";
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
 <style>
-    /* DASHBOARD WRAPPER */
-    .dashboard-wrapper {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 40px 20px;
+    /* 1. RESET HEADER CONTAINER (CRITICAL FIX) */
+    /* This overrides the default 'full page' white box from header.php */
+    .content-area {
+        background: transparent !important; /* Make the main page bg transparent */
+        box-shadow: none !important;        /* Remove default shadow */
+        border: none !important;            /* Remove border */
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
-    /* 1. WELCOME SECTION */
+    /* 2. DASHBOARD MAIN CARD (The "White Box" you requested) */
+    .dashboard-wrapper {
+        background: #ffffff;          /* White background */
+        max-width: 1000px;
+        width: 90%;                   /* Responsive width */
+        margin: 40px auto 60px auto;  /* Center horizontally, add spacing top/bottom */
+        padding: 40px;                /* Inner spacing */
+        border-radius: 24px;          /* Nice rounded corners */
+        box-shadow: 0 15px 40px rgba(0,0,0,0.08); /* Float effect */
+        font-family: 'Poppins', sans-serif;
+    }
+
+    /* 3. WELCOME SECTION */
     .welcome-section {
         margin-bottom: 30px;
         text-align: left; 
@@ -61,20 +78,22 @@ include "header.php";
         font-weight: 700;
         color: #004b82; /* Theme Blue */
         margin-bottom: 5px;
+        margin-top: 0;
     }
     .welcome-section p {
         font-size: 15px;
         color: #64748b; /* Grey text */
+        margin: 0;
     }
 
-    /* 2. STATUS CARD (Upcoming Trip Widget) */
+    /* 4. STATUS CARD (Upcoming Trip Widget) */
     .status-card {
-        background: white;
+        background: #f8fafc; /* Very light grey to contrast with white dashboard */
         border-radius: 20px;
         padding: 25px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-        border: 1px solid #e2e8f0;
-        margin-bottom: 30px;
+        /* Subtle border to define edges on white bg */
+        border: 1px solid #e2e8f0; 
+        margin-bottom: 35px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -84,7 +103,8 @@ include "header.php";
     }
     .status-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+        border-color: #cbd5e1;
     }
     .status-left {
         display: flex;
@@ -94,7 +114,7 @@ include "header.php";
     .status-icon-box {
         width: 60px;
         height: 60px;
-        background: #e0f2fe; /* Light Blue BG */
+        background: #ffffff; /* White icon box */
         border-radius: 15px;
         display: flex;
         align-items: center;
@@ -102,6 +122,7 @@ include "header.php";
         color: #005A9C;
         font-size: 24px;
         flex-shrink: 0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
     }
     .status-info h4 {
         margin: 0 0 5px 0;
@@ -130,7 +151,7 @@ include "header.php";
         color: #9a3412; 
     }
 
-    /* 3. QUICK ACCESS GRID */
+    /* 5. QUICK ACCESS GRID */
     .section-title {
         font-size: 18px;
         font-weight: 600;
@@ -142,21 +163,22 @@ include "header.php";
 
     .quick-access-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Responsive Grid */
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Responsive Grid */
         gap: 20px;
         width: 100%;
     }
 
     /* Action Cards (Buttons) */
     .action-card {
-        background: white;
+        background: #ffffff;
         padding: 30px 20px;
         border-radius: 20px;
         text-align: center;
         text-decoration: none;
         color: #333;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-        border: 2px solid transparent;
+        /* Added border to make them pop against the white dashboard wrapper */
+        border: 1px solid #f1f5f9; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         transition: all 0.3s ease;
         display: flex;
         flex-direction: column;
@@ -168,7 +190,8 @@ include "header.php";
     .action-card:hover {
         border-color: #005A9C;
         transform: translateY(-5px);
-        box-shadow: 0 12px 25px rgba(0, 90, 156, 0.15);
+        box-shadow: 0 12px 25px rgba(0, 90, 156, 0.1);
+        background: #f8fbff; /* Slight tint on hover */
     }
 
     /* Icon Wrappers */
@@ -210,10 +233,14 @@ include "header.php";
 
     /* Mobile Responsive Adjustments */
     @media (max-width: 768px) {
-        .dashboard-wrapper { padding: 20px; }
+        .dashboard-wrapper { 
+            padding: 25px; 
+            width: 95%;
+            margin: 20px auto;
+        }
         .status-card { flex-direction: column; text-align: center; gap: 15px; }
         .status-left { flex-direction: column; }
-        .quick-access-grid { grid-template-columns: 1fr 1fr; } /* 2 columns on mobile */
+        .quick-access-grid { grid-template-columns: 1fr 1fr; } 
     }
 </style>
 
@@ -243,7 +270,7 @@ include "header.php";
             </div>
         </div>
     <?php else: ?>
-        <div class="status-card" style="background: #f8fafc; border-style: dashed;">
+        <div class="status-card" style="border-style: dashed; background: #fff;">
             <div class="status-left">
                 <div class="status-icon-box" style="background:#f1f5f9; color:#94a3b8;">
                     <i class="fa-solid fa-car-tunnel"></i>

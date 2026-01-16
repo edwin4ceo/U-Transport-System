@@ -1,186 +1,279 @@
 <?php
+// FUNCTION: START SESSION
 session_start();
+
+// SECTION: INCLUDES
 include "db_connect.php";
 include "function.php";
 
-// Include the Header (Menu will adjust automatically based on login status)
+// Include Header
 include "header.php"; 
 ?>
 
 <style>
-    /* FAQ Container */
+    /* ========================================= */
+    /* 1. PAGE ENTRANCE ANIMATION (NEW!)         */
+    /* ========================================= */
+    @keyframes fadeInUpPage {
+        0% {
+            opacity: 0;
+            transform: translateY(60px); /* Start 60px below */
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);    /* End at normal position */
+        }
+    }
+
+    /* 2. CONTAINER LAYOUT */
     .faq-container {
         max-width: 800px;
         margin: 0 auto;
-        padding-bottom: 80px;
+        padding-bottom: 100px;
+        font-family: 'Poppins', sans-serif;
+        
+        /* Apply the animation here */
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
 
+    /* 3. TITLE DESIGN (Capsule Style) */
     .page-title {
         text-align: center;
-        margin-bottom: 30px;
-        color: #333;
+        margin-bottom: 60px; 
+        position: relative;  
+        color: #005A9C;      
+        font-weight: 700;    
+        font-size: 36px;     
+        padding-bottom: 15px; 
     }
 
-    .page-intro {
-        text-align: center;
-        margin-bottom: 40px;
-        color: #666;
+    .page-title::after {
+        content: "";
+        position: absolute;
+        bottom: 0;           
+        left: 50%;           
+        transform: translateX(-50%); 
+        width: 120px;        
+        height: 4px;         
+        background-color: #005A9C; 
+        border-radius: 10px; 
+        opacity: 0.8;        
     }
 
-    /* FAQ Item Styling */
+    /* 4. FAQ CARD STYLING */
     .faq-item {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        margin-bottom: 15px;
-        background-color: white;
+        background-color: #fff;
+        border: 1px solid #eef2f6; 
+        border-radius: 16px;       
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
         overflow: hidden;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        transition: all 0.3s ease;
+        transition: all 0.3s ease; 
     }
 
-    /* The clickable question part */
+    .faq-item:hover {
+        transform: translateY(-2px); 
+        box-shadow: 0 8px 25px rgba(0, 90, 156, 0.08); 
+        border-color: #dbeafe;
+    }
+
+    /* 5. QUESTION HEADER */
     .faq-question {
-        padding: 20px;
+        padding: 25px;
         cursor: pointer;
-        background-color: #fff;
-        font-weight: bold;
-        color: #005A9C; /* Primary Blue */
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 1.05rem;
+        font-size: 17px;
+        font-weight: 600;
+        color: #333;
+        background: #fff;
         user-select: none;
+        transition: color 0.3s ease;
     }
 
-    .faq-question:hover {
-        background-color: #f8f9fa;
+    /* Icon styling */
+    .icon-wrapper {
+        width: 32px;
+        height: 32px;
+        background-color: #f1f5f9;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
     }
 
-    /* The icon rotation animation */
     .faq-icon {
-        transition: transform 0.3s ease;
-        color: #005A9C;
+        font-size: 14px;
+        color: #64748b;
+        transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); 
     }
 
-    /* The hidden answer part */
+    /* 6. ANSWER ANIMATION (Inner Slide) */
     .faq-answer {
-        max-height: 0;
+        display: grid;
+        grid-template-rows: 0fr; 
+        transition: grid-template-rows 0.4s ease-out; 
+        background-color: #fff;
+    }
+
+    .faq-answer-inner {
         overflow: hidden;
-        transition: max-height 0.3s ease-out;
-        background-color: #fafafa;
+        opacity: 0; 
+        transform: translateY(20px); 
+        transition: opacity 0.4s ease, transform 0.4s ease; 
+    }
+
+    .faq-answer-content {
+        padding: 0 25px 25px 25px;
         color: #555;
-        line-height: 1.6;
+        line-height: 1.7;
+        font-size: 15px;
     }
 
-    .faq-answer p {
-        padding: 20px;
-        margin: 0;
-        border-top: 1px solid #eee;
-    }
-
-    /* Active State (When opened) */
+    /* 7. ACTIVE STATE */
     .faq-item.active {
-        border-color: #005A9C;
+        border-color: #005A9C; 
+        box-shadow: 0 8px 30px rgba(0, 90, 156, 0.12);
     }
 
-    .faq-item.active .faq-icon {
+    .faq-item.active .faq-question {
+        color: #005A9C; 
+    }
+
+    .faq-item.active .icon-wrapper {
+        background-color: #005A9C; 
         transform: rotate(180deg);
     }
 
+    .faq-item.active .faq-icon {
+        color: #fff; 
+    }
+
     .faq-item.active .faq-answer {
-        max-height: 300px; /* Arbitrary height large enough for content */
+        grid-template-rows: 1fr; 
+    }
+
+    .faq-item.active .faq-answer-inner {
+        opacity: 1;
+        transform: translateY(0); 
+        transition-delay: 0.1s;   
+    }
+
+    /* 8. CONTACT BOX */
+    .contact-box {
+        text-align: center; 
+        margin-top: 60px; 
+        padding: 40px; 
+        background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); 
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
     }
 </style>
 
 <div class="faq-container">
     
     <h2 class="page-title">Frequently Asked Questions</h2>
-    <p class="page-intro">Find answers to common questions about the U-Transport System.</p>
 
     <div class="faq-item">
         <div class="faq-question">
             What is the U-Transport System?
-            <i class="fa-solid fa-chevron-down faq-icon"></i>
+            <div class="icon-wrapper"><i class="fa-solid fa-chevron-down faq-icon"></i></div>
         </div>
         <div class="faq-answer">
-            <p>
-                U-Transport is a web-based platform designed exclusively for MMU Malacca students. 
-                It allows students to search for rides offered by other students (drivers) within the campus community, 
-                providing a safer and more centralized alternative to social media groups.
-            </p>
+            <div class="faq-answer-inner">
+                <div class="faq-answer-content">
+                    U-Transport is a web-based platform designed exclusively for MMU Malacca students. 
+                    It allows students to search for rides offered by other students (drivers) within the campus community, 
+                    providing a safer and more centralized alternative to social media groups.
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="faq-item">
         <div class="faq-question">
             Who can use this system?
-            <i class="fa-solid fa-chevron-down faq-icon"></i>
+            <div class="icon-wrapper"><i class="fa-solid fa-chevron-down faq-icon"></i></div>
         </div>
         <div class="faq-answer">
-            <p>
-                Access is strictly limited to <strong>registered students and staff of MMU Malacca Campus</strong>. 
-                You must have a valid university email address to register and login. Students from other campuses cannot access this system.
-            </p>
+            <div class="faq-answer-inner">
+                <div class="faq-answer-content">
+                    Access is strictly limited to <strong>registered students and staff of MMU Malacca Campus</strong>. 
+                    You must have a valid university email address to register and login. Students from other campuses cannot access this system.
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="faq-item">
         <div class="faq-question">
             Is this service safe?
-            <i class="fa-solid fa-chevron-down faq-icon"></i>
+            <div class="icon-wrapper"><i class="fa-solid fa-chevron-down faq-icon"></i></div>
         </div>
         <div class="faq-answer">
-            <p>
-                Yes. Safety is our priority. All drivers must undergo a <strong>manual verification process</strong> 
-                by the admin, submitting their Student ID and Driving License before they can post rides. 
-                Additionally, the passenger review system helps maintain high service standards.
-            </p>
+            <div class="faq-answer-inner">
+                <div class="faq-answer-content">
+                    Yes. Safety is our priority. All drivers must undergo a <strong>manual verification process</strong> 
+                    by the admin, submitting their Student ID and Driving License before they can post rides. 
+                    Additionally, the passenger review system helps maintain high service standards.
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="faq-item">
         <div class="faq-question">
             How do I make a payment?
-            <i class="fa-solid fa-chevron-down faq-icon"></i>
+            <div class="icon-wrapper"><i class="fa-solid fa-chevron-down faq-icon"></i></div>
         </div>
         <div class="faq-answer">
-            <p>
-                The system does not process online payments. All payments are made <strong>offline directly to the driver</strong>. 
-                You can pay via Cash or DuitNow QR transfer as agreed upon with your driver.
-            </p>
+            <div class="faq-answer-inner">
+                <div class="faq-answer-content">
+                    The system does not process online payments. All payments are made <strong>offline directly to the driver</strong>. 
+                    You can pay via Cash or DuitNow QR transfer as agreed upon with your driver.
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="faq-item">
         <div class="faq-question">
             Is there a mobile app I can download?
-            <i class="fa-solid fa-chevron-down faq-icon"></i>
+            <div class="icon-wrapper"><i class="fa-solid fa-chevron-down faq-icon"></i></div>
         </div>
         <div class="faq-answer">
-            <p>
-                No. U-Transport is a web-based system accessible through a modern web browser (Chrome, Safari, etc.) 
-                on PC or Laptop. There is no native app on the App Store or Play Store.
-            </p>
+            <div class="faq-answer-inner">
+                <div class="faq-answer-content">
+                    No. U-Transport is a web-based system accessible through a modern web browser (Chrome, Safari, etc.) 
+                    on PC or Laptop. There is no native app on the App Store or Play Store.
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="faq-item">
         <div class="faq-question">
             Can I track the driver's location in real-time?
-            <i class="fa-solid fa-chevron-down faq-icon"></i>
+            <div class="icon-wrapper"><i class="fa-solid fa-chevron-down faq-icon"></i></div>
         </div>
         <div class="faq-answer">
-            <p>
-                No, the system does not support real-time GPS tracking. However, once a booking is confirmed, 
-                you will receive the driver's contact number to coordinate the pickup location directly.
-            </p> 
-        </div> 
+            <div class="faq-answer-inner">
+                <div class="faq-answer-content">
+                    No, the system does not support real-time GPS tracking. However, once a booking is confirmed, 
+                    you will receive the driver's contact number to coordinate the pickup location directly.
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #e7f3fe; border-radius: 10px;">
-        <h3 style="margin-bottom: 10px; color: #005A9C;">Still have questions?</h3>
-        <p style="margin-bottom: 20px;">We are here to help!</p>
-        <a href="contact_us.php" style="background-color: #005A9C; color: white; padding: 10px 25px; text-decoration: none; border-radius: 50px; font-weight: bold;">Contact Support</a>
+    <div class="contact-box">
+        <h3 style="margin-bottom: 10px; color: #005A9C; margin-top:0; font-size: 24px;">Still have questions?</h3>
+        <p style="margin-bottom: 30px; color: #64748b;">Can't find the answer you're looking for? Please chat to our friendly team.</p>
+        <a href="contact_us.php" style="background-color: #005A9C; color: white; padding: 15px 35px; text-decoration: none; border-radius: 50px; font-weight: 600; box-shadow: 0 10px 20px rgba(0,90,156,0.25); transition: all 0.3s;">
+            Contact Support
+        </a>
     </div>
 
 </div>
@@ -192,14 +285,14 @@ include "header.php";
         const question = item.querySelector('.faq-question');
         
         question.addEventListener('click', () => {
-            // Close other open items (Optional - remove this block if you want multiple open)
+            // Logic: Close other items when opening a new one (Accordion style)
             faqItems.forEach(otherItem => {
                 if (otherItem !== item && otherItem.classList.contains('active')) {
                     otherItem.classList.remove('active');
                 }
             });
 
-            // Toggle current item
+            // Toggle the clicked item
             item.classList.toggle('active');
         });
     });
