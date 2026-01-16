@@ -1,9 +1,12 @@
 <?php
+// FUNCTION: START SESSION
 session_start();
+
+// SECTION: INCLUDES
 include "db_connect.php";
 include "function.php";
 
-// --- INCLUDE PHPMAILER ---
+// SECTION: PHPMAILER SETUP
 require 'PHPMailer/Exception.php';
 require 'PHPMailer/PHPMailer.php';
 require 'PHPMailer/SMTP.php';
@@ -11,33 +14,43 @@ require 'PHPMailer/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Redirect if already logged in
+// FUNCTION: CHECK LOGIN STATUS
+// Redirect to home if already logged in
 if(isset($_SESSION['student_id'])){
-    redirect("passenger_home.php");
+    echo "<script>window.location.href='passenger_home.php';</script>";
+    exit();
 }
 
+// =========================================================
+// FUNCTION: RESET PASSWORD LOGIC
+// Handles form submission, validation, and OTP sending
+// =========================================================
 if(isset($_POST['reset_password'])){
     $student_id = $_POST['student_id'];
     $email = $_POST['email']; 
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
 
+    // 1. Validate Email Domain
     if (!str_contains($email, "@student.mmu.edu.my")) {
         $_SESSION['swal_title'] = "Invalid Email Domain";
         $_SESSION['swal_msg'] = "Please confirm if you entered the correct Student ID.";
         $_SESSION['swal_type'] = "error";
     }
+    // 2. Validate Password Match
     elseif($new_password !== $confirm_password){
         $_SESSION['swal_title'] = "Password Mismatch";
         $_SESSION['swal_msg'] = "New passwords do not match. Please try again.";
         $_SESSION['swal_type'] = "error";
     }
+    // 3. Validate Password Strength
     elseif(strlen($new_password) < 6){
         $_SESSION['swal_title'] = "Weak Password";
         $_SESSION['swal_msg'] = "Password must be at least 6 characters long.";
         $_SESSION['swal_type'] = "error";
     }
     else {
+        // 4. Check if Student ID and Email match in DB
         $stmt = $conn->prepare("SELECT * FROM students WHERE email = ? AND student_id = ?");
         $stmt->bind_param("ss", $email, $student_id);
         $stmt->execute();
@@ -47,9 +60,11 @@ if(isset($_POST['reset_password'])){
             $row = $result->fetch_assoc();
             $name = $row['name']; 
             
+            // 5. Generate OTP
             $otp = rand(1000, 9999);
             $new_password_hash = password_hash($new_password, PASSWORD_BCRYPT);
             
+            // Store temp data for verification step
             $_SESSION['temp_reset_data'] = [
                 'email' => $email,
                 'name' => $name,
@@ -60,13 +75,14 @@ if(isset($_POST['reset_password'])){
                 'resend_count' => 0
             ];
 
+            // 6. Send OTP Email
             $mail = new PHPMailer(true);
             try {
                 $mail->isSMTP();
                 $mail->Host       = 'smtp.gmail.com';
                 $mail->SMTPAuth   = true;
-                $mail->Username   = 'soonkit0726@gmail.com'; 
-                $mail->Password   = 'oprh ldrk nwvg eyiv';   
+                $mail->Username   = 'soonkit0726@gmail.com'; // Check your config
+                $mail->Password   = 'oprh ldrk nwvg eyiv';   // Check your config
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port       = 587;
                 $mail->setFrom('soonkit0726@gmail.com', 'U-Transport System');
@@ -75,7 +91,9 @@ if(isset($_POST['reset_password'])){
                 $mail->Subject = 'Reset Password Verification Code';
                 $mail->Body    = "<h3>Hello $name,</h3><p>Your verification code is: <b>$otp</b></p>";
                 $mail->send();
-                header("Location: verify_reset_otp.php");
+                
+                // Redirect to OTP page
+                echo "<script>window.location.href='verify_reset_otp.php';</script>";
                 exit();
             } catch (Exception $e) {
                 $_SESSION['swal_title'] = "Email Error";
@@ -94,90 +112,285 @@ if(isset($_POST['reset_password'])){
 <?php include "header.php"; ?>
 
 <style>
-    input[type="email"], input[type="text"], input[type="password"] {
-        width: 100%; padding: 10px; margin-bottom: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px;
+    /* CSS: HEADER OVERRIDE */
+    .content-area {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
-    label { display: block; margin-bottom: 4px; font-weight: 500; color: #333; }
-    
-    .password-wrapper { position: relative; width: 100%; margin-bottom: 11px; }
-    .password-wrapper input { margin-bottom: 0 !important; padding-right: 40px; }
-    .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #7f8c8d; z-index: 10; font-size: 1.1rem; }
 
-    /* 完全同步 Register 页面的容器样式 */
-    .footer-link-container {
-        margin-top: 15px;
-        text-align: center;
+    /* CSS: PAGE WRAPPER */
+    .wrapper {
+        width: 100%;
+        min-height: 700px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 10px; 
+        position: relative;
+        overflow: hidden;
+        background-color: #f6f5f7; 
     }
-    .footer-link-container p {
-        font-size: 15px; /* 强制设为 15px */
-        color: #555;
-        margin: 0;
+
+    /* CSS: BACK BUTTON */
+    .back-nav {
+        position: absolute;
+        top: 0px; 
+        left: 10%; 
+        z-index: 100;
     }
-    .footer-link-container a {
+
+    .btn-back {
+        height: 40px;
+        padding: 0 30px;
+        gap: 8px;
+        border: none;
+        border-radius: 30px !important; 
+        background: #ffffff; 
+        color: #005A9C; 
+        font-weight: 600;
+        cursor: pointer;
+        transition: .3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         text-decoration: none;
-        color: #005A9C;
+        font-size: 14px;
+        font-family: 'Poppins', sans-serif;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .btn-back:hover {
+        background: #005A9C; 
+        color: #fff;
+        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
+    }
+
+    /* CSS: FORM CONTAINER */
+    .reset-box {
+        width: 500px; 
+        margin-top: 60px; 
+        padding: 0 30px;
+    }
+
+    @media (max-width: 768px) {
+        .reset-box { width: 90%; margin-top: 60px; padding: 0; }
+        .back-nav { left: 5%; top: 10px; }
+        .btn-back { padding: 0 15px; font-size: 12px; }
+    }
+
+    /* CSS: TYPOGRAPHY */
+    .top { margin-bottom: 30px; text-align: center; }
+    .top h2 { 
+        font-size: 30px; 
+        color: #333 !important; 
+        font-weight: 600; 
+        margin: 0 0 10px 0;
+        padding: 0;
+        background: none !important;
+        box-shadow: none !important;
+    }
+    .top p {
+        font-size: 14px;
+        color: #666;
+        margin: 0;
+        line-height: 1.5;
+    }
+    .top .warning-text {
+        color: #e74c3c; 
+        font-size: 13px;
+        margin-top: 5px;
         font-weight: 500;
-        font-size: 15px; /* 链接字号也强制 15px */
     }
-    .footer-link-container a:hover {
-        text-decoration: underline;
+
+    /* CSS: INPUT BOXES (DARKER BORDER) */
+    .input-box {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 55px;
+        background: #ffffff !important; 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05) !important; 
+        border-radius: 30px !important; 
+        margin-bottom: 20px;
+        padding: 0 20px;
+        
+        /* --- CHANGED HERE: DARKER BORDER --- */
+        border: 1px solid #c4c4c4 !important; 
+        
+        transition: .3s;
     }
+
+    .input-box:focus-within {
+        background: #ffffff !important;
+        box-shadow: 0 4px 10px rgba(0, 90, 156, 0.15) !important;
+        border: 1px solid #005A9C !important;
+    }
+
+    .input-box i {
+        font-size: 18px;
+        color: #888;
+        margin-right: 15px; 
+        transition: .3s;
+    }
+
+    .input-box:focus-within i { color: #005A9C; }
+
+    /* Fix Blue Autofill Background */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover, 
+    input:-webkit-autofill:focus, 
+    input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px white inset !important;
+        -webkit-text-fill-color: #333 !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+
+    .input-field {
+        flex: 1; 
+        background: transparent !important;
+        border: none !important;
+        outline: none !important;
+        color: #333 !important;
+        font-size: 15px !important;
+        height: 100%;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+    }
+    .input-field::placeholder { color: #999; font-weight: 400; }
+
+    /* Readonly Email Input Style */
+    .input-field[readonly] {
+        cursor: not-allowed;
+        color: #777 !important;
+    }
+
+    /* Password Toggle */
+    .input-box .toggle-pass {
+        margin-right: 0;
+        margin-left: 10px; 
+        cursor: pointer;
+        color: #999;
+    }
+    .input-box .toggle-pass:hover { color: #005A9C; }
+
+    /* CSS: SUBMIT BUTTON */
+    .submit {
+        width: 100%;
+        height: 55px;
+        background: #005A9C !important;
+        border: none !important;
+        border-radius: 30px !important;
+        color: #fff !important;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: .3s;
+        box-shadow: 0 8px 15px rgba(0, 90, 156, 0.2);
+        margin-top: 10px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .submit:hover { 
+        background: #004a80 !important; 
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 90, 156, 0.3);
+    }
+    .submit:disabled { background: #ccc !important; cursor: not-allowed; transform: none; box-shadow: none; }
+
 </style>
 
-<h2>Reset Password</h2>
-<p style="margin-bottom: 5px;">Enter your Student ID and new password.</p>
-<p style="color: red; font-size: 13px; margin-top: 0; font-weight: 500;">* You will need to verify your email in the next step.</p>
-
-<form action="" method="POST">
-    <label>Student ID</label>
-    <input type="text" name="student_id" id="studentIDInput" required placeholder="e.g. 1234567890">
-
-    <label>MMU Email</label>
-    <input type="email" name="email" id="emailInput" required placeholder="ID@student.mmu.edu.my" readonly style="background-color: #f9f9f9; cursor: not-allowed;">
-
-    <label>New Password</label>
-    <div class="password-wrapper">
-        <input type="password" name="new_password" id="newPass" required placeholder="Min 6 characters" minlength="6">
-        <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconNew"></i>
+<div class="wrapper">
+    
+    <div class="back-nav">
+        <a href="passanger_login.php" class="btn-back">
+            <i class="fa-solid fa-arrow-left"></i> Back to Login
+        </a>
     </div>
 
-    <label>Confirm New Password</label>
-    <div class="password-wrapper">
-        <input type="password" name="confirm_password" id="confirmPass" required placeholder="Re-enter new password">
-        <i class="fa-solid fa-eye-slash toggle-password" id="eyeIconConfirm"></i>
+    <div class="reset-box">
+        
+        <div class="top">
+            <h2>Reset Password</h2>
+            <p class="warning-text">* You will need to verify your email in the next step.</p>
+        </div>
+
+        <form action="" method="POST" onsubmit="handleLoading(this)">
+            
+            <div class="input-box">
+                <i class="fa-solid fa-id-card"></i>
+                <input type="text" name="student_id" id="studentIDInput" class="input-field" placeholder="Student ID (e.g. 1234567890)" required>
+            </div>
+
+            <div class="input-box" style="background: #f9f9f9 !important;">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" name="email" id="emailInput" class="input-field" placeholder="ID@student.mmu.edu.my" readonly>
+            </div>
+
+            <div class="input-box">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="new_password" id="newPass" class="input-field" placeholder="New Password (Min 6 chars)" minlength="6" required>
+                <i class="fa-solid fa-eye-slash toggle-pass" onclick="togglePass('newPass', this)"></i>
+            </div>
+
+            <div class="input-box">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="confirm_password" id="confirmPass" class="input-field" placeholder="Confirm New Password" required>
+                <i class="fa-solid fa-eye-slash toggle-pass" onclick="togglePass('confirmPass', this)"></i>
+            </div>
+
+            <button type="submit" name="reset_password" class="submit">Verify Email & Reset</button>
+        </form>
+
     </div>
-
-    <button type="submit" name="reset_password" style="font-size: 15px;">Verify Email to Complete Reset Password</button>
-</form>
-
-<div class="footer-link-container">
-    <p><a href="passanger_login.php">← Back to Login</a></p>
 </div>
 
+<?php include "footer.php"; ?>
+
 <script>
+    // FUNCTION: AUTOFILL EMAIL
     const studentIdInput = document.getElementById('studentIDInput');
     const emailInput = document.getElementById('emailInput');
 
-    studentIdInput.addEventListener('input', function() {
-        const id = this.value;
-        if (id.length > 0) { emailInput.value = id + "@student.mmu.edu.my"; }
-        else { emailInput.value = ""; }
-    });
-
-    function setupPasswordToggle(inputId, iconId) {
-        const input = document.getElementById(inputId);
-        const icon = document.getElementById(iconId);
-        function show() { input.type = 'text'; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
-        function hide() { input.type = 'password'; icon.classList.replace('fa-eye', 'fa-eye-slash'); }
-        icon.addEventListener('mousedown', show);
-        icon.addEventListener('mouseup', hide);
-        icon.addEventListener('mouseleave', hide);
-        icon.addEventListener('touchstart', (e) => { e.preventDefault(); show(); });
-        icon.addEventListener('touchend', hide);
+    if(studentIdInput){
+        studentIdInput.addEventListener('input', function() {
+            const id = this.value.trim();
+            if (id.length > 0) { emailInput.value = id + "@student.mmu.edu.my"; }
+            else { emailInput.value = ""; }
+        });
     }
 
-    setupPasswordToggle('newPass', 'eyeIconNew');
-    setupPasswordToggle('confirmPass', 'eyeIconConfirm');
-</script>
+    // FUNCTION: TOGGLE PASSWORD VISIBILITY
+    function togglePass(inputId, icon) {
+        const input = document.getElementById(inputId);
+        if (input.type === "password") {
+            input.type = "text";
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        } else {
+            input.type = "password";
+            icon.classList.replace('fa-eye', 'fa-eye-slash'); 
+        }
+    }
 
-<?php include "footer.php"; ?>
+    // FUNCTION: LOADING SPINNER
+    function handleLoading(form) {
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+        
+        if(btn.disabled) return false;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+        
+        // Timeout safety
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }, 10000);
+        
+        return true;
+    }
+</script>
