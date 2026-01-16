@@ -209,6 +209,20 @@ if(isset($_POST['action']) && $_POST['action'] === 'login'){
 <style>
     /* NOTE: Header.php already has the global CSS for fonts and SweetAlert */
     
+    /* ========================================= */
+    /* 1. PAGE ENTRANCE ANIMATION (NEW!)         */
+    /* ========================================= */
+    @keyframes fadeInUpPage {
+        0% {
+            opacity: 0;
+            transform: translateY(40px); /* Start slightly below */
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);    /* End at normal position */
+        }
+    }
+
     /* CSS: HEADER OVERRIDE (For Login Page specific layout) */
     .content-area {
         background: transparent !important; box-shadow: none !important; border: none !important;
@@ -216,16 +230,37 @@ if(isset($_POST['action']) && $_POST['action'] === 'login'){
     }
 
     /* Additional Styling for Login/Register Forms */
-    .wrapper { width: 100%; min-height: 700px; display: flex; justify-content: center; align-items: flex-start; padding-top: 10px; position: relative; overflow: hidden; background-color: #f6f5f7; }
-    .nav-button { position: absolute; top: 0px; right: 10%; display: flex; gap: 15px; z-index: 100; }
-    .back-nav { position: absolute; top: 0px; left: 10%; z-index: 100; }
+    .wrapper { 
+        width: 100%; min-height: 700px; display: flex; justify-content: center; align-items: flex-start; 
+        padding-top: 10px; position: relative; overflow: hidden; background-color: #f6f5f7; 
+    }
+    
+    /* Navigation Buttons - Added Animation */
+    .nav-button { 
+        position: absolute; top: 0px; right: 10%; display: flex; gap: 15px; z-index: 100; 
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; /* Slide Up Animation */
+    }
+    .back-nav { 
+        position: absolute; top: 0px; left: 10%; z-index: 100; 
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; /* Slide Up Animation */
+    }
     
     .btn, .btn-back { height: 40px; border: none; border-radius: 30px !important; background: #ffffff; color: #005A9C; font-weight: 600; cursor: pointer; transition: .3s; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .btn { width: 110px; }
     .btn-back { padding: 0 30px; gap: 8px; }
     .btn.white-btn, .btn:hover, .btn-back:hover { background: #005A9C; color: #fff; box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3); }
     
-    .form-box { position: relative; width: 600px; height: 720px; overflow: hidden; margin-top: 50px; background: transparent !important; box-shadow: none !important; }
+    /* Form Box - Added Animation & Kept Transparent Background */
+    .form-box { 
+        position: relative; width: 600px; height: 720px; 
+        overflow: hidden; margin-top: 50px; 
+        background: transparent !important; /* Keep original transparent design */
+        box-shadow: none !important;        /* No shadow */
+        
+        /* Apply the entrance animation here */
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    }
+    
     @media (max-width: 768px) { .form-box { width: 95%; height: 800px; margin-top: 60px; } .nav-button { right: 5%; top: 10px; gap: 10px; } .back-nav { left: 5%; top: 10px; } .btn { width: 90px; font-size: 12px; } .btn-back { padding: 0 15px; font-size: 12px; } .login-container, .register-container { padding: 0 20px; } }
     
     .login-container, .register-container { position: absolute; width: 100%; top: 0; transition: .5s ease-in-out; padding: 0 50px; }
@@ -362,7 +397,8 @@ endif;
         customClass: {
             popup: 'swal2-popup',
             title: 'swal2-title',
-            htmlContainer: 'swal2-html-container'
+            htmlContainer: 'swal2-html-container',
+            confirmButton: 'swal2-confirm'
         }
     }).then(function() {
         // REPLACE the current history entry so the user cannot click "Back" to return to login
@@ -374,4 +410,4 @@ endif;
     unset($_SESSION['login_success']);
     unset($_SESSION['user_name']);
 endif; 
-?>
+?>  
