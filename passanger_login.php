@@ -1,15 +1,20 @@
 <?php
+// =========================================================
+// SECTION: CACHE CONTROL (PREVENTS BACK BUTTON ISSUES)
+// =========================================================
+// These headers tell the browser NOT to store this page in the history cache.
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
 // FUNCTION: START SESSION
-// Starts the session to handle user login states
 session_start();
 
 // SECTION: INCLUDES
-// Connect to database and load helper functions
 include "db_connect.php";
 include "function.php";
 
 // SECTION: PHPMAILER SETUP
-// Required libraries for sending verification emails
 require 'PHPMailer/Exception.php';
 require 'PHPMailer/PHPMailer.php';
 require 'PHPMailer/SMTP.php';
@@ -583,7 +588,8 @@ endif;
             confirmButton: 'swal2-confirm'
         }
     }).then(function() {
-        window.location.href = 'passenger_home.php';
+        // REPLACE the current history entry so the user cannot click "Back" to return to login
+        window.location.replace('passenger_home.php');
     });
 </script>
 <?php 
