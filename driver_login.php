@@ -1,199 +1,289 @@
 <?php
+// =========================================================
+// 1. CACHE CONTROL
+// Prevents back button issues (form resubmission/expired pages)
+// =========================================================
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
+// Start Session
 session_start();
 
+// Include necessary files
 include "db_connect.php";
 include "function.php";
 
-// If already logged in, redirect to dashboard
-if (isset($_SESSION['driver_id'])) {
-    header("Location: driver_dashboard.php");
-    exit;
+// =========================================================
+// 2. CHECK LOGIN STATUS
+// =========================================================
+if(isset($_SESSION['driver_id']) && !isset($_SESSION['login_success'])){
+    echo "<script>window.location.href='driver_dashboard.php';</script>";
+    exit();
 }
 
-// [Improvement 2] Variable to store email input
-$email_input = "";
+// --- RETRIEVE STICKY DATA ---
+$login_email_val = isset($_SESSION['sticky']['login_email']) ? $_SESSION['sticky']['login_email'] : "";
+unset($_SESSION['sticky']);
 
-// Handle login form submit
-if (isset($_POST['login'])) {
+// =========================================================
+// 3. LOGIN LOGIC
+// =========================================================
+if(isset($_POST['login'])){
+    $email = trim($_POST['login_email']);
+    $password = $_POST['login_password'];
 
-    $email    = trim($_POST['email']);
-    $password = $_POST['password'];
+    $stmt = $conn->prepare("SELECT * FROM drivers WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-    // [Improvement 2] Keep the email value to refill the form
-    $email_input = $email;
-
-    // Basic validation
-    if (empty($email) || empty($password)) {
-        $_SESSION['swal_title'] = "Missing Fields";
-        $_SESSION['swal_msg']   = "Email and password cannot be empty.";
-        $_SESSION['swal_type']  = "warning";
-    } else {
-        // Check driver from DB
-        $stmt = $conn->prepare("SELECT driver_id, password, verification_status FROM drivers WHERE email = ?");
+    if($result->num_rows == 1){
+        $row = $result->fetch_assoc();
         
-        if ($stmt) {
-            $stmt->bind_param("s", $email);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result && $result->num_rows === 1) {
-                $row = $result->fetch_assoc();
-
-                if (password_verify($password, $row['password'])) {
-                    
-                    // Check Verification Status
-                    $status = $row['verification_status'];
-
-                    if ($status === 'pending') {
-                        $_SESSION['swal_title'] = "Account Pending";
-                        $_SESSION['swal_msg']   = "Your account is currently awaiting Admin approval. Please try again later.";
-                        $_SESSION['swal_type']  = "info"; 
-                        header("Location: driver_login.php");
-                        exit;
-
-                    } elseif ($status === 'rejected') {
-                        $_SESSION['swal_title'] = "Account Rejected";
-                        $_SESSION['swal_msg']   = "Your driver application has been rejected by the administrator.";
-                        $_SESSION['swal_type']  = "error";
-                        header("Location: driver_login.php");
-                        exit;
-
-                    } else {
-                        // Success -> Login
-                        $_SESSION['driver_id'] = $row['driver_id'];
-
-                        $_SESSION['swal_title'] = "Login Successful";
-                        $_SESSION['swal_msg']   = "Welcome back, driver!";
-                        $_SESSION['swal_type']  = "success";
-
-                        header("Location: driver_dashboard.php");
-                        exit;
-                    }
-
-                } else {
-                    // Wrong password
-                    $_SESSION['swal_title'] = "Login Failed";
-                    $_SESSION['swal_msg']   = "Incorrect email or password.";
-                    $_SESSION['swal_type']  = "error";
+        if(password_verify($password, $row['password'])){
+            
+            // Check Verification Status
+            if(isset($row['verification_status'])){
+                if ($row['verification_status'] == 'pending'){
+                    $_SESSION['swal_title'] = "Account Pending";
+                    $_SESSION['swal_msg'] = "Your account is currently under review by the Admin.";
+                    $_SESSION['swal_type'] = "info";
+                    header("Location: driver_login.php");
+                    exit();
+                } elseif ($row['verification_status'] == 'rejected'){
+                    $_SESSION['swal_title'] = "Account Rejected";
+                    $_SESSION['swal_msg'] = "Your application has been rejected.";
+                    $_SESSION['swal_type'] = "error";
+                    header("Location: driver_login.php");
+                    exit();
                 }
-            } else {
-                // No such driver
-                $_SESSION['swal_title'] = "Login Failed";
-                $_SESSION['swal_msg']   = "No driver account found with this email.";
-                $_SESSION['swal_type']  = "error";
             }
 
-            $stmt->close();
+            // Login Success
+            $_SESSION['driver_id'] = $row['driver_id']; 
+            $_SESSION['driver_name'] = $row['full_name'];
+            $_SESSION['login_success'] = true; 
+            $_SESSION['user_name'] = $row['full_name'];
+            
+            header("Location: driver_login.php"); 
+            exit(); 
         } else {
-            // SQL error
-            $_SESSION['swal_title'] = "Error";
-            $_SESSION['swal_msg']   = "Database error. Please try again later.";
-            $_SESSION['swal_type']  = "error";
+            $_SESSION['swal_title'] = "Login Failed";
+            $_SESSION['swal_msg'] = "Incorrect password.";
+            $_SESSION['swal_type'] = "error";
+            $_SESSION['sticky']['login_email'] = $email;
+            header("Location: driver_login.php");
+            exit();
         }
+    } else {
+        $_SESSION['swal_title'] = "Login Failed";
+        $_SESSION['swal_msg'] = "No driver account found with this email.";
+        $_SESSION['swal_type'] = "warning";
+        header("Location: driver_login.php");
+        exit();
     }
 }
-
-include "header.php";
 ?>
 
+<?php include "header.php"; ?>
+
 <style>
-    body { background: #f5f7fb; }
-    .login-wrapper { min-height: calc(100vh - 140px); display: flex; align-items: center; justify-content: center; padding: 40px 15px; }
-    .login-card { background-color: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 420px; width: 100%; padding: 30px 28px 26px; text-align: center; border: 1px solid #e0e0e0; }
-    .login-icon { width: 60px; height: 60px; border-radius: 50%; border: 2px solid #27ae60; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 28px; color: #27ae60; }
-    .login-card h2 { margin: 0; font-size: 24px; color: #005A9C; font-weight: 700; }
-    .login-subtitle { margin-top: 6px; margin-bottom: 22px; color: #666; font-size: 14px; }
-    
-    /* [Improvement 3] Position Relative for Eye Icon */
-    .form-group { text-align: left; margin-bottom: 16px; position: relative; }
-    
-    .form-group label { display: block; font-size: 14px; margin-bottom: 6px; color: #333; font-weight: 500; }
-    .form-group input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; outline: none; box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
-    .form-group input:focus { border-color: #005A9C; box-shadow: 0 0 0 2px rgba(0, 90, 156, 0.15); }
-
-    /* [Improvement 3] Style for Eye Icon */
-    .toggle-password-icon {
-        position: absolute;
-        right: 12px;
-        top: 36px; /* Adjust based on your label/input height */
-        cursor: pointer;
-        color: #888;
-        z-index: 10;
-        display: flex;
-        align-items: center;
+    /* =========================
+       GLOBAL STYLES
+       ========================= */
+    :root { 
+        --primary-color: #004b82; 
+        --input-bg: #ffffff; 
+        --input-border: #e0e0e0; 
     }
-    .toggle-password-icon:hover { color: #005a9c; }
+    
+    /* Animations */
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideOutLeft { to { opacity: 0; transform: translateX(-100px); } }
 
-    .login-actions { margin-top: -4px; margin-bottom: 8px; display: flex; justify-content: flex-end; font-size: 13px; }
-    .login-actions a { color: #005A9C; text-decoration: none; }
-    .login-actions a:hover { text-decoration: underline; }
-    .btn-login { width: 100%; border: none; padding: 11px 14px; border-radius: 999px; font-size: 15px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #005A9C, #27ae60); color: #fff; margin-top: 4px; transition: transform 0.1s ease, box-shadow 0.1s ease; box-shadow: 0 8px 18px rgba(0,0,0,0.16); }
-    .btn-login:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(0,0,0,0.18); }
-    .btn-login:active { transform: translateY(0); box-shadow: 0 6px 12px rgba(0,0,0,0.18); }
-    .login-footer-links { margin-top: 16px; font-size: 13px; color: #777; }
-    .login-footer-links a { color: #005A9C; text-decoration: none; font-weight: 500; }
-    .login-footer-links a:hover { text-decoration: underline; }
+    .content-area { background: transparent !important; box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+    
+    .wrapper { 
+        width: 100%; min-height: 80vh; 
+        display: flex; justify-content: center; align-items: flex-start; 
+        padding-top: 40px; position: relative; overflow: hidden; 
+        background: linear-gradient(to bottom, #f8f9fc, #eef2f7); 
+    }
+    
+    /* Buttons */
+    .btn, .btn-back { 
+        height: 42px; border: none; border-radius: 50px !important; 
+        background: rgba(255,255,255,0.9); color: var(--primary-color); 
+        font-weight: 600; cursor: pointer; transition: all 0.3s ease; 
+        display: flex; align-items: center; justify-content: center; 
+        text-decoration: none; font-size: 14px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+        backdrop-filter: blur(5px); 
+    }
+    .btn { width: 120px; } 
+    .btn-back { padding: 0 25px; gap: 8px; }
+    
+    .btn.white-btn, .btn:hover, .btn-back:hover { 
+        background: var(--primary-color); color: #fff; 
+        box-shadow: 0 8px 15px rgba(0, 75, 130, 0.2); 
+        transform: translateY(-2px); 
+    }
+    
+    /* Form Box */
+    .form-box { 
+        position: relative; width: 550px; overflow: hidden; margin-top: 60px; 
+        background: transparent !important; 
+        animation: fadeInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; 
+    }
+    .form-box.exiting { 
+        animation: slideOutLeft 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) both !important; 
+    }
+
+    .login-container { background: transparent; padding: 0 40px; }
+    
+    /* Top Section */
+    .top { margin-bottom: 30px; text-align: center; }
+    .top h2 { font-size: 30px; color: #2d3748 !important; font-weight: 800; margin: 0; letter-spacing: -0.5px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    
+    /* Inputs */
+    .input-box { 
+        display: flex; align-items: center; width: 100%; height: 52px; 
+        background: var(--input-bg) !important; 
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02) !important; 
+        border-radius: 12px !important; margin-bottom: 20px; padding: 0 15px; 
+        border: 1px solid var(--input-border) !important; 
+        transition: all 0.3s ease; 
+    }
+    .input-box:focus-within { 
+        border-color: var(--primary-color) !important; 
+        box-shadow: 0 0 0 4px rgba(0, 75, 130, 0.1) !important; 
+        transform: translateY(-1px); 
+    }
+    .input-box i { font-size: 16px; color: #a0aec0; margin-right: 12px; } 
+    .input-box:focus-within i { color: var(--primary-color); }
+    
+    .input-field { 
+        flex: 1; background: transparent !important; border: none !important; 
+        outline: none !important; color: #333 !important; font-size: 15px !important; 
+        font-weight: 500; height: 100%; 
+    }
+    
+    .toggle-pass { margin-left: 10px; cursor: pointer; color: #cbd5e0; } 
+    .toggle-pass:hover { color: var(--primary-color); }
+    
+    /* Submit Button */
+    .submit { 
+        width: 100%; height: 52px; background: var(--primary-color) !important; 
+        border: none !important; border-radius: 12px !important; color: #fff !important; 
+        font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s; 
+        box-shadow: 0 4px 12px rgba(0, 75, 130, 0.25); margin-top: 10px; 
+        display: flex; align-items: center; justify-content: center; gap: 8px; 
+    }
+    .submit:hover { 
+        background: #00365e !important; transform: translateY(-2px); 
+    }
+    
+    .two-col { display: flex; justify-content: center; font-size: 14px; margin-top: 20px; color: #555; }
+    .two-col a { color: #718096; text-decoration: none; font-weight: 500; cursor: pointer; transition: 0.2s; } 
+    .two-col a:hover { color: var(--primary-color); }
+    
+    /* Nav Positioning */
+    .nav-button { position: absolute; top: 10px; right: 10%; display: flex; gap: 15px; z-index: 100; animation: fadeInUp 0.8s ease-out both; }
+    .back-nav { position: absolute; top: 10px; left: 10%; z-index: 100; animation: fadeInUp 0.8s ease-out both; }
 </style>
 
-<div class="login-wrapper">
-    <div class="login-card">
-        <div class="login-header">
-            <div class="login-icon">
-                <i class="fa-solid fa-car"></i>
-            </div>
-            <h2>Driver Login</h2>
-            <p class="login-subtitle">Sign in to manage your transport services.</p>
-        </div>
+<div class="wrapper">
+    <div class="back-nav"><a href="index.php" class="btn-back"><i class="fa-solid fa-chevron-left"></i> Home</a></div>
+    
+    <div class="nav-button">
+        <button class="btn white-btn">Sign In</button>
+        <button class="btn" onclick="goToRegister()">Sign Up</button>
+    </div>
 
-        <form method="post" action="">
-            <div class="form-group">
-                <label for="email">Driver Email</label>
-                <input type="email" id="email" name="email" 
-                       value="<?php echo htmlspecialchars($email_input); ?>" 
-                       placeholder="Enter your MMU email" required>
+    <div class="form-box" id="formBox">
+        <div class="login-container">
+            <div class="top">
+                <h2><i class="fa-solid fa-car"></i> Driver Login</h2>
             </div>
-
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            
+            <form action="" method="POST" onsubmit="handleLoading(this)">
+                <div class="input-box">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" name="login_email" class="input-field" placeholder="Email Address" value="<?php echo htmlspecialchars($login_email_val ?? ''); ?>" required>
+                </div>
+                <div class="input-box">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" name="login_password" id="loginPass" class="input-field" placeholder="Password" required>
+                    <i class="fa-solid fa-eye-slash toggle-pass" onclick="togglePass('loginPass', this)"></i>
+                </div>
                 
-                <span class="toggle-password-icon" onclick="toggleLoginPassword(this)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                </span>
-            </div>
-
-            <div class="login-actions">
-                <a href="driver_forgot_password.php">Forgot password?</a>
-            </div>
-
-            <button type="submit" name="login" class="btn-login">
-                Login as Driver
-            </button>
-        </form>
-
-        <div class="login-footer-links">
-            New driver? <a href="driver_register.php">Create an account</a>
+                <button type="submit" name="login" class="submit">
+                    Sign In <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                </button>
+                
+                <div class="two-col">
+                    <a onclick="goToForgot()">Forgot password?</a>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<script>
-// [Improvement 3] JS to toggle password
-function toggleLoginPassword(iconSpan) {
-    const input = document.getElementById('password');
-    
-    // SVG strings
-    const eyeOff = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
-    const eyeOn = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+<?php include "footer.php"; ?>
 
-    if (input.type === "password") {
-        input.type = "text";
-        iconSpan.innerHTML = eyeOn;
-    } else {
-        input.type = "password";
-        iconSpan.innerHTML = eyeOff;
+<script>
+    // Smooth transition to Register
+    function goToRegister() {
+        const box = document.getElementById('formBox');
+        box.classList.add('exiting');
+        setTimeout(() => { window.location.href = 'driver_register.php'; }, 400);
     }
-}
+
+    // Smooth transition to Forgot Password
+    function goToForgot() {
+        const box = document.getElementById('formBox');
+        box.classList.add('exiting');
+        setTimeout(() => { window.location.href = 'driver_forgot_password.php'; }, 400);
+    }
+
+    function togglePass(inputId, icon) { 
+        const input = document.getElementById(inputId); 
+        if (input.type === "password") { input.type = "text"; icon.classList.replace('fa-eye-slash', 'fa-eye'); icon.style.color = "#004b82"; } 
+        else { input.type = "password"; icon.classList.replace('fa-eye', 'fa-eye-slash'); icon.style.color = ""; } 
+    }
+    
+    function handleLoading(form) { 
+        const btn = form.querySelector('button[type="submit"]'); 
+        const originalHtml = btn.innerHTML; 
+        if(btn.disabled) return false; 
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...'; 
+        setTimeout(() => { btn.disabled = false; btn.innerHTML = originalHtml; }, 10000); 
+        return true; 
+    }
 </script>
 
-<?php include "footer.php"; ?>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<?php if(isset($_SESSION['swal_title'])): ?>
+<script>
+    Swal.fire({
+        title: '<?php echo $_SESSION['swal_title']; ?>',
+        text: '<?php echo $_SESSION['swal_msg']; ?>',
+        icon: '<?php echo $_SESSION['swal_type']; ?>',
+        confirmButtonColor: '#004b82', 
+        confirmButtonText: 'OK'
+    });
+</script>
+<?php unset($_SESSION['swal_title'], $_SESSION['swal_msg'], $_SESSION['swal_type']); endif; ?>
+
+<?php if(isset($_SESSION['login_success'])): ?>
+<script>
+    Swal.fire({
+        title: 'Login Successful!',
+        text: 'Welcome back, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+    }).then(() => { window.location.replace('driver_dashboard.php'); });
+</script>
+<?php unset($_SESSION['login_success'], $_SESSION['user_name']); endif; ?>
