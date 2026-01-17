@@ -3,7 +3,6 @@
 session_start();
 
 // FUNCTION: SET TIMEZONE
-// Essential for accurate date/time comparisons
 date_default_timezone_set('Asia/Kuala_Lumpur');
 
 // SECTION: INCLUDES
@@ -11,7 +10,6 @@ include "db_connect.php";
 include "function.php";
 
 // FUNCTION: CHECK LOGIN STATUS
-// Redirect to login page if no session is found
 if(!isset($_SESSION['student_id'])) {
     redirect("passanger_login.php");
 }
@@ -29,7 +27,6 @@ $current_time = date("Y-m-d H:i:s");
 
 // =========================================================
 // LOGIC: BUILD SQL QUERY
-// Find all 'Approved' or 'Accepted' rides that are in the future
 // =========================================================
 $sql = "
     SELECT 
@@ -50,7 +47,6 @@ $sql = "
       AND b.date_time > '$current_time' 
 ";
 
-// APPLY FILTERS
 if (!empty($search_date)) {
     $safe_date = $conn->real_escape_string($search_date);
     $sql .= " AND DATE(b.date_time) = '$safe_date' ";
@@ -68,14 +64,12 @@ if (!empty($search_vehicle)) {
     $sql .= " AND b.vehicle_type = '$safe_vehicle' ";
 }
 
-// GROUP & ORDER
 $sql .= " GROUP BY b.driver_id, b.date_time ORDER BY b.date_time ASC ";
 
 $available_rides = [];
 $result = $conn->query($sql);
 
 if ($result) {
-    // PREPARE STATEMENT: Check True Occupancy (Pending + Accepted)
     $stmt_real_count = $conn->prepare("SELECT SUM(passengers) as total FROM bookings WHERE driver_id = ? AND date_time = ? AND status IN ('Pending', 'Accepted', 'Approved', 'APPROVED', 'ACCEPTED')");
 
     while ($row = $result->fetch_assoc()) {
@@ -104,7 +98,6 @@ if ($result) {
     $stmt_real_count->close();
 }
 
-// INCLUDE HEADER (Navigation & Global Styles)
 include "header.php";
 ?>
 
@@ -112,13 +105,11 @@ include "header.php";
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
 <style>
-    /* 1. ANIMATION */
     @keyframes fadeInUpPage {
         0% { opacity: 0; transform: translateY(40px); }
         100% { opacity: 1; transform: translateY(0); }
     }
 
-    /* 2. RESET HEADER CONTAINER */
     .content-area {
         background: transparent !important;
         box-shadow: none !important;
@@ -129,7 +120,6 @@ include "header.php";
         max-width: 100% !important;
     }
 
-    /* 3. MAIN LAYOUT WRAPPER */
     .search-wrapper { 
         min-height: calc(100vh - 100px); 
         padding: 40px 20px; 
@@ -140,12 +130,10 @@ include "header.php";
         animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
 
-    /* 4. PAGE HEADER TEXT */
     .search-header-title { text-align: center; margin-bottom: 30px; }
     .search-header-title h1 { margin: 0; font-size: 28px; font-weight: 700; color: #004b82; }
     .search-header-title p { margin: 8px 0 0; font-size: 15px; color: #64748b; }
 
-    /* 5. SEARCH FILTER CARD (Strict Alignment Fixes) */
     .filter-card { 
         background: #ffffff; 
         border-radius: 24px; 
@@ -155,16 +143,14 @@ include "header.php";
         border: 1px solid #e2e8f0;
     }
 
-    /* --- ALIGNMENT FIX: GRID LAYOUT --- */
     .filter-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr; /* Exact 50/50 split */
-        column-gap: 20px; /* Horizontal space */
-        row-gap: 25px;    /* Vertical space */
-        align-items: start; /* FIXED: Align tops to prevent uneven jumping */
+        grid-template-columns: 1fr 1fr; 
+        column-gap: 20px; 
+        row-gap: 25px;    
+        align-items: start; 
     }
 
-    /* --- ALIGNMENT FIX: LABELS --- */
     .request-card form label, 
     .filter-card label { 
         display: block !important; 
@@ -176,12 +162,11 @@ include "header.php";
         line-height: 1.2 !important; 
     }
 
-    /* --- ALIGNMENT FIX: INPUTS & SELECTS --- */
     .filter-card select, 
     .date-input-field { 
         width: 100% !important; 
-        height: 52px !important; /* FIXED HEIGHT */
-        padding: 0 15px !important; /* Exact padding */
+        height: 52px !important; 
+        padding: 0 15px !important; 
         font-size: 15px !important; 
         border: 1.5px solid #e2e8f0 !important; 
         border-radius: 12px !important; 
@@ -204,36 +189,39 @@ include "header.php";
         flex: 1; 
     }
 
-    /* Search Button */
+    /* === [FORCE FIXED] SEARCH BUTTON STYLE === */
     .btn-search { 
-        width: 100%; 
-        padding: 16px; 
-        background-color: #004b82; 
-        color: white; 
-        border: none; 
-        border-radius: 50px; 
-        font-size: 16px; 
-        font-weight: 600; 
+        display: block !important;          
+        width: auto !important;             /* FORCE: Not full width */
+        min-width: 200px !important;        /* FORCE: Min width */
+        margin: 30px auto 0 !important;     /* FORCE: Center */
+        
+        padding: 12px 40px !important;      
+        background-color: #004b82 !important; 
+        color: white !important; 
+        border: none !important; 
+        border-radius: 50px !important;     /* FORCE: Pill Shape */
+        font-size: 15px !important;         
+        font-weight: 600 !important;
         cursor: pointer; 
-        margin-top: 30px; 
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0, 75, 130, 0.2);
+        box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2);
+        text-align: center !important;
     }
     .btn-search:hover { 
-        background-color: #003660; 
+        background-color: #003660 !important; 
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 75, 130, 0.3);
     }
 
-    /* Mobile Responsive */
     @media (max-width: 768px) {
         .filter-grid {
-            grid-template-columns: 1fr; /* Stack on mobile */
+            grid-template-columns: 1fr; 
             gap: 20px;
+        }
+        .btn-search {
+            width: 100% !important; /* Mobile: Full width is better for touch */
         }
     }
 
-    /* 6. RESULT RIDE CARD */
     .results-header {
         font-weight: 700; 
         font-size: 18px;
@@ -258,23 +246,19 @@ include "header.php";
         border-color: #e0f2fe;
     }
 
-    /* Route Text */
     .route-text { font-weight: 700; font-size: 17px; margin-bottom: 8px; color: #1e293b; }
     .info-row { font-size: 14px; color: #64748b; margin-bottom: 8px; display: flex; align-items: center; gap: 15px; }
     .info-row i { width: 18px; text-align: center; color: #004b82; }
 
-    /* Badges */
     .vehicle-badge { background: #f1f5f9; padding: 6px 12px; border-radius: 8px; font-size: 13px; color: #475569; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; margin-top: 5px; }
     .seat-badge { padding: 6px 14px; border-radius: 30px; font-size: 12px; font-weight: 700; display: inline-block; margin-bottom: 15px; }
     .seat-badge.available { background: #dcfce7; color: #166534; }
     .seat-badge.full { background: #fee2e2; color: #991b1b; }
 
-    /* Buttons */
     .btn-join { background-color: #009688; color: white; padding: 10px 24px; border-radius: 50px; text-decoration: none; font-weight: 600; display: inline-block; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0, 150, 136, 0.2); }
     .btn-join:hover { background-color: #00796b; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0, 150, 136, 0.3); }
     .btn-joined { background-color: #cbd5e1; color: #475569; padding: 10px 24px; border-radius: 50px; font-weight: 600; cursor: default; }
 
-    /* 7. DATE PICKER POPUP */
     .date-picker-container { position: relative; width: 100%; cursor: pointer; }
     .calendar-popup { display: none; position: absolute; top: 110%; left: 0; width: 100%; background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 1000; overflow: hidden; border: 1px solid #e2e8f0; padding-bottom: 15px; }
     .calendar-popup.active { display: block; }
@@ -287,14 +271,11 @@ include "header.php";
     .calendar-days div { display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 50%; font-size: 14px; color: #333; margin: 2px; }
     .calendar-days div:hover { background-color: #f1f5f9; }
     
-    /* --- UPDATED CALENDAR STYLE (Distinct Today vs Selected) --- */
-    /* Selected Date: Solid Blue */
     .calendar-days div.selected { 
         background-color: #004b82 !important; 
         color: #fff !important; 
         font-weight: bold; 
     }
-    /* Today's Date: Hollow Blue Ring */
     .calendar-days div.today { 
         background-color: transparent !important; 
         border: 2px solid #004b82; 
@@ -305,7 +286,6 @@ include "header.php";
     .calendar-days div.inactive { visibility: hidden; pointer-events: none; }
     .calendar-days div.disabled { color: #cbd5e1 !important; pointer-events: none; }
 
-    /* 8. EMPTY STATE */
     .empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; background: #fff; border-radius: 20px; border: 1px dashed #cbd5e1; }
     .empty-state i { font-size: 48px; margin-bottom: 20px; color: #cbd5e1; }
     .empty-state p { font-size: 16px; }
@@ -384,6 +364,7 @@ include "header.php";
                 </div>
 
             </div>
+            
             <button type="submit" class="btn-search"><i class="fa-solid fa-magnifying-glass"></i> Search Rides</button>
 
             <?php if(!empty($search_state) || !empty($search_region) || !empty($search_date) || !empty($search_vehicle)): ?>
@@ -500,7 +481,6 @@ include "header.php";
             if (checkDate < todayDate) {
                 dayDiv.classList.add("disabled"); 
             } else {
-                // HIGHLIGHT LOGIC: Separate classes
                 if (i === new Date().getDate() && currMonth === new Date().getMonth() && currYear === new Date().getFullYear()) {
                     dayDiv.classList.add("today");
                 }
@@ -518,7 +498,7 @@ include "header.php";
         currDate = new Date(currYear, currMonth, day);
         renderCalendar(); 
         updateDateValue(); 
-        calendarPopup.classList.remove("active"); // AUTO CLOSE (Keep as is)
+        calendarPopup.classList.remove("active"); 
     }
 
     function changeMonth(direction) {

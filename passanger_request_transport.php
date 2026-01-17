@@ -124,7 +124,7 @@ include "header.php";
 
 <style>
     /* ========================================================= */
-    /* 1. CRITICAL FIX: REMOVE DEFAULT HEADER WRAPPER STYLES     */
+    /* 1. HEADER RESET                                           */
     /* ========================================================= */
     .content-area {
         background: transparent !important;
@@ -142,7 +142,7 @@ include "header.php";
         100% { opacity: 1; transform: translateY(0); }
     }
 
-    /* 3. LAYOUT WRAPPER (Grey Background) */
+    /* 3. LAYOUT WRAPPER */
     .request-wrapper { 
         min-height: calc(100vh - 160px); 
         padding: 40px 20px; 
@@ -234,30 +234,15 @@ include "header.php";
     .calendar-days div { display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 50%; font-size: 14px; color: #333; margin: 2px; }
     .calendar-days div:hover { background-color: #f1f5f9; }
     
-    /* --- MODIFIED CALENDAR STYLES FOR DISTINCTION --- */
-    
-    /* Selected Date: Solid Blue Circle */
-    .calendar-days div.selected { 
-        background-color: #004b82 !important; 
-        color: #fff !important; 
-        font-weight: bold; 
-    }
-    
-    /* Today's Date: Hollow Blue Ring (Empty Circle) */
-    .calendar-days div.today { 
-        background-color: transparent; /* No Fill */
-        border: 2px solid #004b82;     /* Blue Border */
-        color: #004b82;                /* Blue Text */
-        font-weight: bold; 
-    }
-    
-    /* Disabled Dates */
+    /* Calendar States */
+    .calendar-days div.selected { background-color: #004b82 !important; color: #fff !important; font-weight: bold; }
+    .calendar-days div.today { background-color: transparent !important; border: 2px solid #004b82; color: #004b82 !important; font-weight: bold; }
     .calendar-days div.disabled { color: #cbd5e1 !important; pointer-events: none; }
 
     /* Time Picker */
     .time-picker-simple {
         border-top: 1px solid #e2e8f0; 
-        padding: 12px 15px 5px 15px; /* Reduced bottom padding */
+        padding: 12px 15px 5px 15px; 
         display: flex; justify-content: center; align-items: center; gap: 8px; background: #f8fafc;
     }
     .time-select-simple {
@@ -265,36 +250,19 @@ include "header.php";
         border-radius: 8px; background: white; font-size: 15px;
         color: #2d3748; cursor: pointer; outline: none; width: auto;
     }
-    
-    /* Alignment Fix for Colon */
     .time-separator { 
-        font-weight: 700; 
-        color: #4a5568; 
-        font-size: 20px; 
-        height: 40px; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        transform: translateY(-5px); 
-        padding-bottom: 2px;
+        font-weight: 700; color: #4a5568; font-size: 20px; height: 40px; 
+        display: flex; align-items: center; justify-content: center;
+        transform: translateY(-5px); padding-bottom: 2px;
     }
 
-    /* DONE BUTTON */
+    /* DONE BUTTON (IN CALENDAR) */
     .btn-calendar-done {
-        width: 100%;
-        padding: 12px;
-        background-color: #004b82;
-        color: white;
-        border: none;
-        font-weight: 600;
-        font-size: 14px;
-        cursor: pointer;
-        transition: background 0.2s;
-        margin-top: 0; 
+        width: 100%; padding: 12px; background-color: #004b82;
+        color: white; border: none; font-weight: 600; font-size: 14px;
+        cursor: pointer; transition: background 0.2s; margin-top: 0; 
     }
-    .btn-calendar-done:hover {
-        background-color: #003660;
-    }
+    .btn-calendar-done:hover { background-color: #003660; }
 
     /* 8. JOIN INFO BOX */
     .join-box { 
@@ -305,8 +273,7 @@ include "header.php";
 
     /* 9. FARE ESTIMATOR CARD */
     .fare-container { 
-        background: #f8fafc; 
-        border: 1px solid #e2e8f0; 
+        background: #f8fafc; border: 1px solid #e2e8f0; 
         padding: 25px; border-radius: 16px; margin-top: 40px; 
         border-left: 6px solid #16a34a; 
     }
@@ -321,20 +288,36 @@ include "header.php";
     .fare-amount { font-size: 32px; font-weight: 800; color: #15803d; line-height: 1; }
     .rate-tag { display: inline-block; font-size: 13px; color: #065f46; font-weight: 600; background: #dcfce7; padding: 5px 12px; border-radius: 8px; margin-top: 10px; }
 
-    /* 10. SUBMIT BUTTON */
+    /* ======================================================= */
+    /* 10. [FIXED] CONFIRM BUTTON (EXACTLY LIKE SEARCH BTN)    */
+    /* ======================================================= */
     .btn-submit { 
-        width: 100%; padding: 16px; 
-        background: #004b82; color: white; 
-        border: none; border-radius: 50px; 
-        font-size: 16px; font-weight: 600; 
-        cursor: pointer; margin-top: 30px; 
-        transition: all 0.3s ease; 
-        box-shadow: 0 4px 15px rgba(0, 75, 130, 0.2);
+        display: block !important;          /* Force Block for centering */
+        width: auto !important;             /* Force auto width (short) */
+        min-width: 220px !important;        /* Minimum width for look */
+        margin: 30px auto 0 !important;     /* Force Center */
+        
+        padding: 12px 40px !important;      /* Pill Padding */
+        background-color: #004b82 !important; /* Deep Blue */
+        color: white !important; 
+        border: none !important; 
+        border-radius: 50px !important;     /* Force Fully Round */
+        font-size: 15px !important; 
+        font-weight: 600 !important; 
+        cursor: pointer !important; 
+        text-align: center !important;
+        box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2) !important;
+        transition: all 0.3s ease !important;
     }
     .btn-submit:hover { 
-        background: #003660; 
+        background: #003660 !important; 
         transform: translateY(-2px); 
-        box-shadow: 0 6px 20px rgba(0, 75, 130, 0.3); 
+        box-shadow: 0 6px 15px rgba(0, 75, 130, 0.3) !important; 
+    }
+
+    /* Mobile: Make it full width again for better touch access */
+    @media (max-width: 768px) {
+        .btn-submit { width: 100% !important; }
     }
 </style>
 
@@ -524,7 +507,7 @@ include "header.php";
             <?php if(!$is_join_mode || $available_seats > 0): ?>
                 <button type="submit" class="btn-submit">Confirm Booking</button>
             <?php else: ?>
-                <button type="button" class="btn-submit" style="background-color:#ccc; cursor:not-allowed;">Ride Full</button>
+                <button type="button" class="btn-submit" style="background-color:#ccc !important; cursor:not-allowed !important;">Ride Full</button>
             <?php endif; ?>
         </form>
     </div>
