@@ -25,7 +25,6 @@ if(isset($_POST['cancel_ride'])){
 
 // 2. Fetch Rides
 $rides = [];
-// [MODIFIED SQL] Added LEFT JOIN reviews to fetch rating and comment
 $stmt = $conn->prepare("
     SELECT 
         b.id AS booking_id,
@@ -60,14 +59,12 @@ $stmt->close();
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // [MODIFIED FUNCTION] Now accepts rating and comment to display them
     function showRatedAlert(rating, comment) {
         let stars = '';
         for(let i=0; i<5; i++) {
             stars += (i < rating) ? '<i class="fa-solid fa-star" style="color:#fbc02d; margin:0 2px;"></i>' : '<i class="fa-regular fa-star" style="color:#ddd; margin:0 2px;"></i>';
         }
         
-        // Default text if comment is empty
         let commentText = comment ? comment : "<i>No comment provided.</i>";
 
         Swal.fire({
@@ -103,18 +100,36 @@ $stmt->close();
 </script>
 
 <style>
-    @keyframes fadeInUpPage { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
-
-    .rides-wrapper {
-        max-width: 900px;
-        margin: 40px auto;
-        padding: 0 20px;
-        animation: fadeInUpPage 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    /* ========================================================= */
+    /* 1. CRITICAL FIX: REMOVE DEFAULT HEADER WRAPPER STYLES     */
+    /* ========================================================= */
+    .content-area {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
-    .page-header { margin-bottom: 30px; }
-    .page-header h2 { font-size: 26px; font-weight: 700; color: #004b82; margin-bottom: 5px; }
-    .page-header p { color: #64748b; font-size: 15px; }
+    @keyframes fadeInUpPage { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+
+    /* Main Page Wrapper */
+    .rides-wrapper {
+        min-height: calc(100vh - 160px);
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        background: #f5f7fb; 
+        
+        /* [UPDATED] Animation Speed: 0.8s (Matches Request Page exactly) */
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    }
+
+    /* Header Title */
+    .rides-header-title h1 { margin: 0; font-size: 28px; font-weight: 700; color: #004b82; text-align: center; }
+    .rides-header-title p { margin: 8px 0 30px; font-size: 15px; color: #64748b; text-align: center; }
 
     /* === RIDE CARD DESIGN === */
     .ride-card {
@@ -145,7 +160,6 @@ $stmt->close();
         display: flex; align-items: center; gap: 8px;
     }
     
-    /* Track ID Top Right */
     .ride-id { 
         font-family: monospace; 
         font-size: 14px; 
@@ -154,7 +168,7 @@ $stmt->close();
         font-weight: 600;
     }
 
-    /* 2. CONTENT ROW: Timeline Left, Info Right */
+    /* 2. CONTENT ROW */
     .card-content-row {
         display: flex;
         justify-content: space-between;
@@ -254,7 +268,7 @@ $stmt->close();
         width: 100%; text-align: center; color: #94a3b8; font-size: 13px; font-style: italic; 
     }
 
-    /* 3. FOOTER ROW: Buttons Centered */
+    /* 3. FOOTER ROW */
     .card-footer {
         margin-top: 25px;
         padding-top: 15px;
@@ -274,7 +288,7 @@ $stmt->close();
     .btn-cancel:hover { background: #ffe4e6; }
     .btn-rate { background: #fef9c3; color: #ca8a04; border: 1px solid #fef08a; }
     .btn-rate:hover { background: #fde047; }
-    .btn-rated { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; cursor: pointer; } /* Enable pointer */
+    .btn-rated { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; cursor: pointer; } 
     .btn-rated:hover { background: #e2e8f0; }
 
     /* MOBILE RESPONSIVE */
@@ -294,8 +308,8 @@ $stmt->close();
 
 <div class="rides-wrapper">
     
-    <div class="page-header">
-        <h2>My Journeys</h2>
+    <div class="rides-header-title">
+        <h1>My Journeys</h1>
         <p>Track your current trips and view history.</p>
     </div>
 
@@ -319,7 +333,6 @@ $stmt->close();
             $is_cancellable = ($status == 'PENDING' || $status == 'ACCEPTED' || $status == 'APPROVED');
             $is_completed = ($status == 'COMPLETED');
             
-            // [MODIFIED] Check if rating exists (not null)
             $has_rated = !empty($row['rating']);
         ?>
         
