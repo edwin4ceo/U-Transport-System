@@ -1,4 +1,11 @@
 <?php
+// =========================================================
+// SECTION: CACHE CONTROL
+// =========================================================
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
 // FUNCTION: START SESSION
 session_start();
 
@@ -124,6 +131,12 @@ if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
 <?php include "header.php"; ?>
 
 <style>
+    /* 1. ANIMATION: FADE IN UP (Same as Login Page) */
+    @keyframes fadeInUpPage {
+        0% { opacity: 0; transform: translateY(40px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
     /* GLOBAL FIX: Prevent Text Selection */
     body, h2, h3, p, span, label, a, .top, .back-nav, .warning-text {
         user-select: none; -webkit-user-select: none; cursor: default;
@@ -145,7 +158,7 @@ if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
     /* CSS: PAGE WRAPPER */
     .wrapper {
         width: 100%;
-        min-height: 700px;
+        min-height: 800px;
         display: flex;
         justify-content: center;
         align-items: flex-start;
@@ -155,12 +168,15 @@ if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
         background-color: #f6f5f7; 
     }
 
-    /* CSS: BACK BUTTON */
+    /* CSS: BACK BUTTON (With Animation) */
     .back-nav {
         position: absolute;
         top: 0px; 
         left: 10%; 
         z-index: 100;
+        
+        /* APPLY ANIMATION */
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
 
     .btn-back {
@@ -188,11 +204,14 @@ if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
         box-shadow: 0 4px 10px rgba(0, 90, 156, 0.3);
     }
 
-    /* CSS: FORM CONTAINER */
+    /* CSS: FORM CONTAINER (With Animation) */
     .reset-box {
         width: 500px; 
         margin-top: 60px; 
         padding: 0 30px;
+        
+        /* APPLY ANIMATION */
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
 
     @media (max-width: 768px) {
@@ -225,7 +244,7 @@ if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
         display: block;
     }
 
-    /* CSS: INPUT BOXES (2px Border) */
+    /* CSS: INPUT BOXES (Matches Login Style) */
     .input-box {
         display: flex;
         align-items: center;
@@ -236,7 +255,7 @@ if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
         border-radius: 30px !important; 
         margin-bottom: 20px;
         padding: 0 20px;
-        border: 2px solid #c4c4c4 !important; /* Thick Border */
+        border: 2px solid #c4c4c4 !important; 
         transition: .3s;
     }
 
@@ -401,7 +420,15 @@ if(isset($_POST['action']) && $_POST['action'] === 'reset_password'){
         title: '<?php echo $_SESSION['swal_title']; ?>',
         text: '<?php echo $_SESSION['swal_msg']; ?>',
         icon: '<?php echo $_SESSION['swal_type']; ?>',
-        confirmButtonColor: '#005A9C'
+        confirmButtonColor: '#005A9C',
+        confirmButtonText: 'OK',
+        buttonsStyling: false,
+        customClass: {
+            popup: 'swal2-popup',
+            title: 'swal2-title',
+            htmlContainer: 'swal2-html-container',
+            confirmButton: 'swal2-confirm'
+        }
     });
 </script>
 <?php 
