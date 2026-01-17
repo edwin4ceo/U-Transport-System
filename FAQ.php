@@ -11,80 +11,63 @@ include "header.php";
 ?>
 
 <style>
-    /* ========================================= */
-    /* 1. PAGE ENTRANCE ANIMATION (NEW!)         */
-    /* ========================================= */
+    /* 1. ANIMATION */
     @keyframes fadeInUpPage {
-        0% {
-            opacity: 0;
-            transform: translateY(60px); /* Start 60px below */
-        }
-        100% {
-            opacity: 1;
-            transform: translateY(0);    /* End at normal position */
-        }
+        0% { opacity: 0; transform: translateY(40px); }
+        100% { opacity: 1; transform: translateY(0); }
     }
 
-    /* 2. CONTAINER LAYOUT */
-    .faq-container {
-        max-width: 800px;
+    /* 2. RESET */
+    .content-area {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* 3. WRAPPER */
+    .faq-wrapper {
+        max-width: 900px;
         margin: 0 auto;
-        padding-bottom: 100px;
+        padding: 40px 20px;
+        background: #f5f7fb; 
         font-family: 'Poppins', sans-serif;
-        
-        /* Apply the animation here */
         animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
 
-    /* 3. TITLE DESIGN (Capsule Style) */
-    .page-title {
-        text-align: center;
-        margin-bottom: 60px; 
-        position: relative;  
-        color: #005A9C;      
-        font-weight: 700;    
-        font-size: 36px;     
-        padding-bottom: 15px; 
-    }
+    /* 4. HEADER */
+    .faq-header-title { text-align: center; margin-bottom: 30px; }
+    .faq-header-title h1 { margin: 0; font-size: 28px; font-weight: 700; color: #004b82; }
+    .faq-header-title p { margin: 8px 0 0; font-size: 15px; color: #64748b; }
 
-    .page-title::after {
-        content: "";
-        position: absolute;
-        bottom: 0;           
-        left: 50%;           
-        transform: translateX(-50%); 
-        width: 120px;        
-        height: 4px;         
-        background-color: #005A9C; 
-        border-radius: 10px; 
-        opacity: 0.8;        
-    }
-
-    /* 4. FAQ CARD STYLING */
+    /* 5. FAQ CARD STYLING */
     .faq-item {
         background-color: #fff;
-        border: 1px solid #eef2f6; 
-        border-radius: 16px;       
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
+        border: 1px solid #f1f5f9; 
+        border-radius: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03); 
         overflow: hidden;
         transition: all 0.3s ease; 
     }
 
     .faq-item:hover {
         transform: translateY(-2px); 
-        box-shadow: 0 8px 25px rgba(0, 90, 156, 0.08); 
-        border-color: #dbeafe;
+        box-shadow: 0 8px 20px rgba(0, 75, 130, 0.08); 
+        border-color: #e0f2fe;
     }
 
-    /* 5. QUESTION HEADER */
+    /* QUESTION HEADER */
     .faq-question {
-        padding: 25px;
+        padding: 20px 25px;
         cursor: pointer;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 17px;
+        font-size: 15px;
         font-weight: 600;
         color: #333;
         background: #fff;
@@ -92,10 +75,9 @@ include "header.php";
         transition: color 0.3s ease;
     }
 
-    /* Icon styling */
     .icon-wrapper {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         background-color: #f1f5f9;
         border-radius: 50%;
         display: flex;
@@ -105,76 +87,84 @@ include "header.php";
     }
 
     .faq-icon {
-        font-size: 14px;
+        font-size: 12px;
         color: #64748b;
-        transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); 
+        transition: transform 0.3s ease; 
     }
 
-    /* 6. ANSWER ANIMATION (Inner Slide) */
+    /* ANSWER */
     .faq-answer {
         display: grid;
         grid-template-rows: 0fr; 
-        transition: grid-template-rows 0.4s ease-out; 
+        transition: grid-template-rows 0.3s ease-out; 
         background-color: #fff;
     }
 
-    .faq-answer-inner {
-        overflow: hidden;
-        opacity: 0; 
-        transform: translateY(20px); 
-        transition: opacity 0.4s ease, transform 0.4s ease; 
-    }
+    .faq-answer-inner { overflow: hidden; opacity: 0; }
+    .faq-answer-content { padding: 0 25px 25px 25px; color: #64748b; line-height: 1.6; font-size: 14px; }
 
-    .faq-answer-content {
-        padding: 0 25px 25px 25px;
-        color: #555;
-        line-height: 1.7;
-        font-size: 15px;
-    }
+    /* ACTIVE STATE */
+    .faq-item.active { border-color: #004b82; box-shadow: 0 4px 15px rgba(0, 75, 130, 0.1); }
+    .faq-item.active .faq-question { color: #004b82; }
+    .faq-item.active .icon-wrapper { background-color: #004b82; transform: rotate(180deg); }
+    .faq-item.active .faq-icon { color: #fff; }
+    .faq-item.active .faq-answer { grid-template-rows: 1fr; }
+    .faq-item.active .faq-answer-inner { opacity: 1; transition: opacity 0.3s ease 0.1s; }
 
-    /* 7. ACTIVE STATE */
-    .faq-item.active {
-        border-color: #005A9C; 
-        box-shadow: 0 8px 30px rgba(0, 90, 156, 0.12);
-    }
-
-    .faq-item.active .faq-question {
-        color: #005A9C; 
-    }
-
-    .faq-item.active .icon-wrapper {
-        background-color: #005A9C; 
-        transform: rotate(180deg);
-    }
-
-    .faq-item.active .faq-icon {
-        color: #fff; 
-    }
-
-    .faq-item.active .faq-answer {
-        grid-template-rows: 1fr; 
-    }
-
-    .faq-item.active .faq-answer-inner {
-        opacity: 1;
-        transform: translateY(0); 
-        transition-delay: 0.1s;   
-    }
-
-    /* 8. CONTACT BOX */
+    /* 6. CONTACT BOX */
     .contact-box {
         text-align: center; 
-        margin-top: 60px; 
-        padding: 40px; 
-        background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); 
+        margin-top: 40px; 
+        padding: 40px 30px; 
+        background: #fff; 
+        border: 1px solid #e2e8f0;
         border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    }
+    
+    .contact-box h3 { margin: 0 0 8px; color: #004b82; font-size: 18px; font-weight: 700; }
+    .contact-box p { margin: 0 0 25px; color: #64748b; font-size: 14px; }
+
+    /* ========================================================= */
+    /* 7. [FIXED] CONTACT BUTTON (Using inline-block)            */
+    /* ========================================================= */
+    .btn-contact { 
+        display: inline-block !important;   /* KEY FIX: Prevents full width stretching */
+        width: auto !important;             
+        min-width: 200px !important;        
+        
+        padding: 12px 40px !important;      
+        background-color: #004b82 !important; 
+        color: white !important; 
+        border: none !important; 
+        border-radius: 50px !important;     
+        font-size: 15px !important; 
+        font-weight: 600 !important; 
+        text-align: center !important;
+        text-decoration: none !important;   
+        box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2) !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+        line-height: 1.5 !important;        
+    }
+    .btn-contact:hover { 
+        background-color: #003660 !important; 
+        transform: translateY(-2px); 
+        box-shadow: 0 6px 15px rgba(0, 75, 130, 0.3) !important; 
+    }
+
+    /* Mobile: Allow full width for easier tapping */
+    @media (max-width: 768px) {
+        .btn-contact { display: block !important; width: 100% !important; }
     }
 </style>
 
-<div class="faq-container">
+<div class="faq-wrapper">
     
-    <h2 class="page-title">Frequently Asked Questions</h2>
+    <div class="faq-header-title">
+        <h1>Frequently Asked Questions</h1>
+        <p>Common questions about using U-Transport.</p>
+    </div>
 
     <div class="faq-item">
         <div class="faq-question">
@@ -201,7 +191,7 @@ include "header.php";
             <div class="faq-answer-inner">
                 <div class="faq-answer-content">
                     Access is strictly limited to <strong>registered students and staff of MMU Malacca Campus</strong>. 
-                    You must have a valid university email address to register and login. Students from other campuses cannot access this system.
+                    You must have a valid university email address to register and login.
                 </div>
             </div>
         </div>
@@ -215,9 +205,8 @@ include "header.php";
         <div class="faq-answer">
             <div class="faq-answer-inner">
                 <div class="faq-answer-content">
-                    Yes. Safety is our priority. All drivers must undergo a <strong>manual verification process</strong> 
-                    by the admin, submitting their Student ID and Driving License before they can post rides. 
-                    Additionally, the passenger review system helps maintain high service standards.
+                    Yes. All drivers must undergo a <strong>manual verification process</strong> 
+                    by the admin, submitting their Student ID and Driving License before they can post rides.
                 </div>
             </div>
         </div>
@@ -240,14 +229,14 @@ include "header.php";
 
     <div class="faq-item">
         <div class="faq-question">
-            Is there a mobile app I can download?
+            Is there a mobile app?
             <div class="icon-wrapper"><i class="fa-solid fa-chevron-down faq-icon"></i></div>
         </div>
         <div class="faq-answer">
             <div class="faq-answer-inner">
                 <div class="faq-answer-content">
-                    No. U-Transport is a web-based system accessible through a modern web browser (Chrome, Safari, etc.) 
-                    on PC or Laptop. There is no native app on the App Store or Play Store.
+                    No. U-Transport is a web-based system accessible through a modern web browser on PC or Mobile. 
+                    There is no native app on the App Store or Play Store.
                 </div>
             </div>
         </div>
@@ -255,23 +244,24 @@ include "header.php";
 
     <div class="faq-item">
         <div class="faq-question">
-            Can I track the driver's location in real-time?
+            Can I track the driver's location?
             <div class="icon-wrapper"><i class="fa-solid fa-chevron-down faq-icon"></i></div>
         </div>
         <div class="faq-answer">
             <div class="faq-answer-inner">
                 <div class="faq-answer-content">
                     No, the system does not support real-time GPS tracking. However, once a booking is confirmed, 
-                    you will receive the driver's contact number to coordinate the pickup location directly.
+                    you will receive the driver's contact number to coordinate directly.
                 </div>
             </div>
         </div>
     </div>
 
     <div class="contact-box">
-        <h3 style="margin-bottom: 10px; color: #005A9C; margin-top:0; font-size: 24px;">Still have questions?</h3>
-        <p style="margin-bottom: 30px; color: #64748b;">Can't find the answer you're looking for? Please chat to our friendly team.</p>
-        <a href="contact_us.php" style="background-color: #005A9C; color: white; padding: 15px 35px; text-decoration: none; border-radius: 50px; font-weight: 600; box-shadow: 0 10px 20px rgba(0,90,156,0.25); transition: all 0.3s;">
+        <h3>Still have questions?</h3>
+        <p>Can't find the answer you're looking for? Please chat to our friendly team.</p>
+        
+        <a href="contact_us.php" class="btn-contact">
             Contact Support
         </a>
     </div>
@@ -285,14 +275,13 @@ include "header.php";
         const question = item.querySelector('.faq-question');
         
         question.addEventListener('click', () => {
-            // Logic: Close other items when opening a new one (Accordion style)
+            // Close others
             faqItems.forEach(otherItem => {
                 if (otherItem !== item && otherItem.classList.contains('active')) {
                     otherItem.classList.remove('active');
                 }
             });
-
-            // Toggle the clicked item
+            // Toggle current
             item.classList.toggle('active');
         });
     });
