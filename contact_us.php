@@ -274,7 +274,7 @@ include "header.php";
 
     .msg-meta { font-size: 10px; margin-top: 5px; opacity: 0.7; text-align: right; display: block; }
 
-    /* [CRITICAL FIX] CHAT INPUT AREA LAYOUT */
+    /* [CHAT INPUT AREA] */
     .chat-footer-wrapper {
         padding: 20px 25px;
         background: white;
@@ -284,7 +284,6 @@ include "header.php";
         box-sizing: border-box;
     }
     
-    /* Strict Flex Container */
     .chat-form-flex {
         display: flex !important;
         flex-direction: row !important; /* Force Row */
@@ -295,29 +294,27 @@ include "header.php";
         padding: 0;
     }
 
-    /* 1. INPUT BOX (50px height) */
     .chat-input-grey { 
         flex-grow: 1; 
         border: 1px solid #e2e8f0 !important; 
-        background: #f8fafc !important; /* Light Grey BG */
+        background: #f8fafc !important; 
         outline: none !important; 
         font-size: 14px; 
         color: #333;
         padding: 0 20px;
         border-radius: 30px; 
         height: 50px !important; /* Force Height */
-        line-height: 50px !important; /* Force Text Alignment */
+        line-height: 50px !important; 
         box-sizing: border-box;
         transition: 0.2s;
-        margin: 0 !important; /* No Margin */
+        margin: 0 !important;
     }
     .chat-input-grey:focus { border-color: #004b82 !important; background: #fff !important; }
     
-    /* 2. BUTTON (50px height) */
     .btn-send-round { 
         width: 50px !important; 
         height: 50px !important; 
-        min-width: 50px !important; /* Prevent shrinking */
+        min-width: 50px !important; 
         border-radius: 50% !important; 
         background: #004b82; 
         color: white; 
@@ -326,11 +323,11 @@ include "header.php";
         display: flex; 
         align-items: center; 
         justify-content: center; 
-        flex-shrink: 0; /* Do not shrink */
+        flex-shrink: 0; 
         transition: 0.2s;
         font-size: 18px; 
         box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2);
-        margin: 0 !important; /* No margin */
+        margin: 0 !important;
         padding: 0 !important;
     }
     .btn-send-round:hover { background: #003660; transform: scale(1.05); }
@@ -347,9 +344,22 @@ include "header.php";
     <div class="container-custom">
 
         <div class="header-relative">
-            <a href="FAQ.php" class="btn-back-abs">
-                <i class="fa-solid fa-arrow-left"></i> Back to FAQ
+            <?php
+                // --- [DYNAMIC BACK BUTTON LOGIC] ---
+                // Default (Student / Guest): Go to FAQ
+                $back_link = "FAQ.php"; 
+                $back_text = "Back to FAQ";
+
+                // If Driver: Go to Dashboard
+                if($current_role === 'driver'){
+                    $back_link = "driver_dashboard.php";
+                    $back_text = "Back";
+                }
+            ?>
+            <a href="<?php echo $back_link; ?>" class="btn-back-abs">
+                <i class="fa-solid fa-arrow-left"></i> <?php echo $back_text; ?>
             </a>
+
             <div class="header-titles">
                 <?php if ($is_guest): ?>
                     <h1>Contact Us</h1>
