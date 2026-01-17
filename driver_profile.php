@@ -19,8 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- CASE A: Update Personal Info ---
     if (isset($_POST['btn_update_profile'])) {
         // NOTE: phone will come from hidden input (#phone_full) as FULL format: +60xxxxxxxxx
-        $phone = trim($_POST['phone'] ?? '');
-        $bio   = $_POST['bio'] ?? '';
+        $phone  = trim($_POST['phone'] ?? '');
+        $bio    = $_POST['bio'] ?? '';
+        
+        // [SMART FEATURE] Capture gender input
+        // If locked (readonly), it sends the existing value.
+        // If dropdown, it sends the selected value.
+        $gender = $_POST['gender'] ?? ''; 
 
         // We ONLY get Expiry Date now (License Number is read-only)
         $license_exp = $_POST['license_expiry'] ?? '';
@@ -43,9 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // Update phone, bio, license_expiry
-            $stmt = $conn->prepare("UPDATE drivers SET phone = ?, bio = ?, license_expiry = ? WHERE driver_id = ?");
-            $stmt->bind_param("sssi", $phone, $bio, $license_exp, $driver_id);
+            // [UPDATE SQL] Includes 'gender' and uses 'phone_number' to match registration
+            $stmt = $conn->prepare("UPDATE drivers SET phone_number = ?, gender = ?, bio = ?, license_expiry = ? WHERE driver_id = ?");
+            $stmt->bind_param("ssssi", $phone, $gender, $bio, $license_exp, $driver_id);
 
             if ($stmt->execute()) {
                 $success_msg = "Profile updated successfully!";
@@ -74,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (strlen($new_pass) < 6) {
             $error_msg = "Password must be at least 6 characters.";
         } else {
-            $new_hash = password_hash($new_pass, PASSWORD_DEFAULT);
+            $new_hash = password_hash($new_pass, PASSWORD_BCRYPT);
             $stmt = $conn->prepare("UPDATE drivers SET password = ? WHERE driver_id = ?");
             $stmt->bind_param("si", $new_hash, $driver_id);
             if ($stmt->execute()) {
@@ -101,12 +106,14 @@ $stmt->bind_param("i", $driver_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 
-// 4. Completeness
-$total_fields = 8;
+// 4. Completeness Calculation
+$total_fields = 9; 
 $filled = 0;
 if (!empty($user['full_name'])) $filled++;
 if (!empty($user['email'])) $filled++;
-if (!empty($user['phone'])) $filled++;
+$phone_val = $user['phone_number'] ?? $user['phone'] ?? '';
+if (!empty($phone_val)) $filled++;
+if (!empty($user['gender'])) $filled++; // Gender count
 if (!empty($user['bio'])) $filled++;
 if (!empty($user['vehicle_model'])) $filled++;
 if (!empty($user['profile_image'])) $filled++;
@@ -235,7 +242,24 @@ textarea.form-input { resize: vertical; min-height: 100px; font-family: inherit;
                 <input type="text" class="form-input" value="<?php echo htmlspecialchars($user['full_name'] ?? ''); ?>" readonly title="Contact Admin to change">
             </div>
 
-            <!-- PHONE: keep +60 fixed -->
+            <div class="form-group">
+                <label class="form-label">Gender</label>
+                <?php if (!empty($user['gender'])): ?>
+                    <input type="text" name="gender" class="form-input" 
+                           value="<?php echo htmlspecialchars($user['gender']); ?>" 
+                           readonly 
+                           title="Contact Admin to change">
+                <?php else: ?>
+                    <select name="gender" class="form-input" required style="cursor:pointer;">
+                        <option value="" disabled selected>Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="grid-2">
             <div class="form-group">
                 <label class="form-label">Phone Number</label>
 
@@ -249,31 +273,31 @@ textarea.form-input { resize: vertical; min-height: 100px; font-family: inherit;
                            id="phone_input"
                            class="form-input"
                            placeholder="123456789"
-                           value="<?php echo !empty($user['phone']) ? htmlspecialchars(substr($user['phone'], 3)) : ''; ?>"
+                           value="<?php 
+                                $raw_phone = $user['phone_number'] ?? $user['phone'] ?? '';
+                                echo !empty($raw_phone) ? htmlspecialchars(substr($raw_phone, 3)) : ''; 
+                           ?>"
                            required
                            inputmode="numeric"
                            oninput="formatPhone()">
                 </div>
 
-                <!-- Submitted to backend -->
                 <input type="hidden" name="phone" id="phone_full">
             </div>
-        </div>
 
-        <div class="grid-2">
             <div class="form-group">
                 <label class="form-label">Driving License Number</label>
                 <input type="text" class="form-input"
                        value="<?php echo htmlspecialchars($user['license_number'] ?? ''); ?>"
                        readonly title="Contact Admin to change">
             </div>
+        </div>
 
-            <div class="form-group">
-                <label class="form-label">License Expiry Date</label>
-                <input type="date" name="license_expiry" class="form-input"
-                       value="<?php echo htmlspecialchars($user['license_expiry'] ?? ''); ?>"
-                       required>
-            </div>
+        <div class="form-group">
+            <label class="form-label">License Expiry Date</label>
+            <input type="date" name="license_expiry" class="form-input"
+                   value="<?php echo htmlspecialchars($user['license_expiry'] ?? ''); ?>"
+                   required>
         </div>
 
         <div class="form-group">
@@ -338,20 +362,14 @@ function previewImage(input, imgId) {
     }
 }
 
-// Build the FULL phone value for backend submission: +60xxxxxxxxx
 function formatPhone() {
     var input  = document.getElementById('phone_input');
     var hidden = document.getElementById('phone_full');
     if (!input || !hidden) return;
-
-    // Keep digits only
     input.value = (input.value || '').replace(/\D/g, '');
-
-    // Submit as full +60 format
     hidden.value = '+60' + input.value;
 }
 
-// Validate full phone before submit (same rule as PHP)
 function validatePhoneFull() {
     var hidden = document.getElementById('phone_full');
     var val = (hidden && hidden.value) ? hidden.value.trim() : '';
@@ -371,12 +389,10 @@ function validatePhoneFull() {
     return true;
 }
 
-// Initialize hidden phone on load
 document.addEventListener("DOMContentLoaded", function() {
     formatPhone();
 });
 
-// Validate only when saving profile
 document.addEventListener("submit", function(e) {
     var submitter = e.submitter;
     if (submitter && submitter.name === "btn_update_profile") {
