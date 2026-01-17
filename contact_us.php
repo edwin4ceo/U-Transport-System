@@ -347,7 +347,7 @@ include "header.php";
     <div class="container-custom">
 
         <div class="header-relative">
-            <a href="passanger_qa_form.php" class="btn-back-abs">
+            <a href="FAQ.php" class="btn-back-abs">
                 <i class="fa-solid fa-arrow-left"></i> Back to FAQ
             </a>
             <div class="header-titles">
