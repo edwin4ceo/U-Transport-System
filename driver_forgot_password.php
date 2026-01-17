@@ -26,13 +26,20 @@ if (isset($_POST['reset_request'])) {
     } elseif ($new_pass !== $confirm) {
         fpError("Password Mismatch", "Passwords do not match.");
     } else {
-        $stmt = $conn->prepare("SELECT driver_id, full_name FROM drivers WHERE email = ? AND identification_id = ? LIMIT 1");
+        // [UPDATED] We now select 'password' as well to compare
+        $stmt = $conn->prepare("SELECT driver_id, full_name, password FROM drivers WHERE email = ? AND identification_id = ? LIMIT 1");
         $stmt->bind_param("ss", $email, $ic);
         $stmt->execute();
         $res = $stmt->get_result();
 
         if ($res->num_rows === 1) {
             $row = $res->fetch_assoc();
+
+            // [NEW CHECK] Check if new password matches the old one
+            if (password_verify($new_pass, $row['password'])) {
+                fpError("Use New Password", "You cannot use your previous password. Please choose a new one.");
+            }
+
             $otp = (string)rand(1000, 9999);
 
             $_SESSION['driver_reset'] = [
@@ -66,7 +73,7 @@ include "header.php";
 
 <style>
     /* =========================
-       FORGOT PASSWORD STYLES (MATCHING REGISTER UI)
+       FORGOT PASSWORD STYLES
        ========================= */
     :root {
         --brand-primary: #004b82;
@@ -98,7 +105,6 @@ include "header.php";
         min-height: calc(100vh - 100px);
         display: flex;
         justify-content: center;
-        /* [修复] 减少了顶部 padding */
         padding: 40px 20px;
         position: relative;
     }
@@ -114,7 +120,6 @@ include "header.php";
         /* Default Entry Animation */
         animation: slideInRight 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
         border: 1px solid rgba(255,255,255,0.5);
-        /* [修复] 减少了 margin-top */
         margin-top: 20px;
     }
     .form-box.exiting {
@@ -123,11 +128,7 @@ include "header.php";
 
     /* Back Button */
     .back-nav { 
-        position: absolute; 
-        /* [修复] 位置往上提 */
-        top: 20px; 
-        left: 10%; 
-        z-index: 50; 
+        position: absolute; top: 20px; left: 10%; z-index: 50; 
         animation: fadeInUp 0.8s ease-out both; 
     }
     .btn-back { 
@@ -148,7 +149,7 @@ include "header.php";
     .top h2 { font-size: 26px; color: var(--text-main); font-weight: 800; margin-bottom: 10px; }
     .top p { color: var(--text-sub); font-size: 14px; margin: 0; }
 
-    /* Inputs (Matching Register Style - No Icons) */
+    /* Inputs */
     .input-group { display: flex; flex-direction: column; margin-bottom: 20px; position: relative; }
     .input-label { 
         font-size: 13px; font-weight: 600; color: var(--text-sub); 
