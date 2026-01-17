@@ -588,7 +588,7 @@ include "header.php";
                 <div class="contact-item">
                     <h3>Email Address</h3>
                     <div class="contact-row">
-                        <i class="fa-regular fa-envelope"></i> help@utransport.mmu.edu.my
+                        <i class="fa-regular fa-envelope"></i> help.u.transport.system@gmail.com
                     </div>
                 </div>
 
