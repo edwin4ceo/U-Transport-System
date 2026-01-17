@@ -284,33 +284,36 @@ include "header.php";
         box-sizing: border-box;
     }
     
-    /* Force Flex Row */
+    /* Strict Flex Container */
     .chat-form-flex {
         display: flex !important;
-        flex-direction: row !important; /* Ensure horizontal */
-        align-items: center !important;
+        flex-direction: row !important; /* Force Row */
+        align-items: center !important; /* Vertical Center */
         gap: 15px !important;
         width: 100%;
         margin: 0;
+        padding: 0;
     }
 
-    /* Input: Grey Rounded Bar */
+    /* 1. INPUT BOX (50px height) */
     .chat-input-grey { 
-        flex-grow: 1; /* Fill remaining space */
-        border: 1px solid #e2e8f0 !important;
-        background: #f8fafc !important; 
+        flex-grow: 1; 
+        border: 1px solid #e2e8f0 !important; 
+        background: #f8fafc !important; /* Light Grey BG */
         outline: none !important; 
         font-size: 14px; 
         color: #333;
         padding: 0 20px;
         border-radius: 30px; 
-        height: 50px; 
+        height: 50px !important; /* Force Height */
+        line-height: 50px !important; /* Force Text Alignment */
         box-sizing: border-box;
         transition: 0.2s;
+        margin: 0 !important; /* No Margin */
     }
     .chat-input-grey:focus { border-color: #004b82 !important; background: #fff !important; }
     
-    /* Button: Independent Circle */
+    /* 2. BUTTON (50px height) */
     .btn-send-round { 
         width: 50px !important; 
         height: 50px !important; 
@@ -327,6 +330,8 @@ include "header.php";
         transition: 0.2s;
         font-size: 18px; 
         box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2);
+        margin: 0 !important; /* No margin */
+        padding: 0 !important;
     }
     .btn-send-round:hover { background: #003660; transform: scale(1.05); }
     
@@ -342,7 +347,7 @@ include "header.php";
     <div class="container-custom">
 
         <div class="header-relative">
-            <a href="qa_forum.php" class="btn-back-abs">
+            <a href="passanger_qa_form.php" class="btn-back-abs">
                 <i class="fa-solid fa-arrow-left"></i> Back to FAQ
             </a>
             <div class="header-titles">
