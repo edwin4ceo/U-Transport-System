@@ -311,7 +311,7 @@ include "header.php";
 
                 <div class="contact-item">
                     <h3>Follow Us</h3>
-                    <a href="#" class="action-btn btn-insta">
+                    <a href="https://www.instagram.com/u_transportsystem/" target="_blank" class="action-btn btn-insta">
                         <i class="fa-brands fa-instagram"></i> Instagram
                     </a>
                     <a href="#" class="action-btn btn-fb">
