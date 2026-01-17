@@ -125,7 +125,7 @@ if (isset($_SESSION['student_id'])) {
                     <li><a href="search_transport.php" class="<?php echo ($current_page == 'search_transport.php') ? 'active' : ''; ?>">Search</a></li>
                     <li><a href="passanger_request_transport.php" class="<?php echo ($current_page == 'passanger_request_transport.php') ? 'active' : ''; ?>">Request</a></li>
                     <li><a href="passanger_rides.php" class="<?php echo ($current_page == 'passanger_rides.php') ? 'active' : ''; ?>">My Rides</a></li> 
-                    <li><a href="qa_forum.php" class="<?php echo ($current_page == 'qa_forum.php') ? 'active' : ''; ?>">FAQ</a></li>
+                    <li><a href="FAQ.php" class="<?php echo ($current_page == 'FAQ.php') ? 'active' : ''; ?>">FAQ</a></li>
                     <li><a href="passanger_profile.php" class="<?php echo ($current_page == 'passanger_profile.php') ? 'active' : ''; ?>">Profile</a></li>
                     <li><a href="#" id="passengerLogoutLink" style="color: #ffcccb; opacity: 0.9;">Logout</a></li>
                     <?php
