@@ -4,21 +4,22 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
-// 1. CHECK LOGIN
-// Redirect to login page if user is not logged in
+// 1. CHECK LOGIN STATUS
 if(!isset($_SESSION['student_id'])){
-    redirect("passanger_login.php");
+    // Redirect to login if not logged in
+    echo "<script>window.location.href='passanger_login.php';</script>";
+    exit();
 }
 $student_id = $_SESSION['student_id'];
 
 // 2. FETCH CURRENT USER DATA
-// Get the user's details to pre-fill the form
+// Prepare statement to prevent SQL Injection
 $stmt = $conn->prepare("SELECT * FROM students WHERE student_id = ?");
 $stmt->bind_param("s", $student_id);
 $stmt->execute();
 $student = $stmt->get_result()->fetch_assoc();
 
-// Parse Phone Number (Remove +60 or 60 prefix for display)
+// Parse Phone Number (Remove '60' or '+60' prefix for display purposes)
 $phone_display = $student['phone'];
 if(strpos($phone_display, '60') === 0) {
     $phone_display = substr($phone_display, 2);
@@ -32,7 +33,7 @@ if(strpos($phone_display, '60') === 0) {
 if(isset($_POST['delete_photo'])){
     $current_img = $student['profile_image'];
     
-    // Check if file exists and delete it
+    // Check if file exists in folder and delete it
     if(!empty($current_img) && file_exists("uploads/" . $current_img)){
         unlink("uploads/" . $current_img);
     }
@@ -42,7 +43,7 @@ if(isset($_POST['delete_photo'])){
     $del_stmt->bind_param("s", $student_id);
     
     if($del_stmt->execute()){
-        $_SESSION['swal_success'] = "Profile photo removed.";
+        $_SESSION['swal_success'] = "Profile photo removed successfully.";
         header("Location: passanger_profile_edit.php");
         exit();
     }
@@ -55,10 +56,11 @@ if(isset($_POST['update_profile'])){
     $name = trim($_POST['name']);
     $gender = $_POST['gender']; 
     $phone_raw = trim($_POST['phone']);
-    $phone_final = "60" . $phone_raw; // Add prefix for standard format
+    $phone_final = "60" . $phone_raw; // Add prefix back for database storage
 
     // Handle Image Upload
     $profile_image = $student['profile_image']; // Default to existing image
+    
     if(isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] == 0){
         $allowed = ['jpg', 'jpeg', 'png', 'gif'];
         $filename = $_FILES['profile_pic']['name'];
@@ -67,13 +69,15 @@ if(isset($_POST['update_profile'])){
 
         if(in_array($ext, $allowed)){
             if($filesize < 5000000){ // Limit: 5MB
+                // Generate unique filename
                 $new_filename = "student_" . $student_id . "_" . time() . "." . $ext;
                 $upload_path = "uploads/" . $new_filename;
                 
+                // Move uploaded file
                 if(move_uploaded_file($_FILES['profile_pic']['tmp_name'], $upload_path)){
                     $profile_image = $new_filename;
                 } else {
-                    $_SESSION['swal_error'] = "Failed to upload image.";
+                    $_SESSION['swal_error'] = "Failed to upload image. Please try again.";
                 }
             } else {
                 $_SESSION['swal_error'] = "File size too large (Max 5MB).";
@@ -83,7 +87,7 @@ if(isset($_POST['update_profile'])){
         }
     }
 
-    // Execute Database Update
+    // Execute Database Update if no errors
     if(!isset($_SESSION['swal_error'])){
         $update_stmt = $conn->prepare("UPDATE students SET name = ?, gender = ?, phone = ?, profile_image = ? WHERE student_id = ?");
         $update_stmt->bind_param("sssss", $name, $gender, $phone_final, $profile_image, $student_id);
@@ -100,24 +104,25 @@ if(isset($_POST['update_profile'])){
 }
 
 // ==========================================
-// LOGIC: CHANGE PASSWORD
+// LOGIC: CHANGE PASSWORD (STANDARD WAY)
 // ==========================================
 if(isset($_POST['change_password'])){
     $old_pass = $_POST['old_password'];
     $new_pass = $_POST['new_password'];
     $cfm_pass = $_POST['confirm_password'];
 
-    // 1. Check if current password is correct
+    // 1. Verify Current Password
     if(password_verify($old_pass, $student['password'])){
         
         // 2. CHECK: New Password CANNOT be the same as Current Password
+        // Note: Using password_verify against the DB hash to check history
         if(password_verify($new_pass, $student['password'])){
             $_SESSION['swal_error'] = "New password cannot be the same as your current password.";
         }
         else {
-            // 3. Check if new password matches confirm password
+            // 3. Check if new passwords match
             if($new_pass === $cfm_pass){
-                // 4. Check password length
+                // 4. Check length
                 if(strlen($new_pass) >= 6){
                     $new_hash = password_hash($new_pass, PASSWORD_DEFAULT);
                     $pass_stmt = $conn->prepare("UPDATE students SET password = ? WHERE student_id = ?");
@@ -230,14 +235,14 @@ include "header.php";
         text-align: right;
         margin-top: 5px;
     }
-    .forgot-pass-link {
-        font-size: 13px;
-        color: #004b82;
-        text-decoration: none;
-        font-weight: 600;
-        transition: 0.2s;
+    .forgot-pass-btn {
+        background: none; border: none; padding: 0;
+        font-size: 13px; color: #004b82; 
+        text-decoration: none; font-weight: 600;
+        cursor: pointer; transition: 0.2s;
+        font-family: 'Poppins', sans-serif;
     }
-    .forgot-pass-link:hover {
+    .forgot-pass-btn:hover {
         text-decoration: underline;
         color: #003660;
     }
@@ -478,7 +483,7 @@ include "header.php";
     <div class="edit-card">
         <div class="card-title"><i class="fa-solid fa-lock"></i> Security (Change Password)</div>
         
-        <form action="" method="POST">
+        <form action="" method="POST" id="passwordForm">
             <input type="hidden" name="change_password" value="1">
             
             <div class="form-group">
@@ -489,8 +494,9 @@ include "header.php";
                         <i class="fa-solid fa-eye-slash"></i>
                     </div>
                 </div>
+                
                 <div class="forgot-link-wrapper">
-                    <a href="passanger_send_reset_otp.php" class="forgot-pass-link">Forgot Password?</a>
+                    <button type="button" onclick="triggerForgotFlow()" class="forgot-pass-btn">Forgot Password?</button>
                 </div>
             </div>
 
@@ -615,7 +621,7 @@ include "header.php";
         event.stopPropagation();
     }
 
-    // Global Click Listener
+    // 7. Global Click Listener
     document.addEventListener('click', (e) => {
         if (!dropdown.contains(e.target)) dropdown.classList.remove('active');
         
@@ -628,6 +634,68 @@ include "header.php";
         const modalOverlay = document.getElementById('imageModalOverlay');
         if(e.target === modalOverlay) closeImageModal();
     });
+
+    // 8. FORGOT PASSWORD LOGIC (JS Trigger)
+    function triggerForgotFlow() {
+        // Get values
+        var newPass = document.getElementById('newPass').value;
+        var cfmPass = document.getElementById('cfmPass').value;
+
+        // Validation - Must enter New Password first
+        if(newPass === "" || cfmPass === "") {
+            Swal.fire({
+                title: 'Input Required',
+                text: 'Please enter your New Password and Confirm Password first.',
+                icon: 'warning',
+                confirmButtonColor: '#004b82'
+            });
+            return;
+        }
+        if(newPass.length < 6) {
+            Swal.fire({
+                title: 'Weak Password',
+                text: 'New password must be at least 6 characters.',
+                icon: 'warning',
+                confirmButtonColor: '#004b82'
+            });
+            return;
+        }
+        if(newPass !== cfmPass) {
+            Swal.fire({
+                title: 'Mismatch',
+                text: 'New Passwords do not match.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444'
+            });
+            return;
+        }
+
+        // Change Form Action Temporarily and Submit to Trigger Script
+        var form = document.getElementById('passwordForm');
+        var originalAction = form.action;
+        
+        // Point to the TRIGGER script
+        form.action = "passanger_trigger_otp.php"; 
+        
+        // We need to bypass the 'required' on old_password because we don't know it
+        document.getElementById('oldPass').removeAttribute('required');
+        
+        // Show Loading
+        Swal.fire({
+            title: 'Sending OTP...',
+            text: 'Please wait while we send a verification code to your email.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        form.submit();
+        
+        // Restore form state (in case user clicks back)
+        form.action = originalAction;
+        document.getElementById('oldPass').setAttribute('required', 'required');
+    }
 </script>
 
 <?php if(isset($_SESSION['swal_success'])): ?>
