@@ -155,7 +155,7 @@ include "header.php";
     }
     .btn-del-x:hover { transform: scale(1.2); color: #ef4444; }
 
-    /* 6. History & Logout */
+    /* 6. History */
     .history-card { background: #fff; padding: 18px 25px; border-radius: 12px; border: 1px solid #f1f5f9; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); transition: 0.2s; border-left: 5px solid #eee; }
     .history-card:hover { transform: translateX(5px); border-left-color: #004b82; }
     .h-info h4 { margin: 0 0 5px; font-size: 15px; color: #333; }
@@ -165,9 +165,6 @@ include "header.php";
     .st-Accepted, .st-Approved { background: #d4edda; color: #155724; }
     .st-Completed { background: #eff6ff; color: #3b82f6; }
     .st-Cancelled { background: #f8d7da; color: #721c24; }
-    .logout-container { margin-top: 40px; text-align: center; }
-    .btn-logout { color: #e11d48; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 30px; transition: 0.2s; }
-    .btn-logout:hover { background: #fff1f2; }
 
     /* 7. DRIVER MODAL */
     .modal-overlay {
@@ -195,7 +192,6 @@ include "header.php";
         font-size: 22px; font-weight: 700; color: #1e293b; margin: 0; 
     }
     
-    /* [UPDATED] BIO STYLE: Small & Light */
     .m-bio { 
         font-size: 15px !important;       /* Very small */
         color: #94a3b8 !important;        /* Light Grey */
@@ -324,8 +320,9 @@ include "header.php";
         <span><i class="fa-solid fa-star" style="margin-right:10px;"></i> My Reviews</span>
         <i class="fa-solid fa-chevron-right"></i>
     </a>
-    <div class="logout-container">
-        <a href="passanger_login.php" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    
+    <div style="text-align: center; margin-top: 30px; margin-bottom: 20px; color: #64748b; font-size: 16px; font-weight: 500; font-style: italic;">
+        Please click 'My Reviews' above to view your past ratings and reviews.
     </div>
 
 </div>
