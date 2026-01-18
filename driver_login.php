@@ -3,7 +3,6 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
-// [修复 1] 添加了这里的 '}'，关闭 Session 检查
 if (isset($_SESSION['driver_id'])) {
     header("Location: driver_dashboard.php");
     exit;
@@ -88,8 +87,8 @@ if (isset($_POST['login'])) {
             $_SESSION['swal_msg']   = "Database error. Please try again later.";
             $_SESSION['swal_type']  = "error";
         }
-    } // [修复 2] 关闭第 26 行的 else
-} // [修复 2] 关闭第 13 行的 if (isset($_POST['login']))
+    } 
+} 
 
 include "header.php";
 ?>
@@ -183,7 +182,7 @@ function toggleLoginPassword(iconSpan) {
         input.type = "password";
         iconSpan.innerHTML = eyeOff;
     }
-} // [修复 3] 添加了这里的 '}'，关闭 JS 函数
+} 
 </script>
 
 <?php include "footer.php"; ?>
