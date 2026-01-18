@@ -1,18 +1,28 @@
 <?php
-// FUNCTION: START SESSION
+// ==========================================
+// SECTION 1: SETUP & AUTHENTICATION
+// ==========================================
+
+// Start session to access logged-in user data
 session_start();
+
+// Include database connection and helper functions
 include "db_connect.php";
 include "function.php";
 
-// 1. Check Login Status
+// Check if user is logged in
 if(!isset($_SESSION['student_id'])){
     redirect("passanger_login.php");
 }
 $student_id = $_SESSION['student_id'];
 
-// --- [LOGIC] Delete Favourite Driver ---
+// ==========================================
+// SECTION 2: HANDLE ACTIONS (DELETE FAVOURITE)
+// ==========================================
 if(isset($_POST['delete_fav_id'])){
     $fav_id_to_delete = $_POST['delete_fav_id'];
+    
+    // Prepare DELETE statement
     $del_stmt = $conn->prepare("DELETE FROM favourite_drivers WHERE id = ? AND student_id = ?");
     $del_stmt->bind_param("is", $fav_id_to_delete, $student_id);
     
@@ -23,24 +33,30 @@ if(isset($_POST['delete_fav_id'])){
     }
 }
 
-// 2. Fetch Student Information
+// ==========================================
+// SECTION 3: FETCH DATA
+// ==========================================
+
+// Fetch Student Profile Data
 $stmt = $conn->prepare("SELECT * FROM students WHERE student_id = ?");
 $stmt->bind_param("s", $student_id);
 $stmt->execute();
 $student = $stmt->get_result()->fetch_assoc();
 
-// 3. Fetch Statistics (Ride Counts & Review Counts)
+// Fetch Ride Count
 $booking_count_query = $conn->query("SELECT COUNT(*) as total FROM bookings WHERE student_id = '$student_id'");
 $booking_count = $booking_count_query->fetch_assoc()['total'];
 
+// Fetch Review Count
 $review_count_query = $conn->query("SELECT COUNT(*) as total FROM reviews WHERE passenger_id = '$student_id'");
 $review_count = $review_count_query ? $review_count_query->fetch_assoc()['total'] : 0;
 
-// 4. Fetch Recent Ride History (Limit 3)
+// Fetch Recent History (Last 3 Rides)
 $history_sql = "SELECT * FROM bookings WHERE student_id = '$student_id' ORDER BY date_time DESC LIMIT 3";
 $history_result = $conn->query($history_sql);
 
-// 5. Fetch Favourite Drivers List
+// [FIXED] Fetch Favourite Drivers
+// Added 'GROUP BY f.driver_id' to prevent duplicates if driver has multiple vehicles
 $fav_sql = "SELECT 
                 f.id as fav_record_id, 
                 f.*, 
@@ -57,10 +73,11 @@ $fav_sql = "SELECT
             FROM favourite_drivers f 
             JOIN drivers d ON f.driver_id = d.driver_id 
             LEFT JOIN vehicles v ON d.driver_id = v.driver_id
-            WHERE f.student_id = '$student_id'";
+            WHERE f.student_id = '$student_id'
+            GROUP BY f.driver_id"; // <--- THIS LINE FIXES THE DUPLICATION ISSUE
 
 $fav_result = false; 
-// Check if table exists to prevent errors during development
+// Safety check if table exists
 if($conn->query("SHOW TABLES LIKE 'drivers'")->num_rows > 0) {
     $fav_result = $conn->query($fav_sql);
 }
@@ -72,7 +89,7 @@ include "header.php";
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    /* 1. Global Layout & Animation */
+    /* 1. Global Layout */
     @keyframes fadeInUpPage { 
         0% { opacity: 0; transform: translateY(20px); } 
         100% { opacity: 1; transform: translateY(0); } 
@@ -97,43 +114,36 @@ include "header.php";
         animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
 
-    /* 2. Header Title Section */
+    /* 2. Header */
     .header-title { text-align: center; margin-bottom: 30px; }
     .header-title h1 { margin: 0; font-size: 28px; font-weight: 700; color: #004b82; }
     .header-title p { margin: 8px 0 0; font-size: 15px; color: #64748b; }
 
-    /* 3. Main Profile Card */
+    /* 3. Main Card */
     .main-card {
-        background: #fff; 
-        border-radius: 20px; 
-        box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-        border: 1px solid #f1f5f9; 
-        padding: 30px; 
-        display: flex; 
-        align-items: center;
-        justify-content: space-between; 
-        margin-bottom: 40px; 
-        flex-wrap: wrap; 
-        gap: 20px;
+        background: #fff; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        border: 1px solid #f1f5f9; padding: 30px; display: flex; align-items: center;
+        justify-content: space-between; margin-bottom: 40px; flex-wrap: wrap; gap: 20px;
     }
     
     .profile-left { display: flex; align-items: center; gap: 25px; }
     
+    /* Avatar Box */
     .avatar-box {
         width: 80px; height: 80px; 
-        background: #e0f2fe; color: #004b82;
         border-radius: 50%; 
-        display: flex; align-items: center; justify-content: center;
-        font-size: 32px; 
         border: 2px solid #fff; 
         box-shadow: 0 4px 10px rgba(0, 75, 130, 0.15);
+        overflow: hidden; 
+        background: #e0f2fe; 
+        display: flex; align-items: center; justify-content: center;
     }
+    
+    .avatar-box i { font-size: 32px; color: #004b82; }
+    .avatar-box img { width: 100%; height: 100%; object-fit: cover; }
 
-    /* --- [UPDATED] Info Box: Forced Left Alignment --- */
     .info-box {
-        display: flex;
-        flex-direction: column; /* Stack elements vertically */
-        align-items: flex-start; /* Force align strictly to the LEFT */
+        display: flex; flex-direction: column; align-items: flex-start; 
     }
 
     .info-box h2 { 
@@ -141,33 +151,23 @@ include "header.php";
     }
     
     .info-box .phone-text { 
-        margin: 6px 0 6px 0; 
-        color: #4a5568; font-size: 16px; font-weight: 600; 
+        margin: 6px 0 6px 0; color: #4a5568; font-size: 16px; font-weight: 600; 
         display: flex; align-items: center; gap: 8px; 
     }
 
-    /* Gender Badge */
     .gender-badge { 
-        font-size: 13px; 
-        padding: 4px 12px; 
-        border-radius: 20px; 
-        font-weight: 600; 
-        display: inline-flex; 
-        align-items: center; 
-        gap: 6px; 
-        margin-top: 5px; /* Add spacing between phone and gender */
+        font-size: 13px; padding: 4px 12px; border-radius: 20px; font-weight: 600; 
+        display: inline-flex; align-items: center; gap: 6px; margin-top: 5px; 
     }
     .gender-male { background: #e3f2fd; color: #1976d2; }   
     .gender-female { background: #fce4ec; color: #d81b60; } 
     .gender-default { background: #f1f5f9; color: #64748b; }
 
-    /* Stats Section (Right Side) */
     .stats-right { display: flex; align-items: center; gap: 30px; }
     .stat-item { text-align: center; }
     .stat-val { display: block; font-size: 20px; font-weight: 800; color: #004b82; }
     .stat-lbl { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
 
-    /* Edit Profile Button */
     .btn-edit {
         display: inline-block; background-color: #004b82 !important; color: white !important;
         padding: 10px 30px !important; border-radius: 50px !important; font-size: 14px !important;
@@ -176,7 +176,7 @@ include "header.php";
     }
     .btn-edit:hover { background-color: #003660 !important; transform: translateY(-2px); }
 
-    /* 4. Section Headers (Bars) */
+    /* 4. Section Bars */
     .section-bar {
         background: #004b82; color: white; padding: 12px 25px; border-radius: 12px;
         display: flex; justify-content: space-between; align-items: center; margin: 30px 0 20px 0;
@@ -186,7 +186,7 @@ include "header.php";
     a.section-bar:hover { transform: translateY(-2px); background: #003660; box-shadow: 0 6px 15px rgba(0, 75, 130, 0.3); }
     .section-bar i { font-size: 14px; opacity: 0.8; }
 
-    /* 5. Favourites Horizontal Scroll */
+    /* 5. Horizontal Scroll */
     .fav-scroll-container { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; margin-bottom: 10px; }
     .fav-scroll-container::-webkit-scrollbar { height: 6px; }
     .fav-scroll-container::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
@@ -204,7 +204,6 @@ include "header.php";
     .fav-driver-name { font-weight: 700; font-size: 14px; color: #2d3748; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6px; }
     .fav-car-model { color: #718096; font-size: 11px; background: #f7fafc; padding: 2px 8px; border-radius: 10px; display: inline-block; }
 
-    /* Delete (X) Button on Card */
     .btn-del-x {
         position: absolute; top: 8px; right: 8px; background: transparent;
         border: none; color: #94a3b8; font-size: 14px; cursor: pointer;
@@ -212,7 +211,7 @@ include "header.php";
     }
     .btn-del-x:hover { transform: scale(1.2); color: #ef4444; }
 
-    /* 6. History List Styles */
+    /* 6. History List */
     .history-card { 
         background: #fff; padding: 18px 25px; border-radius: 12px; 
         border: 1px solid #f1f5f9; margin-bottom: 15px; 
@@ -229,7 +228,7 @@ include "header.php";
     .st-Completed { background: #eff6ff; color: #3b82f6; }
     .st-Cancelled { background: #f8d7da; color: #721c24; }
 
-    /* 7. Driver Detail Modal Styles */
+    /* 7. Modal */
     .modal-overlay {
         display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.5); 
@@ -251,19 +250,8 @@ include "header.php";
 
     .m-avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #e0f2fe; margin-bottom: 15px; }
     
-    .m-name { 
-        font-size: 22px; font-weight: 700; color: #1e293b; margin: 0; 
-    }
-    
-    .m-bio { 
-        font-size: 15px !important;       /* Very small */
-        color: #94a3b8 !important;        /* Light Grey */
-        margin: 4px auto 25px !important; /* Centered with margin */
-        font-weight: 400 !important;      /* Not bold */
-        font-style: italic;
-        line-height: 1.4;
-        max-width: 85%;
-    }
+    .m-name { font-size: 22px; font-weight: 700; color: #1e293b; margin: 0; }
+    .m-bio { font-size: 15px !important; color: #94a3b8 !important; margin: 4px auto 25px !important; font-weight: 400 !important; font-style: italic; line-height: 1.4; max-width: 85%; }
     
     .m-detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; font-size: 15px; }
     .m-detail-row:last-child { border-bottom: none; }
@@ -287,7 +275,19 @@ include "header.php";
 
     <div class="main-card">
         <div class="profile-left">
-            <div class="avatar-box"><i class="fa-regular fa-user"></i></div>
+            <div class="avatar-box">
+                <?php 
+                    // [CACHE BUSTING APPLIED HERE AS WELL]
+                    if(!empty($student['profile_image']) && file_exists("uploads/" . $student['profile_image'])){
+                        // Add time() query param to force browser to reload image
+                        $img_src = "uploads/" . $student['profile_image'] . "?v=" . time();
+                        echo "<img src='$img_src' alt='Profile Picture'>";
+                    } else {
+                        // Fallback icon if no image
+                        echo "<i class='fa-regular fa-user'></i>";
+                    }
+                ?>
+            </div>
             
             <div class="info-box">
                 <h2><?php echo htmlspecialchars($student['name']); ?></h2>
@@ -322,7 +322,7 @@ include "header.php";
     <div class="fav-scroll-container">
         <?php if($fav_result && $fav_result->num_rows > 0): ?>
             <?php while($fav = $fav_result->fetch_assoc()): 
-                // Determine Avatar Source
+                // Driver Avatar Logic
                 $db_img = $fav['profile_image'];
                 if(!empty($db_img) && file_exists("uploads/" . $db_img)) {
                     $img_url = "uploads/" . $db_img;
@@ -428,7 +428,7 @@ include "header.php";
 </div>
 
 <script>
-    // --- JS Logic: Delete Confirmation ---
+    // --- JS Logic: Confirm Delete ---
     function confirmDelete(id) {
         Swal.fire({
             title: 'Remove Driver?',
@@ -446,7 +446,7 @@ include "header.php";
         })
     }
 
-    // --- JS Logic: Open/Close Driver Modal ---
+    // --- JS Logic: Driver Details Modal ---
     function openDriverModal(element) {
         document.getElementById('m_img').src = element.getAttribute('data-img');
         document.getElementById('m_name').innerText = element.getAttribute('data-name');
@@ -471,7 +471,7 @@ include "header.php";
 </script>
 
 <?php 
-// Show SweetAlert for Success Messages if any
+// Display SweetAlert Success Message
 if(isset($_SESSION['swal_success'])): ?>
 <script>
     Swal.fire({
