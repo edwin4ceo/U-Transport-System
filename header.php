@@ -32,11 +32,19 @@ if (isset($_SESSION['student_id'])) {
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
     /* 2. GLOBAL FIX */
-    body, h1, h2, h3, h4, h5, h6, p, span, label, a, li, button, .swal2-popup {
+    body {
         font-family: 'Poppins', sans-serif !important; 
         user-select: none;           
         -webkit-user-select: none;   
-        cursor: default;             
+        cursor: default;
+        
+        /* [KEY CHANGE] Add padding to body so content isn't hidden behind fixed header */
+        padding-top: 80px; 
+        margin: 0;
+    }
+    
+    h1, h2, h3, h4, h5, h6, p, span, label, a, li, button, .swal2-popup {
+        font-family: 'Poppins', sans-serif !important; 
     }
     input, select, textarea { 
         user-select: text !important; -webkit-user-select: text !important; cursor: text !important; 
@@ -45,53 +53,84 @@ if (isset($_SESSION['student_id'])) {
     a, button, .btn, .submit { cursor: pointer !important; }
 
     /* ========================================= */
-    /* 3. SILKY SMOOTH MENU ANIMATION (UPGRADED) */
+    /* [NEW] FIXED HEADER STYLES                 */
     /* ========================================= */
-    nav ul li a {
-        position: relative; /* Essential for absolute positioning of the line */
-        text-decoration: none;
-        color: rgba(255, 255, 255, 0.7); /* Default: Slightly transparent (Classy look) */
-        font-weight: 500;
-        padding-bottom: 8px; /* Space for the line */
-        transition: color 0.3s ease; /* Smooth color fade */
-        letter-spacing: 0.3px;
+    header {
+        position: fixed;        /* Fix to top */
+        top: 0;
+        left: 0;
+        width: 100%;            /* Full width */
+        z-index: 1000;          /* Ensure it sits above content */
+        background-color: #004b82; /* Ensure background is solid (Theme Blue) */
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* Add shadow for depth */
+        height: 80px;           /* Fixed height */
+        display: flex;          /* Center content vertically */
+        align-items: center;
     }
 
-    /* The "Silky Line" using Pseudo-element */
+    /* Ensure container inside header behaves correctly */
+    header .container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* ========================================= */
+    /* 3. MENU STYLES                            */
+    /* ========================================= */
+    nav ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        gap: 25px;
+    }
+
+    nav ul li a {
+        position: relative;
+        text-decoration: none;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 500;
+        padding-bottom: 5px;
+        transition: color 0.3s ease;
+        letter-spacing: 0.3px;
+        font-size: 15px;
+    }
+
+    /* The "Silky Line" Animation */
     nav ul li a::after {
         content: '';
         position: absolute;
-        width: 0%; /* Start hidden */
-        height: 3px; /* Thickness */
-        bottom: 0;
-        left: 50%; /* Start from center */
-        transform: translateX(-50%); /* Center alignment */
+        width: 0%;
+        height: 3px;
+        bottom: -2px;
+        left: 50%;
+        transform: translateX(-50%);
         background-color: #ffffff;
-        border-radius: 10px; /* Soft rounded edges */
-        
-        /* THE MAGIC: Cubic-bezier for that "Silky/Bouncy" feel */
+        border-radius: 10px;
         transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); 
     }
 
-    /* Hover State: Text brightens, Line expands slightly */
-    nav ul li a:hover {
-        color: #ffffff;
-        opacity: 1;
-    }
-    nav ul li a:hover::after {
-        width: 40%; /* Hover only shows a small dash */
-        background-color: rgba(255, 255, 255, 0.8);
-    }
+    nav ul li a:hover { color: #ffffff; opacity: 1; }
+    nav ul li a:hover::after { width: 40%; background-color: rgba(255, 255, 255, 0.8); }
 
-    /* Active State: Full width line */
-    nav ul li a.active {
-        color: #ffffff;
-        font-weight: 700; /* Bolder text */
-    }
-    
-    nav ul li a.active::after {
-        width: 100%; /* Full expansion */
-        background-color: #ffffff; /* Solid white */
+    nav ul li a.active { color: #ffffff; font-weight: 700; }
+    nav ul li a.active::after { width: 100%; background-color: #ffffff; }
+
+    /* LOGO STYLE */
+    .logo h1 { margin: 0; }
+    .logo a {
+        text-decoration: none;
+        color: white;
+        font-size: 24px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
     /* 4. SWEETALERT DESIGN */
