@@ -1,49 +1,56 @@
 <?php
+// FUNCTION: START SESSION
 session_start();
 include "db_connect.php";
 include "function.php";
 
-// 1. Check Login Session
+// 1. Check Login
 if(!isset($_SESSION['student_id'])){
     redirect("passanger_login.php");
 }
-
 $student_id = $_SESSION['student_id'];
 
-// --- [LOGIC] Handle Delete Favourite Driver ---
+// --- [LOGIC] Delete Favourite Driver ---
 if(isset($_POST['delete_fav_id'])){
     $fav_id_to_delete = $_POST['delete_fav_id'];
     $del_stmt = $conn->prepare("DELETE FROM favourite_drivers WHERE id = ? AND student_id = ?");
     $del_stmt->bind_param("is", $fav_id_to_delete, $student_id);
-    
     if($del_stmt->execute()){
-        echo "<script>alert('Driver removed from favourites.'); window.location.href='passanger_profile.php';</script>";
+        $_SESSION['swal_success'] = "Driver removed from favourites.";
+        header("Location: passanger_profile.php");
         exit;
     }
 }
-// --------------------------------------------------
 
-// 2. Retrieve Student Info
+// 2. Fetch Info
 $stmt = $conn->prepare("SELECT * FROM students WHERE student_id = ?");
 $stmt->bind_param("s", $student_id);
 $stmt->execute();
 $student = $stmt->get_result()->fetch_assoc();
 
-// 3. Calculate Stats
+// 3. Stats
 $booking_count = $conn->query("SELECT COUNT(*) as total FROM bookings WHERE student_id = '$student_id'")->fetch_assoc()['total'];
 $review_count_query = $conn->query("SELECT COUNT(*) as total FROM reviews WHERE passenger_id = '$student_id'");
 $review_count = $review_count_query ? $review_count_query->fetch_assoc()['total'] : 0;
 
-// 4. Retrieve History (Latest 3)
+// 4. History (Limit 3)
 $history_sql = "SELECT * FROM bookings WHERE student_id = '$student_id' ORDER BY date_time DESC LIMIT 3";
 $history_result = $conn->query($history_sql);
 
-// 5. Retrieve Favourite Drivers
+// 5. Favourites
 $fav_sql = "SELECT 
                 f.id as fav_record_id, 
                 f.*, 
                 d.full_name as name, 
-                v.vehicle_model as car_model 
+                d.phone_number,
+                d.email,
+                d.gender,
+                d.bio,
+                d.profile_image,
+                v.vehicle_model as car_model,
+                v.plate_number,
+                v.vehicle_color,
+                v.vehicle_type
             FROM favourite_drivers f 
             JOIN drivers d ON f.driver_id = d.driver_id 
             LEFT JOIN vehicles v ON d.driver_id = v.driver_id
@@ -57,337 +64,362 @@ if($conn->query("SHOW TABLES LIKE 'drivers'")->num_rows > 0) {
 include "header.php"; 
 ?>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <style>
-    /* --- Page Container --- */
-    .profile-container {
-        max-width: 850px; 
-        margin: 0 auto;   
-        padding-bottom: 30px; 
-    }
-
-    /* --- Header Section --- */
-    .profile-header {
-        background: white;
-        padding: 25px 30px;
-        border-radius: 16px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
-        margin-bottom: 30px;
-        
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap; 
-        gap: 20px;
-        border: 1px solid #f9f9f9;
-    }
-
-    .header-left { display: flex; align-items: center; gap: 20px; }
-
-    .avatar-circle {
-        width: 70px; height: 70px;
-        background-color: #e0f2f1; 
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        color: #009688; font-size: 2rem; flex-shrink: 0;
-    }
-
-    .user-info { display: flex; flex-direction: column; justify-content: center; }
-
-    .profile-name {
-        font-size: 2rem !important; 
-        font-weight: 780 !important; 
-        color: #222; margin: 0 0 3px 0; line-height: 1.2;
-    }
-
-    .profile-phone {
-        color: #666; font-size: 14px !important; 
-        display: flex; align-items: center; gap: 8px;
-    }
+    /* 1. Global & Animation */
+    @keyframes fadeInUpPage { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+    .content-area { background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
     
-    .profile-gender {
-        color: #666; font-size: 14px !important; 
-        display: flex; align-items: center; gap: 8px; margin-top: 4px;
+    .profile-wrapper {
+        max-width: 900px; margin: 0 auto; padding: 40px 20px;
+        background: #f5f7fb; font-family: 'Poppins', sans-serif;
+        animation: fadeInUpPage 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
 
-    .phone-edit-icon {
-        color: #999; font-size: 12px; cursor: pointer; transition: color 0.2s;
+    /* 2. Header Title */
+    .header-title { text-align: center; margin-bottom: 30px; }
+    .header-title h1 { margin: 0; font-size: 28px; font-weight: 700; color: #004b82; }
+    .header-title p { margin: 8px 0 0; font-size: 15px; color: #64748b; }
+
+    /* 3. Main Profile Card */
+    .main-card {
+        background: #fff; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        border: 1px solid #f1f5f9; padding: 30px; display: flex; align-items: center;
+        justify-content: space-between; margin-bottom: 40px; flex-wrap: wrap; gap: 20px;
     }
-    .phone-edit-icon:hover { color: #009688; }
-
-    .header-right { display: flex; align-items: center; gap: 25px; }
-
-    .stats-row { display: flex; gap: 30px; text-align: center; }
-    .stat-item { display: flex; flex-direction: column; align-items: center; }
-    .stat-num { font-weight: 800; font-size: 20px !important; color: #222; } 
-    .stat-label { font-size: 11px !important; color: #999; letter-spacing: 0.5px; margin-top: 2px; }
-
-    .divider-line { width: 1px; height: 40px; background-color: #eee; }
-
-    .btn-edit-pill {
-        border: 2px solid #00bfa5; color: #009688; background: transparent;
-        padding: 6px 25px; border-radius: 30px; font-weight: 700; font-size: 14px;
-        text-decoration: none; transition: all 0.2s;
-    }
-    .btn-edit-pill:hover { background-color: #e0f2f1; }
-
-    /* --- Section Headers --- */
-    .section-header-blue {
-        background-color: #005A9C; 
-        color: white;
-        padding: 12px 25px; 
-        border-radius: 50px; 
-        display: flex; justify-content: space-between; align-items: center;
-        margin: 35px 0 15px 0; 
-        font-weight: bold; font-size: 16px;
-        box-shadow: 0 3px 8px rgba(0, 90, 156, 0.2); 
-        text-decoration: none; 
-        cursor: pointer;
-    }
-    .section-header-blue:hover {
-        transform: scale(1.01);
-        transition: all 0.2s ease;
-        background-color: #004b82;
+    .profile-left { display: flex; align-items: center; gap: 25px; }
+    
+    .avatar-box {
+        width: 80px; height: 80px; background: #e0f2fe; color: #004b82;
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-size: 32px; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0, 75, 130, 0.15);
     }
 
-    /* --- Scroll Container --- */
-    .favorites-scroll {
-        display: flex; overflow-x: auto; gap: 15px; 
-        padding-bottom: 10px; margin-bottom: 10px;
-    }
-    .favorites-scroll::-webkit-scrollbar { display: none; }
+    .info-box h2 { margin: 0; font-size: 22px; font-weight: 700; color: #1e293b; line-height: 1.2; }
+    .info-box .phone-text { margin: 6px 0 6px 0; color: #4a5568; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 
-    /* --- Favourite Card Style (Fixed) --- */
+    .gender-badge { font-size: 13px; padding: 4px 12px; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; }
+    .gender-male { background: #e3f2fd; color: #1976d2; }   
+    .gender-female { background: #fce4ec; color: #d81b60; } 
+    .gender-default { background: #f1f5f9; color: #64748b; }
+
+    .stats-right { display: flex; align-items: center; gap: 30px; }
+    .stat-item { text-align: center; }
+    .stat-val { display: block; font-size: 20px; font-weight: 800; color: #004b82; }
+    .stat-lbl { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+
+    /* Edit Button */
+    .btn-edit {
+        display: inline-block; background-color: #004b82 !important; color: white !important;
+        padding: 10px 30px !important; border-radius: 50px !important; font-size: 14px !important;
+        font-weight: 600 !important; text-decoration: none !important;
+        box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2) !important; transition: all 0.3s ease !important; border: none !important;
+    }
+    .btn-edit:hover { background-color: #003660 !important; transform: translateY(-2px); }
+
+    /* 4. Section Bars */
+    .section-bar {
+        background: #004b82; color: white; padding: 12px 25px; border-radius: 12px;
+        display: flex; justify-content: space-between; align-items: center; margin: 30px 0 20px 0;
+        text-decoration: none; box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2);
+        font-weight: 600; font-size: 16px; transition: 0.2s;
+    }
+    a.section-bar:hover { transform: translateY(-2px); background: #003660; box-shadow: 0 6px 15px rgba(0, 75, 130, 0.3); }
+    .section-bar i { font-size: 14px; opacity: 0.8; }
+
+    /* 5. Favourites Scroll */
+    .fav-scroll-container { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; margin-bottom: 10px; }
+    .fav-scroll-container::-webkit-scrollbar { height: 6px; }
+    .fav-scroll-container::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+    .fav-scroll-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
     .fav-card {
-        min-width: 140px; 
-        max-width: 140px;
-        background: white;
-        border-radius: 16px;
-        padding: 25px 15px 15px 15px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        text-align: center;
-        border: 1px solid #f0f0f0;
-        position: relative; 
-        transition: transform 0.2s, box-shadow 0.2s;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        min-width: 150px; background: #fff; border-radius: 16px;
+        padding: 30px 10px 20px 10px; text-align: center; border: 1px solid #f1f5f9;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03); position: relative;
+        transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;
     }
-    .fav-card:hover { 
-        transform: translateY(-4px); 
-        box-shadow: 0 8px 16px rgba(0,0,0,0.08);
-    }
+    .fav-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
 
-    .fav-card img {
-        width: 55px !important; 
-        height: 55px !important;
-        margin-bottom: 12px !important;
-        border-radius: 50%;
-        border: 2px solid #e0f2f1;
-        object-fit: cover;
-    }
+    .fav-card img { width: 60px; height: 60px; border-radius: 50%; margin-bottom: 12px; object-fit: cover; border: 2px solid #e0f2f1; }
+    .fav-driver-name { font-weight: 700; font-size: 14px; color: #2d3748; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6px; }
+    .fav-car-model { color: #718096; font-size: 11px; background: #f7fafc; padding: 2px 8px; border-radius: 10px; display: inline-block; }
 
-    .fav-driver-name {
-        font-weight: 700; 
-        font-size: 14px; 
-        color: #2d3748;
-        width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        margin-bottom: 4px;
+    /* Delete Button */
+    .btn-del-x {
+        position: absolute; top: 8px; right: 8px; background: transparent;
+        border: none; color: #94a3b8; font-size: 14px; cursor: pointer;
+        padding: 5px; z-index: 10; transition: transform 0.2s, color 0.2s;
     }
+    .btn-del-x:hover { transform: scale(1.2); color: #ef4444; }
 
-    .fav-car-model {
-        color: #718096; 
-        font-size: 11px;
-        background: #f7fafc;
-        padding: 2px 8px;
-        border-radius: 10px;
+    /* 6. History & Logout */
+    .history-card { background: #fff; padding: 18px 25px; border-radius: 12px; border: 1px solid #f1f5f9; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); transition: 0.2s; border-left: 5px solid #eee; }
+    .history-card:hover { transform: translateX(5px); border-left-color: #004b82; }
+    .h-info h4 { margin: 0 0 5px; font-size: 15px; color: #333; }
+    .h-date { font-size: 13px; color: #64748b; display: flex; align-items: center; gap: 6px; }
+    .status-badge { font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 20px; text-transform: uppercase; }
+    .st-Pending { background: #fff7ed; color: #f97316; }
+    .st-Accepted, .st-Approved { background: #d4edda; color: #155724; }
+    .st-Completed { background: #eff6ff; color: #3b82f6; }
+    .st-Cancelled { background: #f8d7da; color: #721c24; }
+    .logout-container { margin-top: 40px; text-align: center; }
+    .btn-logout { color: #e11d48; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 30px; transition: 0.2s; }
+    .btn-logout:hover { background: #fff1f2; }
+
+    /* 7. DRIVER MODAL */
+    .modal-overlay {
+        display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.5); 
+        backdrop-filter: blur(4px); z-index: 2000;
+        align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;
     }
+    .modal-overlay.show { display: flex !important; opacity: 1; }
 
-    /* --- FORCE FIX: Delete Button --- */
-    /* Using specific ID-like specificity to override global button styles */
-    .fav-card form {
-        position: absolute !important;
-        top: 8px !important;
-        right: 8px !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        z-index: 10 !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        width: auto !important;
-        height: auto !important;
+    .modal-content {
+        background: white; width: 90%; max-width: 550px;
+        border-radius: 24px; padding: 30px; position: relative;
+        text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        transform: translateY(20px); transition: transform 0.3s ease;
     }
+    .modal-overlay.show .modal-content { transform: translateY(0); }
 
-    .btn-del-floating {
-        width: 28px !important;
-        height: 28px !important;
-        border-radius: 50% !important;
-        background: #fff5f5 !important; /* Light Red Background */
-        color: #e53e3e !important;       /* Red Icon */
-        border: 1px solid #feb2b2 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        cursor: pointer !important;
-        padding: 0 !important;
-        font-size: 12px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-        line-height: 1 !important;
+    .close-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #94a3b8; cursor: pointer; transition: 0.2s; }
+    .close-modal:hover { color: #333; }
+
+    .m-avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #e0f2fe; margin-bottom: 15px; }
+    
+    .m-name { 
+        font-size: 22px; font-weight: 700; color: #1e293b; margin: 0; 
     }
     
-    .btn-del-floating:hover {
-        background: #e53e3e !important;
-        color: white !important;
-        border-color: #e53e3e !important;
-        transform: scale(1.1);
+    /* [UPDATED] BIO STYLE: Small & Light */
+    .m-bio { 
+        font-size: 15px !important;       /* Very small */
+        color: #94a3b8 !important;        /* Light Grey */
+        margin: 4px auto 25px !important; /* Centered with margin */
+        font-weight: 400 !important;      /* Not bold */
+        font-style: italic;
+        line-height: 1.4;
+        max-width: 85%;
     }
-
-    /* --- History List Styles --- */
-    .history-list { margin-bottom: 30px; }
-    .history-item {
-        background: white; border-radius: 14px; padding: 18px;
-        margin-bottom: 15px; display: flex; justify-content: space-between;
-        align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        border-left: 5px solid #eee;
+    
+    .m-detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; font-size: 15px; }
+    .m-detail-row:last-child { border-bottom: none; }
+    .m-label { color: #64748b; font-weight: 500; }
+    .m-val { color: #333; font-weight: 600; }
+    
+    .btn-modal-action {
+        display: block; width: 100%; padding: 14px; background: #004b82; color: white;
+        border-radius: 50px; text-decoration: none; font-weight: 600; margin-top: 25px;
+        box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2);
     }
-    .history-item:hover { border-left-color: #005A9C; }
-
-    .status-badge {
-        font-size: 13px; padding: 4px 10px; border-radius: 20px; font-weight: bold;
-    }
-    .status-Pending { background: #fff3cd; color: #856404; }
-    .status-Accepted { background: #d4edda; color: #155724; }
-    .status-Completed { background: #d4edda; color: #155724; }
-    .status-Cancelled { background: #f8d7da; color: #721c24; }
+    .btn-modal-action:hover { background: #003660; }
 </style>
 
-<div class="profile-container">
+<div class="profile-wrapper">
 
-    <div class="profile-header">
-        
-        <div class="header-left">
-            <div class="avatar-circle">
-                <i class="fa-regular fa-user"></i>
-            </div>
-            <div class="user-info">
-                <h2 class="profile-name"><?php echo htmlspecialchars($student['name']); ?></h2>
-                
-                <div class="profile-phone">
-                    <?php if (!empty($student['phone'])): ?>
-                        <i class="fa-solid fa-phone" style="font-size: 12px !important; margin-right: 5px;"></i>
-                        <span><?php echo htmlspecialchars($student['phone']); ?></span>
-                        <a href="passanger_profile_edit.php" class="phone-edit-icon">
-                            <i class="fa-solid fa-pen"></i>
-                        </a>
-                    <?php else: ?>
-                        <a href="passanger_profile_edit.php" style="color:#009688; font-weight:bold; text-decoration:none;">
-                            + Add Phone
-                        </a>
-                    <?php endif; ?>
-                </div>
+    <div class="header-title">
+        <h1>My Profile</h1>
+        <p>Manage your account details.</p>
+    </div>
 
-                <div class="profile-gender">
-                    <?php 
-                        $g_icon = ($student['gender'] == 'Female') ? 'fa-venus' : 'fa-mars';
-                        $g_color = ($student['gender'] == 'Female') ? '#e91e63' : '#2196F3';
-                    ?>
-                    <i class="fa-solid <?php echo $g_icon; ?>" style="font-size: 14px; width: 14px; text-align: center; color: <?php echo $g_color; ?>;"></i>
-                    <span><?php echo htmlspecialchars($student['gender'] ?? 'Not Specified'); ?></span>
-                </div>
-
+    <div class="main-card">
+        <div class="profile-left">
+            <div class="avatar-box"><i class="fa-regular fa-user"></i></div>
+            <div class="info-box">
+                <h2><?php echo htmlspecialchars($student['name']); ?></h2>
+                <p class="phone-text">
+                    <i class="fa-solid fa-phone"></i> 
+                    <?php echo !empty($student['phone']) ? htmlspecialchars($student['phone']) : 'No phone'; ?>
+                </p>
+                <?php 
+                    $g = $student['gender'] ?? '';
+                    $g_class = ($g == 'Male') ? 'gender-male' : (($g == 'Female') ? 'gender-female' : 'gender-default');
+                    $g_icon = ($g == 'Male') ? 'fa-mars' : (($g == 'Female') ? 'fa-venus' : 'fa-venus-mars');
+                ?>
+                <span class="gender-badge <?php echo $g_class; ?>">
+                    <i class="fa-solid <?php echo $g_icon; ?>"></i> <?php echo htmlspecialchars($g ?: 'Not Specified'); ?>
+                </span>
             </div>
         </div>
-
-        <div class="header-right">
-            <div class="stats-row">
-                <div class="stat-item">
-                    <span class="stat-num"><?php echo $booking_count; ?></span>
-                    <span class="stat-label">RIDES</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-num"><?php echo $review_count; ?></span>
-                    <span class="stat-label">REVIEWS</span>
-                </div>
-            </div>
-            
-            <div class="divider-line"></div>
-            
-            <a href="passanger_profile_edit.php" class="btn-edit-pill">
-                Edit
-            </a>
+        <div class="stats-right">
+            <div class="stat-item"><span class="stat-val"><?php echo $booking_count; ?></span><span class="stat-lbl">Rides</span></div>
+            <div class="stat-item"><span class="stat-val"><?php echo $review_count; ?></span><span class="stat-lbl">Reviews</span></div>
+            <a href="passanger_profile_edit.php" class="btn-edit">Edit Profile</a>
         </div>
     </div>
 
-    <div style="padding: 0 10px;">
+    <div class="section-bar">
+        <span><i class="fa-solid fa-heart" style="margin-right:10px;"></i> Favourite Drivers</span>
+    </div>
+    
+    <div class="fav-scroll-container">
+        <?php if($fav_result && $fav_result->num_rows > 0): ?>
+            <?php while($fav = $fav_result->fetch_assoc()): 
+                // Image Check
+                $db_img = $fav['profile_image'];
+                if(!empty($db_img) && file_exists("uploads/" . $db_img)) {
+                    $img_url = "uploads/" . $db_img;
+                } else {
+                    $img_url = "https://ui-avatars.com/api/?name=".urlencode($fav['name'])."&background=random&color=fff";
+                }
+            ?>
+                <div class="fav-card" onclick="openDriverModal(this)"
+                     data-name="<?php echo htmlspecialchars($fav['name']); ?>"
+                     data-img="<?php echo $img_url; ?>"
+                     data-phone="<?php echo htmlspecialchars($fav['phone_number'] ?? 'N/A'); ?>"
+                     data-email="<?php echo htmlspecialchars($fav['email'] ?? 'N/A'); ?>"
+                     data-gender="<?php echo htmlspecialchars($fav['gender'] ?? 'Not Specified'); ?>"
+                     data-bio="<?php echo htmlspecialchars($fav['bio'] ?? 'No bio available.'); ?>"
+                     data-car="<?php echo htmlspecialchars($fav['car_model'] ?? 'N/A'); ?>"
+                     data-plate="<?php echo htmlspecialchars($fav['plate_number'] ?? 'N/A'); ?>"
+                     data-color="<?php echo htmlspecialchars($fav['vehicle_color'] ?? 'N/A'); ?>"
+                >
+                    <form id="del-form-<?php echo $fav['fav_record_id']; ?>" method="POST" style="margin:0;">
+                        <input type="hidden" name="delete_fav_id" value="<?php echo $fav['fav_record_id']; ?>">
+                        <button type="button" class="btn-del-x" onclick="event.stopPropagation(); confirmDelete('<?php echo $fav['fav_record_id']; ?>')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </form>
 
-        <div class="section-header-blue">
-            <span>Favourite Drivers</span>
-            <i class="fa-solid fa-heart"></i>
-        </div>
-        
-        <div class="favorites-scroll">
-            <?php if($fav_result && $fav_result->num_rows > 0): ?>
-                <?php while($fav = $fav_result->fetch_assoc()): ?>
-                    <div class="fav-card">
-                        
-                        <form method="POST" onsubmit="return confirm('Remove driver from favourites?');">
-                            <input type="hidden" name="delete_fav_id" value="<?php echo $fav['fav_record_id']; ?>">
-                            <button type="submit" class="btn-del-floating" title="Remove">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </form>
-
-                        <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($fav['name']); ?>&background=random" alt="Driver">
-                        <div class="fav-driver-name"><?php echo htmlspecialchars($fav['name']); ?></div>
-                        <div class="fav-car-model"><?php echo htmlspecialchars($fav['car_model']); ?></div>
-                    </div>
-                <?php endwhile; ?>
-            <?php else: ?>
-                <div style="color: #999; font-style: italic; width: 100%; text-align: center; padding: 15px; font-size: 14px;">
-                    No favourite drivers.
+                    <img src="<?php echo $img_url; ?>" alt="Driver">
+                    <div class="fav-driver-name"><?php echo htmlspecialchars($fav['name']); ?></div>
+                    <div class="fav-car-model"><?php echo htmlspecialchars($fav['car_model']); ?></div>
                 </div>
-            <?php endif; ?>
-        </div>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <div style="width:100%; text-align:center; padding:20px; color:#94a3b8; background:#fff; border-radius:12px; border:1px dashed #cbd5e1;">
+                No favourite drivers yet.
+            </div>
+        <?php endif; ?>
+    </div>
 
-        <a href="passanger_booking_history.php" class="section-header-blue">
-            <span>Recent History</span>
-            <i class="fa-solid fa-clock-rotate-left"></i>
-        </a>
-
-        <div class="history-list">
-            <?php if($history_result->num_rows > 0): ?>
-                <?php while($row = $history_result->fetch_assoc()): ?>
-                    <div class="history-item">
-                        <div>
-                            <div style="font-weight: bold; font-size: 16px;"><?php echo $row['destination']; ?></div>
-                            <div style="color: #888; font-size: 13px; margin-top: 4px;">
-                                <i class="fa-regular fa-calendar"></i> <?php echo date("d M, h:i A", strtotime($row['date_time'])); ?>
-                            </div>
-                        </div>
-                        <div>
-                            <span class="status-badge status-<?php echo $row['status']; ?>">
-                                <?php echo $row['status']; ?>
-                            </span>
-                        </div>
+    <a href="passanger_booking_history.php" class="section-bar">
+        <span><i class="fa-solid fa-clock-rotate-left" style="margin-right:10px;"></i> Recent History</span>
+        <i class="fa-solid fa-chevron-right"></i>
+    </a>
+    <div class="history-list">
+        <?php if($history_result->num_rows > 0): ?>
+            <?php while($row = $history_result->fetch_assoc()): 
+                $st = $row['status'];
+                $st_class = ($st == 'Approved' || $st == 'APPROVED') ? 'st-Accepted' : 'st-'.$st;
+            ?>
+                <div class="history-card">
+                    <div class="h-info">
+                        <h4><?php echo htmlspecialchars($row['destination']); ?></h4>
+                        <div class="h-date"><i class="fa-regular fa-calendar"></i> <?php echo date("d M, h:i A", strtotime($row['date_time'])); ?></div>
                     </div>
-                <?php endwhile; ?>
-            <?php else: ?>
-                <p style="color: #999; text-align: center; padding: 15px; font-size: 14px;">No ride history found.</p>
-            <?php endif; ?>
-        </div>
-        
-        <a href="passanger_reviews.php" class="section-header-blue">
-            <span>My Reviews</span>
-            <i class="fa-solid fa-chevron-right" style="font-size:12px;"></i>
-        </a>
-        
-        <p style="text-align:center; color:#999; font-size:13px; margin-top:5px;">
-            Click above to view all your past ratings
-        </p>
+                    <div class="h-status"><span class="status-badge <?php echo $st_class; ?>"><?php echo $st; ?></span></div>
+                </div>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <div style="text-align:center; padding:20px; color:#94a3b8; background:#fff; border-radius:12px; border:1px solid #f1f5f9;">No recent rides found.</div>
+        <?php endif; ?>
+    </div>
 
+    <a href="passanger_reviews.php" class="section-bar">
+        <span><i class="fa-solid fa-star" style="margin-right:10px;"></i> My Reviews</span>
+        <i class="fa-solid fa-chevron-right"></i>
+    </a>
+    <div class="logout-container">
+        <a href="passanger_login.php" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </div>
+
+</div>
+
+<div id="driverModal" class="modal-overlay" onclick="closeDriverModal(event)">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeDriverModal(event, true)">&times;</span>
+        
+        <img id="m_img" class="m-avatar" src="" alt="Avatar">
+        <h3 id="m_name" class="m-name">Driver Name</h3>
+        <p id="m_bio" class="m-bio">Driver bio...</p>
+
+        <div class="m-detail-row">
+            <span class="m-label"><i class="fa-solid fa-phone"></i> Phone</span>
+            <span class="m-val" id="m_phone">---</span>
+        </div>
+        <div class="m-detail-row">
+            <span class="m-label"><i class="fa-solid fa-envelope"></i> Email</span>
+            <span class="m-val" id="m_email">---</span>
+        </div>
+        <div class="m-detail-row">
+            <span class="m-label"><i class="fa-solid fa-venus-mars"></i> Gender</span>
+            <span class="m-val" id="m_gender">---</span>
+        </div>
+        <div class="m-detail-row">
+            <span class="m-label"><i class="fa-solid fa-car"></i> Vehicle</span>
+            <span class="m-val"><span id="m_color"></span> <span id="m_car"></span></span>
+        </div>
+        <div class="m-detail-row">
+            <span class="m-label"><i class="fa-solid fa-id-card"></i> Plate No</span>
+            <span class="m-val" id="m_plate" style="text-transform:uppercase; background:#f1f5f9; padding:2px 6px; border-radius:4px;">---</span>
+        </div>
+
+        <button class="btn-modal-action" onclick="closeDriverModal(event, true)">Close</button>
     </div>
 </div>
 
-<?php include "footer.php"; ?>
+<script>
+    // Delete Confirmation
+    function confirmDelete(id) {
+        Swal.fire({
+            title: 'Remove Driver?',
+            text: "Are you sure you want to remove this driver from your favourites?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, remove',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('del-form-' + id).submit();
+            }
+        })
+    }
+
+    // Modal Logic
+    function openDriverModal(element) {
+        document.getElementById('m_img').src = element.getAttribute('data-img');
+        document.getElementById('m_name').innerText = element.getAttribute('data-name');
+        document.getElementById('m_bio').innerText = '"' + element.getAttribute('data-bio') + '"';
+        document.getElementById('m_phone').innerText = element.getAttribute('data-phone');
+        document.getElementById('m_email').innerText = element.getAttribute('data-email');
+        document.getElementById('m_gender').innerText = element.getAttribute('data-gender'); 
+        document.getElementById('m_car').innerText = element.getAttribute('data-car');
+        document.getElementById('m_plate').innerText = element.getAttribute('data-plate');
+        document.getElementById('m_color').innerText = element.getAttribute('data-color');
+
+        const modal = document.getElementById('driverModal');
+        modal.classList.add('show'); 
+    }
+
+    function closeDriverModal(event, forceClose = false) {
+        if (forceClose || event.target.id === 'driverModal') {
+            const modal = document.getElementById('driverModal');
+            modal.classList.remove('show');
+        }
+    }
+</script>
+
+<?php 
+if(isset($_SESSION['swal_success'])): ?>
+<script>
+    Swal.fire({
+        title: 'Success!',
+        text: '<?php echo $_SESSION['swal_success']; ?>',
+        icon: 'success',
+        confirmButtonColor: '#004b82',
+        timer: 1500,
+        showConfirmButton: false
+    });
+</script>
+<?php 
+    unset($_SESSION['swal_success']);
+endif; 
+include "footer.php"; 
+?>
