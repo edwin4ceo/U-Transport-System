@@ -1,15 +1,27 @@
 <?php
-// FUNCTION: START SESSION
+// ==========================================
+// SECTION 1: SETUP & AUTHENTICATION
+// ==========================================
+
+// Start session
 session_start();
+
+// Include database connection and helper functions
 include "db_connect.php";
 include "function.php";
 
-// 1. Check Login
-if(!isset($_SESSION['student_id'])) redirect("passanger_login.php");
+// Check if user is logged in
+if(!isset($_SESSION['student_id'])) {
+    redirect("passanger_login.php");
+}
 $student_id = $_SESSION['student_id'];
 
-// 2. Fetch History
+// ==========================================
+// SECTION 2: FETCH HISTORY & DRIVER DETAILS
+// ==========================================
 $rides = [];
+
+// [UPDATED SQL] Added driver details: phone, email, gender, bio, profile_image, vehicle_color
 $stmt = $conn->prepare("
     SELECT 
         b.id AS booking_id,
@@ -21,8 +33,14 @@ $stmt = $conn->prepare("
         b.status,
         b.vehicle_type,
         d.full_name AS driver_name,
+        d.phone AS driver_phone,
+        d.email AS driver_email,
+        d.gender AS driver_gender,
+        d.bio AS driver_bio,
+        d.profile_image,
         v.plate_number,
-        v.vehicle_model
+        v.vehicle_model,
+        v.vehicle_color
     FROM bookings b
     LEFT JOIN drivers d ON b.driver_id = d.driver_id
     LEFT JOIN vehicles v ON d.driver_id = v.driver_id
@@ -44,7 +62,7 @@ include "header.php";
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 <style>
-    /* 1. LAYOUT */
+    /* 1. Global Layout & Animation */
     @keyframes fadeInUpPage { 0% { opacity: 0; transform: translateY(40px); } 100% { opacity: 1; transform: translateY(0); } }
 
     .content-area { background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
@@ -57,7 +75,7 @@ include "header.php";
         position: relative;
     }
 
-    /* 2. BUTTONS */
+    /* 2. Buttons */
     .btn-back-floating {
         position: absolute; left: 20px; top: 40px;
         background: white; color: #64748b; padding: 10px 20px;
@@ -71,12 +89,12 @@ include "header.php";
         color: #004b82; border-color: #e0f2fe;
     }
 
-    /* 3. HEADER */
+    /* 3. Header */
     .page-header { text-align: center; margin-bottom: 30px; padding-top: 15px; }
     .page-header h1 { margin: 0; font-size: 28px; font-weight: 700; color: #004b82; }
     .page-header p { margin: 5px 0 0; color: #64748b; font-size: 15px; }
 
-    /* 4. SEARCH BAR */
+    /* 4. Search Bar */
     .search-container {
         position: relative !important;
         max-width: 500px !important;
@@ -100,7 +118,7 @@ include "header.php";
     }
     .search-input:focus + .search-icon { color: #004b82 !important; }
 
-    /* 5. HISTORY CARD */
+    /* 5. History Card */
     .history-card { 
         background: #ffffff; border-radius: 20px; 
         box-shadow: 0 5px 20px rgba(0,0,0,0.03); 
@@ -148,7 +166,7 @@ include "header.php";
     .st-cancelled { background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
     .st-expired { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
 
-    /* VIEW NOTE BUTTON (Always Visible) */
+    /* VIEW NOTE BUTTON */
     .btn-view-note {
         display: inline-flex; align-items: center; gap: 6px;
         background: #fff; color: #64748b; border: 1px solid #e2e8f0;
@@ -157,44 +175,54 @@ include "header.php";
     }
     .btn-view-note:hover { background: #f1f5f9; color: #004b82; border-color: #004b82; transform: translateY(-1px); }
 
-    /* 6. CUSTOM REMARK MODAL */
-    .remark-overlay {
+    /* 6. MODAL OVERLAY (Shared for both Modals) */
+    .modal-overlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
         z-index: 3000; display: none;
         justify-content: center; align-items: center;
         opacity: 0; transition: opacity 0.3s ease;
     }
-    .remark-overlay.show { display: flex !important; opacity: 1; }
+    .modal-overlay.show { display: flex !important; opacity: 1; }
 
-    .remark-card {
+    .remark-card, .driver-modal-content {
         background: #fff; width: 90%; max-width: 400px;
         border-radius: 24px; padding: 35px 30px;
         box-shadow: 0 20px 50px rgba(0,0,0,0.2);
         transform: scale(0.9); transition: transform 0.3s ease;
         text-align: center;
     }
-    .remark-overlay.show .remark-card { transform: scale(1); }
+    .modal-overlay.show .remark-card, 
+    .modal-overlay.show .driver-modal-content { transform: scale(1); }
 
-    .remark-title {
-        font-size: 24px; font-weight: 700; color: #004b82; 
-        margin-top: 0; margin-bottom: 20px;
-    }
-
+    /* Remark Modal Specifics */
+    .remark-title { font-size: 24px; font-weight: 700; color: #004b82; margin-top: 0; margin-bottom: 20px; }
     .remark-content-box {
         background: #f8fafc; border-radius: 12px; padding: 20px;
         color: #475569; font-size: 15px; line-height: 1.6;
         font-style: italic; margin-bottom: 25px; border: 1px dashed #cbd5e1;
     }
 
+    /* Driver Modal Specifics (Larger width) */
+    .driver-modal-content { max-width: 500px; }
+    .m-avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #e0f2fe; margin-bottom: 15px; }
+    .m-name { font-size: 22px; font-weight: 700; color: #1e293b; margin: 0; }
+    .m-bio { font-size: 15px !important; color: #94a3b8 !important; margin: 4px auto 25px !important; font-weight: 400 !important; font-style: italic; line-height: 1.4; max-width: 85%; }
+    .m-detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; font-size: 15px; text-align: left; }
+    .m-detail-row:last-child { border-bottom: none; }
+    .m-label { color: #64748b; font-weight: 500; }
+    .m-val { color: #333; font-weight: 600; }
+
     .btn-close-modal {
         background: #004b82; color: white; border: none;
-        padding: 12px 40px; border-radius: 10px;
-        font-size: 15px; font-weight: 600;
-        cursor: pointer; transition: 0.2s;
-        box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2);
+        padding: 12px 40px; border-radius: 10px; font-size: 15px; font-weight: 600;
+        cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2);
     }
     .btn-close-modal:hover { background: #003660; transform: translateY(-2px); }
+
+    /* Clickable Driver Name */
+    .clickable-driver { cursor: pointer; transition: 0.2s; }
+    .clickable-driver:hover { color: #004b82; text-decoration: underline; }
 
     #noResults { display: none; text-align: center; padding: 40px; color: #94a3b8; }
     .empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
@@ -242,20 +270,19 @@ include "header.php";
                     $driverDisplay = $row['driver_name'] ? htmlspecialchars($row['driver_name']) : "Pending Assignment";
                     $dateDisplay = date("d M Y, h:i A", strtotime($row['date_time']));
                     
-                    // --- LOGIC: DETERMINE MODAL CONTENT ---
-                    $finalMessage = "";
-                    
-                    // 1. If Cancelled/Rejected -> "Order has been cancelled"
+                    // Logic for Remark Message
+                    $finalMessage = "No remark provided for this order.";
                     if (in_array($rawStatus, ['CANCELLED', 'REJECTED'])) {
                         $finalMessage = "This order has been cancelled.";
-                    } 
-                    // 2. If has Remark -> Show remark
-                    elseif (!empty(trim($row['remark']))) {
+                    } elseif (!empty(trim($row['remark']))) {
                         $finalMessage = htmlspecialchars($row['remark'], ENT_QUOTES, 'UTF-8');
-                    } 
-                    // 3. Otherwise -> "No remark provided"
-                    else {
-                        $finalMessage = "No remark provided for this order.";
+                    }
+
+                    // Prepare Driver Data for Modal (if driver exists)
+                    $hasDriver = !empty($row['driver_name']);
+                    $driver_img_src = "https://ui-avatars.com/api/?name=".urlencode($driverDisplay)."&background=random&color=fff";
+                    if($hasDriver && !empty($row['profile_image']) && file_exists("uploads/" . $row['profile_image'])) {
+                        $driver_img_src = "uploads/" . $row['profile_image'];
                     }
                 ?>
                 <div class="history-card">
@@ -283,7 +310,26 @@ include "header.php";
                     <div class="info-grid">
                         <div class="info-box">
                             <h5>Driver</h5>
-                            <p><i class="fa-solid fa-user-tie"></i> <?php echo $driverDisplay; ?></p>
+                            <p>
+                                <i class="fa-solid fa-user-tie"></i> 
+                                <?php if($hasDriver): ?>
+                                    <span class="clickable-driver" onclick="openDriverModal(
+                                        '<?php echo $driver_img_src; ?>',
+                                        '<?php echo htmlspecialchars($row['driver_name']); ?>',
+                                        '<?php echo htmlspecialchars($row['driver_phone'] ?? 'N/A'); ?>',
+                                        '<?php echo htmlspecialchars($row['driver_email'] ?? 'N/A'); ?>',
+                                        '<?php echo htmlspecialchars($row['driver_gender'] ?? 'Not Specified'); ?>',
+                                        '<?php echo htmlspecialchars($row['driver_bio'] ?? 'No bio available.'); ?>',
+                                        '<?php echo htmlspecialchars($row['vehicle_model'] ?? 'N/A'); ?>',
+                                        '<?php echo htmlspecialchars($row['plate_number'] ?? 'N/A'); ?>',
+                                        '<?php echo htmlspecialchars($row['vehicle_color'] ?? 'N/A'); ?>'
+                                    )">
+                                        <?php echo $driverDisplay; ?>
+                                    </span>
+                                <?php else: ?>
+                                    <?php echo $driverDisplay; ?>
+                                <?php endif; ?>
+                            </p>
                         </div>
                         <div class="info-box">
                             <h5>Details</h5>
@@ -311,19 +357,34 @@ include "header.php";
 
 </div>
 
-<div id="remarkModal" class="remark-overlay" onclick="closeRemarkModal(event)">
+<div id="remarkModal" class="modal-overlay" onclick="closeModal('remarkModal')">
     <div class="remark-card" onclick="event.stopPropagation()">
         <h3 class="remark-title">Trip Note</h3>
-        
-        <div class="remark-content-box">
-            "<span id="modalRemarkText"></span>"
-        </div>
+        <div class="remark-content-box">"<span id="modalRemarkText"></span>"</div>
+        <button class="btn-close-modal" onclick="closeModal('remarkModal', true)">Close</button>
+    </div>
+</div>
 
-        <button class="btn-close-modal" onclick="closeRemarkModal(event, true)">Close</button>
+<div id="driverModal" class="modal-overlay" onclick="closeModal('driverModal')">
+    <div class="driver-modal-content" onclick="event.stopPropagation()">
+        <span class="close-modal" onclick="closeModal('driverModal', true)" style="position:absolute; top:15px; right:20px; font-size:24px; cursor:pointer; color:#94a3b8;">&times;</span>
+        
+        <img id="m_img" class="m-avatar" src="" alt="Avatar">
+        <h3 id="m_name" class="m-name">Driver Name</h3>
+        <p id="m_bio" class="m-bio">Driver bio...</p>
+
+        <div class="m-detail-row"><span class="m-label"><i class="fa-solid fa-phone"></i> Phone</span><span class="m-val" id="m_phone">---</span></div>
+        <div class="m-detail-row"><span class="m-label"><i class="fa-solid fa-envelope"></i> Email</span><span class="m-val" id="m_email">---</span></div>
+        <div class="m-detail-row"><span class="m-label"><i class="fa-solid fa-venus-mars"></i> Gender</span><span class="m-val" id="m_gender">---</span></div>
+        <div class="m-detail-row"><span class="m-label"><i class="fa-solid fa-car"></i> Vehicle</span><span class="m-val"><span id="m_color"></span> <span id="m_car"></span></span></div>
+        <div class="m-detail-row"><span class="m-label"><i class="fa-solid fa-id-card"></i> Plate No</span><span class="m-val" id="m_plate" style="text-transform:uppercase; background:#f1f5f9; padding:2px 6px; border-radius:4px;">---</span></div>
+
+        <button class="btn-close-modal" onclick="closeModal('driverModal', true)" style="margin-top:25px;">Close</button>
     </div>
 </div>
 
 <script>
+    // --- 1. Search Filter Logic ---
     function filterHistory() {
         var input, filter, list, cards, i, txtValue;
         input = document.getElementById("searchInput");
@@ -350,6 +411,7 @@ include "header.php";
         }
     }
 
+    // --- 2. Open Remark Modal ---
     function openRemarkModal(text) {
         document.getElementById('modalRemarkText').innerText = text;
         const modal = document.getElementById('remarkModal');
@@ -357,9 +419,27 @@ include "header.php";
         setTimeout(() => { modal.classList.add('show'); }, 10);
     }
 
-    function closeRemarkModal(event, force = false) {
-        if (force || event.target.id === 'remarkModal') {
-            const modal = document.getElementById('remarkModal');
+    // --- 3. Open Driver Modal ---
+    function openDriverModal(img, name, phone, email, gender, bio, car, plate, color) {
+        document.getElementById('m_img').src = img;
+        document.getElementById('m_name').innerText = name;
+        document.getElementById('m_phone').innerText = phone;
+        document.getElementById('m_email').innerText = email;
+        document.getElementById('m_gender').innerText = gender;
+        document.getElementById('m_bio').innerText = '"' + bio + '"';
+        document.getElementById('m_car').innerText = car;
+        document.getElementById('m_plate').innerText = plate;
+        document.getElementById('m_color').innerText = color;
+
+        const modal = document.getElementById('driverModal');
+        modal.style.display = 'flex';
+        setTimeout(() => { modal.classList.add('show'); }, 10);
+    }
+
+    // --- 4. Generic Close Function ---
+    function closeModal(modalId, force = false) {
+        if (force || event.target.id === modalId) {
+            const modal = document.getElementById(modalId);
             modal.classList.remove('show');
             setTimeout(() => { modal.style.display = 'none'; }, 300);
         }
