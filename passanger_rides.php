@@ -19,7 +19,8 @@ if(isset($_POST['cancel_ride'])){
     $stmt = $conn->prepare("UPDATE bookings SET status = 'Cancelled' WHERE id = ? AND student_id = ? AND (status = 'PENDING' OR status = 'ACCEPTED' OR status = 'APPROVED')");
     $stmt->bind_param("is", $cancel_id, $student_id);
     if($stmt->execute()){
-        // Success
+        // Set success session to trigger SweetAlert after redirect
+        $_SESSION['cancel_success'] = true;
     }
     $stmt->close();
     header("Location: passanger_rides.php");
@@ -137,51 +138,12 @@ $stmt->close();
     .d-name { font-size: 14px; font-weight: 800; color: #1e293b; text-transform: uppercase; }
     .plate-badge-blue { background-color: #eff6ff; color: #1d4ed8; padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 12px; }
 
-    /* ========================================================== */
-    /* [FINAL FIX] BUTTONS: WIDTH BY TEXT LENGTH (FIT CONTENT)    */
-    /* ========================================================== */
-    .card-footer { 
-        margin-top: 25px !important; 
-        padding-top: 15px !important; 
-        border-top: 1px dashed #e2e8f0 !important; 
-        display: flex !important; 
-        justify-content: center !important; /* Center the buttons group */
-        align-items: center !important; 
-        gap: 12px !important; 
-    }
-
-    /* Common Pill Style Base (Exactly like search rides button shape) */
-    .btn-pill-auto {
-        display: inline-flex !important; /* This makes button follow text width */
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 12px 35px !important; /* Padding for the sides */
-        border-radius: 50px !important; /* Pill shape */
-        font-size: 15px !important; 
-        font-weight: 600 !important;
-        cursor: pointer !important; 
-        box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2) !important; 
-        transition: all 0.3s ease !important; 
-        border: none !important;
-        text-decoration: none !important;
-        white-space: nowrap !important; /* Prevent text wrapping */
-        width: auto !important; /* BUTTON WIDTH = TEXT LENGTH */
-        gap: 8px !important;
-    }
-
-    /* Blue Style (Cancel) */
-    .btn-pill-auto.blue {
-        background-color: #004b82 !important; 
-        color: white !important;
-    }
+    /* Buttons */
+    .card-footer { margin-top: 25px !important; padding-top: 15px !important; border-top: 1px dashed #e2e8f0 !important; display: flex !important; justify-content: center !important; align-items: center !important; gap: 12px !important; }
+    .btn-pill-auto { display: inline-flex !important; align-items: center !important; justify-content: center !important; padding: 12px 35px !important; border-radius: 50px !important; font-size: 15px !important; font-weight: 600 !important; cursor: pointer !important; box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2) !important; transition: all 0.3s ease !important; border: none !important; text-decoration: none !important; white-space: nowrap !important; width: auto !important; gap: 8px !important; }
+    .btn-pill-auto.blue { background-color: #004b82 !important; color: white !important; }
     .btn-pill-auto.blue:hover { background-color: #003660 !important; transform: translateY(-2px) !important; }
-
-    /* Green Style (Chat) - Right Side */
-    .btn-pill-auto.green {
-        background-color: #10b981 !important; 
-        color: white !important;
-        margin-left: 10px !important; /* Small gap from cancel button */
-    }
+    .btn-pill-auto.green { background-color: #10b981 !important; color: white !important; margin-left: 10px !important; }
     .btn-pill-auto.green:hover { background-color: #059669 !important; transform: translateY(-2px) !important; }
 
     @media (max-width: 768px) {
@@ -305,6 +267,20 @@ $stmt->close();
 </div>
 
 <script>
+    /**
+     * Display success alert after page refresh if cancellation was successful
+     */
+    <?php if(isset($_SESSION['cancel_success'])): ?>
+        Swal.fire({
+            title: 'Cancel Successful!',
+            text: "Your ride has been cancelled.",
+            icon: 'success',
+            confirmButtonColor: '#004b82',
+            confirmButtonText: 'OK'
+        });
+        <?php unset($_SESSION['cancel_success']); ?>
+    <?php endif; ?>
+
     function openDriverModal(element) {
         document.getElementById('m_img').src = element.getAttribute('data-img');
         document.getElementById('m_name').innerText = element.getAttribute('data-name');
@@ -312,7 +288,28 @@ $stmt->close();
         document.getElementById('driverModal').classList.add('show'); 
     }
     function closeDriverModal(event, forceClose = false) { if (forceClose || event.target.id === 'driverModal') document.getElementById('driverModal').classList.remove('show'); }
-    function confirmCancel(event, form) { event.preventDefault(); Swal.fire({ title: 'Cancel Ride?', text: "Are you sure?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#004b82', cancelButtonColor: '#d33', confirmButtonText: 'Yes' }).then((result) => { if (result.isConfirmed) form.submit(); }); }
+    
+    /**
+     * Confirmation alert before submitting the cancellation form
+     */
+    function confirmCancel(event, form) { 
+        event.preventDefault(); 
+        Swal.fire({ 
+            title: 'Cancel Ride?', 
+            text: "Are you sure?", 
+            icon: 'warning', 
+            showCancelButton: true, 
+            confirmButtonColor: '#004b82', 
+            cancelButtonColor: '#d33', 
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel'
+        }).then((result) => { 
+            if (result.isConfirmed) {
+                form.submit(); 
+            }
+        }); 
+    }
+    
     function switchTab(tabName) {
         document.getElementById('content-ongoing').style.display = 'none'; document.getElementById('content-history').style.display = 'none';
         document.getElementById('btn-ongoing').classList.remove('active'); document.getElementById('btn-history').classList.remove('active');
