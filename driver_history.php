@@ -16,7 +16,8 @@ $history = [];
 // Fetch bookings
 $stmt = $conn->prepare("
     SELECT 
-        b.id AS booking_id, b.pickup_point, b.destination, b.date_time, b.passengers, b.remark, b.status,
+        b.id AS booking_id, b.pickup_point, b.destination, b.date_time, b.passengers, b.remark, b.status, 
+        b.fare, 
         s.name AS passenger_name, s.phone AS passenger_phone
     FROM bookings b
     LEFT JOIN students s ON b.student_id = s.student_id
@@ -44,7 +45,7 @@ include "header.php";
     .history-wrapper {
         max-width: 800px;
         margin: 0 auto;
-        padding: 30px 20px 80px; /* Extra bottom padding for mobile */
+        padding: 30px 20px 80px; 
     }
 
     /* Header Section */
@@ -52,7 +53,7 @@ include "header.php";
     .page-header h1 { font-size: 26px; font-weight: 700; color: #004b82; margin: 0; }
     .page-header p { color: #a3aed0; font-size: 14px; margin-top: 5px; }
 
-    /* Modern Search Bar (Icon Removed) */
+    /* Search Bar */
     .search-box-wrapper {
         position: relative;
         margin-bottom: 30px;
@@ -63,7 +64,6 @@ include "header.php";
     
     .search-input {
         width: 100%;
-        /* Padding adjusted: removed left space for icon */
         padding: 16px 25px; 
         border: none;
         border-radius: 30px;
@@ -72,7 +72,7 @@ include "header.php";
         background: transparent;
         outline: none;
         transition: all 0.2s;
-        text-align: center; /* Center placeholder text */
+        text-align: center; 
     }
     .search-input:focus { box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1); }
 
@@ -94,13 +94,11 @@ include "header.php";
         border-color: #eef2f6;
     }
 
-    /* Status Strip on the left */
-    .status-strip {
-        position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
-    }
-    .strip-completed { background: #05cd99; } /* Green */
-    .strip-cancelled { background: #ee5d50; } /* Red */
-    .strip-pending { background: #ffce20; }   /* Yellow */
+    /* Status Strip */
+    .status-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; }
+    .strip-completed { background: #05cd99; } 
+    .strip-cancelled { background: #ee5d50; } 
+    .strip-pending { background: #ffce20; }   
 
     /* Card Layout */
     .card-top { display: flex; justify-content: space-between; margin-bottom: 12px; }
@@ -109,6 +107,20 @@ include "header.php";
     .route-display { margin-bottom: 15px; padding-left: 10px; border-left: 2px solid #eef2f6; }
     .route-text { font-size: 15px; font-weight: 600; line-height: 1.4; color: #1b2559; }
     
+    /* [新增] Remark 样式 */
+    .remark-box {
+        background-color: #f8fafc;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 13px;
+        color: #64748b;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .remark-box i { color: #004b82; margin-top: 3px; }
+
     .card-footer {
         display: flex; justify-content: space-between; align-items: center;
         padding-top: 12px; border-top: 1px dashed #eef2f6;
@@ -123,9 +135,21 @@ include "header.php";
     .badge-cancelled { background: #fff5f5; color: #ee5d50; }
     .badge-pending { background: #fffbf0; color: #ffce20; }
 
+    /* Price Tag Style */
+    .price-tag {
+        font-size: 16px;
+        font-weight: 700;
+        color: #05cd99; /* Green for money */
+        text-align: right;
+    }
+    .price-tag.cancelled { color: #a3aed0; text-decoration: line-through; font-size: 14px; } 
+
     /* Empty State */
     .empty-state { text-align: center; padding: 50px 20px; color: #a3aed0; }
     .empty-state i { font-size: 40px; margin-bottom: 15px; display: block; opacity: 0.5; }
+    
+    /* No Results State */
+    #noResults { display: none; text-align: center; padding: 40px; color: #a3aed0; }
 </style>
 
 <div class="history-wrapper">
@@ -152,20 +176,35 @@ include "header.php";
                     $datetime = $row['date_time'] ? date("d M, h:i A", strtotime($row['date_time'])) : "-";
                     $statusRaw = strtoupper(trim($row['status'] ?? 'PENDING'));
                     
+                    // 读取 'fare' 和 'remark'
+                    $priceVal = (float)($row['fare'] ?? 0);
+                    $priceDisplay = number_format($priceVal, 2);
+                    $remark = trim($row['remark'] ?? ''); // 获取备注
+
                     // Style Logic
                     if (in_array($statusRaw, ['COMPLETED', 'FINISHED'])) {
                         $stripClass = "strip-completed"; $badgeClass = "badge-completed";
+                        $priceClass = ""; 
                     } elseif (in_array($statusRaw, ['CANCELLED', 'REJECTED'])) {
                         $stripClass = "strip-cancelled"; $badgeClass = "badge-cancelled";
+                        $priceClass = "cancelled"; 
                     } else {
                         $stripClass = "strip-pending"; $badgeClass = "badge-pending";
+                        $priceClass = "";
                     }
 
+                    $pickup = htmlspecialchars($row['pickup_point']);
+                    $dest   = htmlspecialchars($row['destination']);
+                    $pName  = htmlspecialchars($row['passenger_name'] ?? 'Guest');
+                    
                     $routeText = ($row['pickup_point'] && $row['destination']) 
-                                 ? htmlspecialchars($row['pickup_point']) . ' <i class="fa-solid fa-arrow-right-long" style="color:#a3aed0; font-size:12px; margin:0 5px;"></i> ' . htmlspecialchars($row['destination'])
+                                 ? $pickup . ' <i class="fa-solid fa-arrow-right-long" style="color:#a3aed0; font-size:12px; margin:0 5px;"></i> ' . $dest
                                  : "Trip #$id";
+                                 
+                    $searchData = strtolower("$id $pName $pickup $dest $remark"); // 把备注也加入搜索关键词
                 ?>
-                <div class="history-card">
+                
+                <div class="history-card" data-search="<?php echo $searchData; ?>">
                     <div class="status-strip <?php echo $stripClass; ?>"></div>
                     
                     <div class="card-top">
@@ -177,32 +216,67 @@ include "header.php";
                         <div class="route-text"><?php echo $routeText; ?></div>
                     </div>
 
+                    <?php if (!empty($remark) && $remark !== '-'): ?>
+                        <div class="remark-box">
+                            <i class="fa-regular fa-comment-dots"></i>
+                            <span><?php echo htmlspecialchars($remark); ?></span>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="card-footer">
                         <div class="passenger-info">
                             <i class="fa-solid fa-user-circle"></i>
-                            <?php echo htmlspecialchars($row['passenger_name'] ?? 'Guest'); ?>
+                            <?php echo $pName; ?>
                             <?php if($row['passengers'] > 1): ?>
                                 <span style="background:#f4f7fe; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:5px;">+<?php echo $row['passengers']-1; ?></span>
                             <?php endif; ?>
                         </div>
-                        <div style="font-size:11px; color:#a3aed0; font-weight:600;">ID: #<?php echo $id; ?></div>
+                        
+                        <div style="text-align: right;">
+                            <div class="price-tag <?php echo $priceClass; ?>">
+                                RM <?php echo $priceDisplay; ?>
+                            </div>
+                            <div style="font-size:10px; color:#a3aed0; margin-top:2px;">ID: #<?php echo $id; ?></div>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
+            
+            <div id="noResults">
+                <i class="fa-solid fa-magnifying-glass" style="font-size:30px; margin-bottom:15px; opacity:0.5;"></i><br>
+                No results found matching "<span id="searchQueryText" style="font-weight:600;"></span>"
+            </div>
+            
         <?php endif; ?>
     </div>
 </div>
 
 <script>
-// Real-time Search Logic
-document.getElementById('historySearchInput').addEventListener('keyup', function() {
-    let filter = this.value.toLowerCase();
+// Real-time Smart Search Logic
+document.getElementById('historySearchInput').addEventListener('input', function() {
+    let filter = this.value.toLowerCase().trim();
     let cards = document.querySelectorAll('.history-card');
+    let hasVisible = false;
     
     cards.forEach(card => {
-        let text = card.innerText.toLowerCase();
-        card.style.display = text.includes(filter) ? "" : "none";
+        let searchData = card.getAttribute('data-search');
+        if (searchData.includes(filter)) {
+            card.style.display = "";
+            hasVisible = true;
+        } else {
+            card.style.display = "none";
+        }
     });
+
+    const noRes = document.getElementById('noResults');
+    if (noRes) {
+        if (!hasVisible && filter !== "") {
+            noRes.style.display = "block";
+            document.getElementById('searchQueryText').innerText = this.value;
+        } else {
+            noRes.style.display = "none";
+        }
+    }
 });
 </script>
 

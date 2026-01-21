@@ -18,7 +18,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- CASE A: Update Personal Info ---
     if (isset($_POST['btn_update_profile'])) {
-        // NOTE: phone will come from hidden input (#phone_full) as FULL format: +60xxxxxxxxx
         $phone  = trim($_POST['phone'] ?? '');
         $bio    = $_POST['bio'] ?? '';
         
@@ -74,6 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!password_verify($current_pass, $db_pass)) {
             $error_msg = "Current password is incorrect.";
+        } elseif ($current_pass === $new_pass) { 
+            // [NEW CHECK] Check if new password is same as current password
+            $error_msg = "New password cannot be the same as your current password.";
         } elseif ($new_pass !== $confirm_pass) {
             $error_msg = "New passwords do not match.";
         } elseif (strlen($new_pass) < 6) {
