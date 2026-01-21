@@ -136,9 +136,9 @@ if (!$result) {
                         <tr>
                             <th>Student ID</th>
                             <th>Full Name</th>
-                            <th>Email</th>
+                            <th>Gender</th> <th>Email</th>
                             <th>Phone</th>
-                            </tr>
+                        </tr>
                     </thead>
                     <tbody>
                         <?php if (mysqli_num_rows($result) > 0): ?>
@@ -146,12 +146,12 @@ if (!$result) {
                                 <tr>
                                     <td><?php echo htmlspecialchars($row['student_id']); ?></td>
                                     <td><?php echo htmlspecialchars($row['name']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['email']); ?></td>
+                                    <td><?php echo ucfirst(htmlspecialchars($row['gender'])); ?></td> <td><?php echo htmlspecialchars($row['email']); ?></td>
                                     <td><?php echo htmlspecialchars($row['phone']); ?></td>
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <tr><td colspan="4" style="text-align:center; padding: 30px; color: #999;">No passengers found.</td></tr>
+                            <tr><td colspan="5" style="text-align:center; padding: 30px; color: #999;">No passengers found.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
