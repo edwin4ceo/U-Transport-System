@@ -4,7 +4,6 @@ require_once 'db_connect.php';
 require_once 'admin_header.php';
 
 // --- STRICT SECURITY CHECK ---
-// Only 'admin' can access. 'staff' cannot see this page.
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: admin_dashboard.php");
     exit();
@@ -31,7 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
 $search = "";
 $sql = "SELECT * FROM admins WHERE role = 'staff'";
 
-// If user typed in the search box
 if (isset($_GET['search']) && !empty($_GET['search'])) {
     $search = mysqli_real_escape_string($conn, $_GET['search']);
     $sql .= " AND (full_name LIKE '%$search%' OR username LIKE '%$search%' OR email LIKE '%$search%' OR phone_number LIKE '%$search%')";
@@ -48,19 +46,63 @@ $result = mysqli_query($conn, $sql);
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        .page-title { font-size: 1.5rem; font-weight: 700; color: #111827; margin: 0; }
         
-        /* Search & Action Bar */
-        .action-bar { display: flex; gap: 10px; }
-        .search-form { display: flex; gap: 5px; }
-        .search-input { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; width: 220px; outline: none; transition: 0.2s; }
+        /* HEADER LAYOUT: Title Left, Actions Center */
+        .page-header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; /* Centers the action bar */
+            position: relative; 
+            margin-bottom: 30px; 
+            min-height: 50px;
+        }
+        
+        .page-title { 
+            font-size: 1.5rem; 
+            font-weight: 700; 
+            color: #111827; 
+            margin: 0; 
+            position: absolute; 
+            left: 0; /* Locks title to left */
+        }
+
+        .action-bar { 
+            display: flex; 
+            gap: 10px; 
+            z-index: 2;
+        }
+        
+        .search-form { display: flex; gap: 8px; }
+        .search-input { 
+            padding: 10px 15px; 
+            border: 1px solid #d1d5db; 
+            border-radius: 8px; 
+            width: 300px; /* Wider search bar */
+            outline: none; 
+            transition: 0.2s; 
+            font-size: 0.95rem;
+        }
         .search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-        .btn-search { background: #1f2937; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .btn-reset { background: #9ca3af; color: white; padding: 8px 12px; border-radius: 8px; text-decoration: none; display: flex; align-items: center; }
         
-        .btn-add { background: #27ae60; color: white; padding: 8px 15px; text-decoration: none; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(39, 174, 96, 0.2); }
-        .btn-add:hover { background: #219150; }
+        .btn-search { background: #1f2937; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-reset { background: #9ca3af; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; display: flex; align-items: center; }
+        
+        .btn-add { 
+            background: #27ae60; color: white; padding: 10px 20px; 
+            text-decoration: none; border-radius: 8px; font-weight: 600; 
+            display: flex; align-items: center; gap: 8px; 
+            box-shadow: 0 2px 4px rgba(39, 174, 96, 0.2); 
+            transition: 0.2s;
+        }
+        .btn-add:hover { background: #219150; transform: translateY(-1px); }
+
+        /* Responsive Mobile Handling */
+        @media (max-width: 768px) {
+            .page-header { flex-direction: column; gap: 15px; align-items: flex-start; justify-content: flex-start; position: static; }
+            .page-title { position: static; }
+            .action-bar { width: 100%; flex-wrap: wrap; }
+            .search-input { flex-grow: 1; width: auto; }
+        }
 
         /* Table Design */
         .card-table { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e5e7eb; }
@@ -69,16 +111,11 @@ $result = mysqli_query($conn, $sql);
         td { padding: 15px; border-bottom: 1px solid #f3f4f6; color: #374151; font-size: 0.95rem; vertical-align: middle; }
         tr:hover { background: #f9fafb; }
 
-        /* Profile Placeholder */
         .profile-icon { width: 40px; height: 40px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-
-        /* Text Styles */
         .staff-name { font-weight: 600; color: #111827; display: block; }
         .staff-username { font-size: 0.85rem; color: #6b7280; }
         .contact-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 0.9rem; }
         .contact-row i { color: #9ca3af; width: 16px; text-align: center; }
-        
-        /* Badges */
         .role-badge { background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .btn-delete { background: #fee2e2; color: #991b1b; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; transition: 0.2s; }
