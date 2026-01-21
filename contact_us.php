@@ -26,18 +26,27 @@ if (isset($_SESSION['driver_id'])) {
 }
 
 // ==========================================
-// SECTION 2: AJAX ENDPOINT FOR CHAT (NO REFRESH)
+// SECTION 2: AJAX ENDPOINT FOR CHAT (FIXED: NOW SAVES TO DB)
 // ==========================================
 if (!$is_guest && isset($_POST['ajax_chat'])) {
     $msg = mysqli_real_escape_string($conn, $_POST['message']);
-    $sql = "INSERT INTO student_support_messages (student_id, sender_type, message, created_at) 
-            VALUES ('$current_id', '$current_role', '$msg', NOW())";
+    
+    // [CRITICAL FIX] Determine target table based on role
+    // If student, insert into student_support_messages. If driver, insert into driver_support_messages.
+    if ($current_role === 'student') {
+        $sql = "INSERT INTO student_support_messages (student_id, sender_type, message, is_read, created_at) 
+                VALUES ('$current_id', 'student', '$msg', 0, NOW())";
+    } else {
+        $sql = "INSERT INTO driver_support_messages (driver_id, sender_type, message, is_read, created_at) 
+                VALUES ('$current_id', 'driver', '$msg', 0, NOW())";
+    }
+
     if($conn->query($sql)) {
         echo json_encode(['status' => 'success', 'time' => date("h:i A")]);
     } else {
-        echo json_encode(['status' => 'error']);
+        echo json_encode(['status' => 'error', 'message' => $conn->error]);
     }
-    exit(); // 停止执行后续 HTML
+    exit(); 
 }
 
 // ==========================================
@@ -88,7 +97,11 @@ if ($is_guest && isset($_POST['send_email'])) {
 // ==========================================
 $chat_messages = [];
 if (!$is_guest) {
-    $chat_sql = "SELECT * FROM student_support_messages WHERE student_id = '$current_id' ORDER BY created_at ASC";
+    if ($current_role === 'student') {
+        $chat_sql = "SELECT * FROM student_support_messages WHERE student_id = '$current_id' ORDER BY created_at ASC";
+    } else {
+        $chat_sql = "SELECT * FROM driver_support_messages WHERE driver_id = '$current_id' ORDER BY created_at ASC";
+    }
     $chat_res = $conn->query($chat_sql);
     if ($chat_res) { while ($row = $chat_res->fetch_assoc()) { $chat_messages[] = $row; } }
 }
@@ -136,7 +149,6 @@ include "header.php";
     .field-input { width: 100%; padding: 14px 18px; border-radius: 12px; border: 1.5px solid #f1f5f9; background: #f8fafc; font-size: 14.5px; transition: 0.3s; box-sizing: border-box; }
     textarea.field-input { resize: vertical; min-height: 140px; }
 
-    /* 统一按钮样式 */
     .btn-pill-action {
         display: inline-flex !important; align-items: center !important; justify-content: center !important;
         width: fit-content !important; padding: 12px 55px !important; 
@@ -168,7 +180,7 @@ include "header.php";
 
     <div class="contact-container">
         <div class="support-sidebar">
-            <div class="support-visual"><img src="uploads/logo.jpg" alt="Logo"></div>
+            <div class="support-visual"><img src="uploads/logo.jpg" alt="Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'"></div>
             <h3>Support Hub</h3>
             <p class="sidebar-desc">Need a quick answer? Reach out through our official channels below.</p>
             <div class="email-sky-card"><i class="fa-solid fa-paper-plane"></i><span>help.u.transport.system@gmail.com</span></div>
@@ -196,7 +208,10 @@ include "header.php";
                     <?php if (empty($chat_messages)): ?>
                         <div id="noMsg" style="text-align:center; padding-top:120px; color:#cbd5e1;"><i class="fa-regular fa-comments" style="font-size:50px; display:block; margin-bottom:15px;"></i><p>No messages yet.</p></div>
                     <?php else: ?>
-                        <?php foreach ($chat_messages as $m): $isMe = ($m['sender_type'] === $current_role); ?>
+                        <?php foreach ($chat_messages as $m): 
+                            // Determine if message is from Admin or Current User
+                            $isMe = ($m['sender_type'] === 'student' || $m['sender_type'] === 'driver'); 
+                        ?>
                             <div class="msg-bubble <?php echo $isMe ? 'msg-sent' : 'msg-received'; ?>">
                                 <?php echo htmlspecialchars($m['message']); ?>
                                 <div style="font-size:10px; margin-top:5px; opacity:0.6; text-align:right;"><?php echo date("h:i A", strtotime($m['created_at'])); ?></div>
@@ -206,7 +221,7 @@ include "header.php";
                 </div>
                 <form id="chatForm" style="margin-top:20px; display:flex; gap:12px; align-items:center;">
                     <input type="text" id="chatInput" style="flex:1; border:1.5px solid #f1f5f9; background:#f8fafc; border-radius:50px; padding:12px 22px; outline:none;" placeholder="Type your message..." required autocomplete="off">
-                    <button type="submit" class="btn-pill-action" style="padding:12px 25px !important; white-space:nowrap;">Send Message</button>
+                    <button type="submit" class="btn-pill-action" style="padding:12px 25px !important; white-space:nowrap;">Send</button>
                 </form>
             <?php endif; ?>
         </div>
@@ -214,12 +229,10 @@ include "header.php";
 </div>
 
 <script>
-// 1. SCROLL TO BOTTOM LOGIC
 const ml = document.getElementById('msgList');
 const scrollDown = () => { if(ml) ml.scrollTop = ml.scrollHeight; };
 scrollDown();
 
-// 2. GUEST EMAIL LOADING
 const emailForm = document.getElementById('emailForm');
 if(emailForm) {
     emailForm.addEventListener('submit', () => {
@@ -227,7 +240,6 @@ if(emailForm) {
     });
 }
 
-// 3. AJAX CHAT LOGIC (NO REFRESH)
 const chatForm = document.getElementById('chatForm');
 if(chatForm) {
     chatForm.addEventListener('submit', function(e) {
@@ -236,24 +248,17 @@ if(chatForm) {
         const msg = input.value.trim();
         if(!msg) return;
 
-        // Create FormData
         const formData = new FormData();
         formData.append('ajax_chat', '1');
         formData.append('message', msg);
 
-        // Fetch API
         fetch('contact_us.php', { method: 'POST', body: formData })
         .then(res => res.json())
         .then(data => {
             if(data.status === 'success') {
                 const noMsg = document.getElementById('noMsg');
                 if(noMsg) noMsg.remove();
-
-                const newMsg = `
-                    <div class="msg-bubble msg-sent">
-                        ${msg.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
-                        <div style="font-size:10px; margin-top:5px; opacity:0.6; text-align:right;">${data.time}</div>
-                    </div>`;
+                const newMsg = `<div class="msg-bubble msg-sent">${msg.replace(/</g, "&lt;").replace(/>/g, "&gt;")}<div style="font-size:10px; margin-top:5px; opacity:0.6; text-align:right;">${data.time}</div></div>`;
                 ml.insertAdjacentHTML('beforeend', newMsg);
                 input.value = '';
                 scrollDown();
@@ -268,5 +273,4 @@ if(chatForm) {
     Swal.fire({ title: '<?php echo $_SESSION['swal_title']; ?>', text: '<?php echo $_SESSION['swal_msg']; ?>', icon: '<?php echo $_SESSION['swal_type']; ?>', confirmButtonColor: '#004b82', confirmButtonText: 'OK' });
 </script>
 <?php unset($_SESSION['swal_title'], $_SESSION['swal_msg'], $_SESSION['swal_type']); endif; ?>
-
 <?php include "footer.php"; ?>
