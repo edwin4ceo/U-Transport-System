@@ -174,7 +174,7 @@ include "header.php";
             <div class="email-sky-card"><i class="fa-solid fa-paper-plane"></i><span>help.u.transport.system@gmail.com</span></div>
             <div class="social-stack">
                 <a href="https://wa.me/601114024118" target="_blank" class="expanding-pill pill-wa"><div class="pill-icon"><i class="fa-brands fa-whatsapp"></i></div><div class="pill-text">Chat on WhatsApp</div></a>
-                <a href="https://www.instagram.com/u_trasnportsystem" target="_blank" class="expanding-pill pill-ig"><div class="pill-icon"><i class="fa-brands fa-instagram"></i></div><div class="pill-text">Follow Instagram</div></a>
+                <a href="https://www.instagram.com/u_transportsystem" target="_blank" class="expanding-pill pill-ig"><div class="pill-icon"><i class="fa-brands fa-instagram"></i></div><div class="pill-text">Follow Instagram</div></a>
             </div>
         </div>
 
