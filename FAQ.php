@@ -60,7 +60,6 @@ include "header.php";
         border-color: #e0f2fe;
     }
 
-    /* QUESTION HEADER */
     .faq-question {
         padding: 20px 25px;
         cursor: pointer;
@@ -92,7 +91,6 @@ include "header.php";
         transition: transform 0.3s ease; 
     }
 
-    /* ANSWER */
     .faq-answer {
         display: grid;
         grid-template-rows: 0fr; 
@@ -103,7 +101,6 @@ include "header.php";
     .faq-answer-inner { overflow: hidden; opacity: 0; }
     .faq-answer-content { padding: 0 25px 25px 25px; color: #64748b; line-height: 1.6; font-size: 14px; }
 
-    /* ACTIVE STATE */
     .faq-item.active { border-color: #004b82; box-shadow: 0 4px 15px rgba(0, 75, 130, 0.1); }
     .faq-item.active .faq-question { color: #004b82; }
     .faq-item.active .icon-wrapper { background-color: #004b82; transform: rotate(180deg); }
@@ -111,28 +108,72 @@ include "header.php";
     .faq-item.active .faq-answer { grid-template-rows: 1fr; }
     .faq-item.active .faq-answer-inner { opacity: 1; transition: opacity 0.3s ease 0.1s; }
 
-    /* 6. CONTACT BOX */
+    /* ========================================================= */
+    /* 6. NEW: ABOUT US & FOUNDERS SECTION                       */
+    /* ========================================================= */
+    .about-section { 
+        margin-top: 60px; 
+        padding-top: 50px; 
+        border-top: 2px dashed #e2e8f0; 
+        text-align: center; 
+    }
+    .about-section h2 { color: #004b82; font-size: 26px; font-weight: 800; margin-bottom: 40px; }
+
+    .founders-grid { 
+        display: grid; 
+        grid-template-columns: repeat(3, 1fr); 
+        gap: 20px; 
+        margin-bottom: 50px; 
+    }
+    .founder-card { text-align: center; }
+    .founder-img-wrap { 
+        width: 130px; height: 130px; 
+        margin: 0 auto 15px; 
+        border-radius: 50%; 
+        border: 4px solid #fff; 
+        box-shadow: 0 8px 20px rgba(0,75,130,0.12); 
+        overflow: hidden; 
+        transition: 0.3s ease;
+        background: #fff;
+    }
+    .founder-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .founder-card:hover .founder-img-wrap { transform: scale(1.05); border-color: #004b82; }
+    .founder-name { font-weight: 700; color: #1e293b; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* MISSION BOXES */
+    .mission-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+        gap: 20px; 
+        margin-top: 30px; 
+    }
+    .mission-box { 
+        background: #fff; padding: 30px 20px; 
+        border-radius: 20px; border: 1px solid #f1f5f9; 
+        transition: all 0.3s ease; 
+    }
+    .mission-box:hover { transform: translateY(-5px); border-color: #004b82; box-shadow: 0 10px 25px rgba(0,75,130,0.05); }
+    .mission-box i { font-size: 32px; color: #004b82; margin-bottom: 15px; }
+    .mission-box h3 { font-size: 17px; font-weight: 700; color: #1e293b; margin-bottom: 10px; }
+    .mission-box p { font-size: 13px; color: #64748b; line-height: 1.6; margin: 0; }
+
+    /* 7. CONTACT BOX */
     .contact-box {
         text-align: center; 
-        margin-top: 40px; 
+        margin-top: 60px; 
         padding: 40px 30px; 
         background: #fff; 
         border: 1px solid #e2e8f0;
         border-radius: 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.03);
     }
-    
     .contact-box h3 { margin: 0 0 8px; color: #004b82; font-size: 18px; font-weight: 700; }
     .contact-box p { margin: 0 0 25px; color: #64748b; font-size: 14px; }
 
-    /* ========================================================= */
-    /* 7. [FIXED] CONTACT BUTTON (Using inline-block)            */
-    /* ========================================================= */
     .btn-contact { 
-        display: inline-block !important;   /* KEY FIX: Prevents full width stretching */
+        display: inline-block !important;
         width: auto !important;             
         min-width: 200px !important;        
-        
         padding: 12px 40px !important;      
         background-color: #004b82 !important; 
         color: white !important; 
@@ -145,16 +186,14 @@ include "header.php";
         box-shadow: 0 4px 10px rgba(0, 75, 130, 0.2) !important;
         transition: all 0.3s ease !important;
         cursor: pointer !important;
-        line-height: 1.5 !important;        
     }
     .btn-contact:hover { 
         background-color: #003660 !important; 
         transform: translateY(-2px); 
-        box-shadow: 0 6px 15px rgba(0, 75, 130, 0.3) !important; 
     }
 
-    /* Mobile: Allow full width for easier tapping */
     @media (max-width: 768px) {
+        .founders-grid { grid-template-columns: 1fr; gap: 30px; }
         .btn-contact { display: block !important; width: 100% !important; }
     }
 </style>
@@ -253,6 +292,52 @@ include "header.php";
                     No, the system does not support real-time GPS tracking. However, once a booking is confirmed, 
                     you will receive the driver's contact number to coordinate directly.
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="about-section">
+        <h2>Meet Our Founders</h2>
+        
+        <div class="founders-grid">
+            <div class="founder-card">
+                <div class="founder-img-wrap">
+                    <img src="uploads/EDWIN.jpg" alt="Edwin Teo Yuan Jing">
+                </div>
+                <div class="founder-name">Edwin Teo Yuan Jing</div>
+            </div>
+
+            <div class="founder-card">
+                <div class="founder-img-wrap">
+                    <img src="uploads/Wong.jpg" alt="Wong Soon Kit">
+                </div>
+                <div class="founder-name">Wong Soon Kit</div>
+            </div>
+
+            <div class="founder-card">
+                <div class="founder-img-wrap">
+                    <img src="uploads/NG.jpg" alt="Ng Zhe Jun">
+                </div>
+                <div class="founder-name">Ng Zhe Jun</div>
+            </div>
+        </div>
+
+        <h2>Our Mission</h2>
+        <div class="mission-grid">
+            <div class="mission-box">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h3>Safety First</h3>
+                <p>Creating a verified environment for MMU community through strict domain authentication and manual driver checks.</p>
+            </div>
+            <div class="mission-box">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+                <h3>Affordability</h3>
+                <p>Ensuring cost-effective commuting for students while providing student-drivers a way to manage maintenance costs.</p>
+            </div>
+            <div class="mission-box">
+                <i class="fa-solid fa-users"></i>
+                <h3>Community Driven</h3>
+                <p>Consolidating scattered carpooling efforts into a centralized platform to improve logistics and mutual trust.</p>
             </div>
         </div>
     </div>
