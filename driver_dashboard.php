@@ -66,13 +66,12 @@ include "header.php";
     .dashboard-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
     .btn-edit-profile { background: white; color: var(--primary); border: 1px solid #cbd5e0; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
     
-    /* UPDATED: Changed from 2 columns to 1 column for top-bottom layout */
     .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 30px; }
     
     .modern-card { background: var(--card-bg); border-radius: 16px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; height: fit-content; }
     .card-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #f7fafc; }
     .card-title-text { font-size: 18px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
-    .info-list { max-width: 600px; /* Optional: limits width so info doesn't stretch too wide on big screens */ } 
+    .info-list { max-width: 600px; } 
     .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px; }
     .info-val { color: var(--text-main); font-weight: 600; text-align: right; }
     .quick-actions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
@@ -82,7 +81,6 @@ include "header.php";
     .tile-title { font-size: 14px; font-weight: 700; color: var(--text-main); }
     .tile-badge { position: absolute; top: -8px; right: -8px; background: #e53e3e; color: white; border: 2px solid white; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; box-shadow: 0 3px 8px rgba(229, 62, 62, 0.4); z-index: 10; }
 
-    /* Responsive adjustments */
     @media (max-width: 768px) {
         .quick-actions-grid { grid-template-columns: repeat(2, 1fr); }
     }
@@ -167,91 +165,105 @@ include "header.php";
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// 1. Initialize stats from PHP for comparison
+// 1. Initialize Current Statistics
 let currentStats = {
     bookings: <?php echo (int)$pending_bookings_count; ?>,
     chats: <?php echo (int)$chat_unread_count; ?>,
     admin: <?php echo (int)$admin_unread_count; ?>
 };
 
-// 2. Setup Notification Sound
+// 2. Notification Sound
 const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-// 3. Configure Toast Notification Style
-const Toast = Swal.mixin({
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 5000,
-    timerProgressBar: true,
-    didOpen: (toast) => {
-        toast.addEventListener('mouseenter', Swal.stopTimer)
-        toast.addEventListener('mouseleave', Swal.resumeTimer)
-    }
-});
-
-// Helper function to play sound safely
 function playSound() {
-    notificationSound.play().catch(error => {
-        console.log('Audio play failed (waiting for user interaction):', error);
-    });
+    notificationSound.play().catch(err => console.log('Audio play failed:', err));
 }
 
-// 4. Background Check Function for new notifications
+// 3. Background Check Function
 function checkNotifications() {
     fetch('driver_check_notifications.php')
         .then(res => res.json())
         .then(data => {
             
-            // --- Check for New Bookings ---
+            // --- Case 1: New Booking Request -> Pop-up ---
             if (data.pending_bookings > currentStats.bookings) {
                 playSound();
-                Toast.fire({ 
-                    icon: 'info', 
-                    title: 'New Ride Request!', 
-                    text: 'You have a new pending booking.' 
+                
+                Swal.fire({
+                    title: 'New Ride Request! 🚖',
+                    text: 'A student has requested a ride.',
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#004b82',
+                    cancelButtonColor: '#718096',
+                    confirmButtonText: 'View Request',
+                    cancelButtonText: 'Later'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = 'driver_booking_requests.php'; 
+                    }
                 });
             }
-            // Update Booking Badge UI
+            // Update Booking Badge
             if (data.pending_bookings > 0) {
                 document.getElementById('badge-booking').innerHTML = `<div class='tile-badge'>${data.pending_bookings} Pending</div>`;
             } else {
                 document.getElementById('badge-booking').innerHTML = '';
             }
 
-            // --- Check for New Student Chats ---
+            // --- Case 2: New Chat Message -> Pop-up ---
             if (data.chat_unread > currentStats.chats) {
                 playSound();
-                Toast.fire({ 
+                
+                Swal.fire({
+                    title: 'New Message! 💬',
+                    text: 'You have a new message from a student.',
                     icon: 'success', 
-                    title: 'New Message', 
-                    text: 'A student sent you a message.' 
+                    showCancelButton: true,
+                    confirmButtonColor: '#004b82',
+                    cancelButtonColor: '#718096',
+                    confirmButtonText: 'Reply Now',
+                    cancelButtonText: 'Later'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = 'driver_forum.php'; 
+                    }
                 });
             }
-            // Update Chat Badge UI
+            // Update Chat Badge
             if (data.chat_unread > 0) {
                 document.getElementById('badge-chat').innerHTML = `<div class='tile-badge'>${data.chat_unread} New</div>`;
             } else {
                 document.getElementById('badge-chat').innerHTML = '';
             }
 
-            // --- Check for Admin Replies ---
+            // --- Case 3: Admin Reply -> Pop-up ---
             if (data.admin_unread > currentStats.admin) {
                 playSound();
-                Toast.fire({ 
+
+                Swal.fire({
+                    title: 'Admin Support Reply! 🛡️',
+                    text: 'The support team has replied to your inquiry.',
                     icon: 'warning', 
-                    title: 'Admin Reply', 
-                    text: 'Support team has replied to you.' 
+                    showCancelButton: true,
+                    confirmButtonColor: '#004b82',
+                    cancelButtonColor: '#718096',
+                    confirmButtonText: 'View Reply',
+                    cancelButtonText: 'Later'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = 'contact_us.php'; 
+                    }
                 });
             }
-            // Update Admin Badge UI
+            // Update Admin Badge
             if (data.admin_unread > 0) {
                 document.getElementById('badge-admin').innerHTML = `<div class='tile-badge'>Reply</div>`;
             } else {
                 document.getElementById('badge-admin').innerHTML = '';
             }
 
-            // Sync local stats with server data
+            // Sync Local Stats
             currentStats = {
                 bookings: data.pending_bookings,
                 chats: data.chat_unread,
@@ -261,16 +273,16 @@ function checkNotifications() {
         .catch(err => console.error('Notification Error:', err));
 }
 
-// Check for updates every 5 seconds
+// Check every 5 seconds
 setInterval(checkNotifications, 5000);
 
-// Popup Functions for Profile and Vehicle management
+// Profile & Vehicle Popups
 function editProfilePopup() {
-    Swal.fire({ title: 'Edit Profile', text: 'Update password and details.', icon: 'info', showCancelButton: true, confirmButtonColor: '#004b82' })
+    Swal.fire({ title: 'Edit Profile', text: 'Update password and details.', icon: 'info', showCancelButton: true, confirmButtonColor: '#004b82', confirmButtonText: 'Edit' })
     .then((result) => { if (result.isConfirmed) window.location.href = 'driver_profile.php'; });
 }
 function editVehiclePopup() {
-    Swal.fire({ title: 'Manage Vehicle', text: 'Update vehicle details.', icon: 'info', showCancelButton: true, confirmButtonColor: '#004b82' })
+    Swal.fire({ title: 'Manage Vehicle', text: 'Update vehicle details.', icon: 'info', showCancelButton: true, confirmButtonColor: '#004b82', confirmButtonText: 'Manage' })
     .then((result) => { if (result.isConfirmed) window.location.href = 'driver_vehicle.php'; });
 }
 </script>
