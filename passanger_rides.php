@@ -6,34 +6,35 @@ session_start();
 include "db_connect.php";
 include "function.php";
 
+// Check if passenger is logged in
 if(!isset($_SESSION['student_id'])) {
     redirect("passanger_login.php");
 }
 $student_id = $_SESSION['student_id'];
 
 // ==========================================
-// SECTION 2: HANDLE ACTIONS
+// SECTION 2: HANDLE ACTIONS (AJAX & POST)
 // ==========================================
 
-// 1. Handle Rating & Review (FIXED DATA SAVING)
+// 1. Handle Rating & Review Submission
 if(isset($_POST['submit_rating'])){
     $b_id = $_POST['booking_id'];
     $rating = (int)$_POST['rating'];
     $comment = mysqli_real_escape_string($conn, $_POST['comment']);
 
-    // Get the driver_id from the booking first to ensure we save the review correctly
+    // Retrieve driver_id from booking to maintain database integrity
     $get_driver = $conn->query("SELECT driver_id FROM bookings WHERE id = '$b_id'");
     $driver_data = $get_driver->fetch_assoc();
     $driver_id = $driver_data['driver_id'];
 
-    $check = $conn->query("SELECT review_id FROM reviews WHERE booking_id = '$b_id'");
+    $check = $conn->query("SELECT id FROM reviews WHERE booking_id = '$b_id'");
     
     if($check->num_rows > 0){
-        // Update existing
+        // Update existing review
         $sql = "UPDATE reviews SET rating = '$rating', comment = '$comment' WHERE booking_id = '$b_id'";
     } else {
-        // Insert new - Including passenger_id and driver_id as per your DB structure
-        $sql = "INSERT INTO reviews (booking_id, passenger_id, driver_id, rating, comment, created_at) 
+        // Insert new review with all required relational IDs
+        $sql = "INSERT INTO reviews (booking_id, student_id, driver_id, rating, comment, created_at) 
                 VALUES ('$b_id', '$student_id', '$driver_id', '$rating', '$comment', NOW())";
     }
     
@@ -45,7 +46,7 @@ if(isset($_POST['submit_rating'])){
     exit();
 }
 
-// 2. Handle Cancellation
+// 2. Handle Ride Cancellation
 if(isset($_POST['cancel_ride'])){
     $cancel_id = $_POST['cancel_id'];
     $stmt = $conn->prepare("UPDATE bookings SET status = 'Cancelled' WHERE id = ? AND student_id = ? AND (status = 'PENDING' OR status = 'ACCEPTED' OR status = 'APPROVED')");
@@ -58,7 +59,7 @@ if(isset($_POST['cancel_ride'])){
     exit();
 }
 
-// 3. Handle Favourite Toggle
+// 3. Handle Driver Favourite Toggle
 if(isset($_POST['toggle_fav'])){
     $fav_driver_id = $_POST['driver_id'];
     $check = $conn->prepare("SELECT id FROM favourite_drivers WHERE student_id = ? AND driver_id = ?");
@@ -78,7 +79,7 @@ if(isset($_POST['toggle_fav'])){
     exit();
 }
 
-// 4. Check Fav Status
+// 4. Check Favourite Status
 if(isset($_POST['check_fav'])){
     $d_id = $_POST['driver_id'];
     $check = $conn->prepare("SELECT id FROM favourite_drivers WHERE student_id = ? AND driver_id = ?");
@@ -89,7 +90,7 @@ if(isset($_POST['check_fav'])){
 }
 
 // ==========================================
-// SECTION 3: FETCH DATA
+// SECTION 3: FETCH RIDE DATA
 // ==========================================
 $ongoing_rides = [];
 $history_rides = [];
@@ -160,6 +161,7 @@ $stmt->close();
     .st-completed { background: #eff6ff; color: #3b82f6; }
     .st-cancelled { background: #fef2f2; color: #ef4444; }
     .driver-box-design { background: #fff; border: 1px solid #f1f5f9; border-radius: 16px; padding: 12px 15px; display: flex; align-items: center; gap: 12px; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.03); cursor: pointer; transition: 0.2s; }
+    .driver-box-design:hover { border-color: #004b82; transform: translateY(-2px); }
     .driver-img-wrap { width: 45px; height: 45px; border-radius: 50%; overflow: hidden; border: 2px solid #e2e8f0; flex-shrink: 0; }
     .driver-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
     .plate-badge-premium { background-color: #004b82; color: white; padding: 3px 10px; border-radius: 8px; font-weight: 700; font-size: 11px; letter-spacing: 1px; display: inline-block; margin-top: 4px; }
@@ -170,7 +172,7 @@ $stmt->close();
     .btn-pill-auto.orange { background-color: #f97316 !important; color: white !important; }
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); z-index: 9999 !important; align-items: center; justify-content: center; }
     .modal-overlay.show { display: flex !important; }
-    .modal-content { background: white; width: 90%; max-width: 450px; border-radius: 24px; padding: 30px; position: relative; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.2); margin: auto !important; }
+    .modal-content { background: white; width: 90%; max-width: 450px; border-radius: 24px; padding: 30px; position: relative; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
     .m-avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #e0f2fe; margin-bottom: 15px; }
     .m-detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; font-size: 15px; }
     .style-saved-modal { background-color: #ffe4e6 !important; color: #e11d48 !important; border: 1px solid #e11d48 !important; }
@@ -189,60 +191,38 @@ $stmt->close();
     </div>
 
     <div id="content-ongoing">
-        <?php if(empty($ongoing_rides)): ?>
-            <div style="text-align:center; padding: 50px;"><h3>No active rides</h3></div>
-        <?php else: ?>
-            <?php foreach($ongoing_rides as $row): 
-                $status = strtoupper($row['status']);
-                $img_url = (!empty($row['profile_image'])) ? "uploads/" . $row['profile_image'] : "https://ui-avatars.com/api/?name=".urlencode($row['driver_name']);
-                $st_class = ($status == 'PENDING') ? 'st-pending' : 'st-accepted';
-            ?>
-            <div class="ride-card">
-                <div class="card-header-row">
-                    <span style="font-weight:700;"><i class="fa-regular fa-calendar-days"></i> <?php echo date("d M Y, h:i A", strtotime($row['date_time'])); ?></span>
-                    <span style="color:#64748b; font-weight:700;">#<?php echo $row['booking_id']; ?></span>
+        <?php foreach($ongoing_rides as $row): 
+            $status = strtoupper($row['status']);
+            $img_url = (!empty($row['profile_image'])) ? "uploads/" . $row['profile_image'] : "https://ui-avatars.com/api/?name=".urlencode($row['driver_name']);
+        ?>
+        <div class="ride-card">
+            <div class="card-header-row">
+                <span style="font-weight:700;"><i class="fa-regular fa-calendar-days"></i> <?php echo date("d M Y, h:i A", strtotime($row['date_time'])); ?></span>
+                <span style="color:#64748b; font-weight:700;">#<?php echo $row['booking_id']; ?></span>
+            </div>
+            <div class="card-content-row">
+                <div class="timeline-container">
+                    <div class="timeline-line"></div>
+                    <div class="t-item"><div class="t-dot pickup"></div><div class="t-text" style="text-align:left;"><h4>Pickup</h4><p><?php echo htmlspecialchars($row['pickup_point']); ?></p></div></div>
+                    <div class="t-item"><div class="t-dot dropoff"></div><div class="t-text" style="text-align:left;"><h4>Destination</h4><p><?php echo htmlspecialchars($row['destination']); ?></p></div></div>
                 </div>
-                <div class="card-content-row">
-                    <div class="timeline-container">
-                        <div class="timeline-line"></div>
-                        <div class="t-item"><div class="t-dot pickup"></div><div class="t-text" style="text-align:left;"><h4>Pickup</h4><p><?php echo htmlspecialchars($row['pickup_point']); ?></p></div></div>
-                        <div class="t-item"><div class="t-dot dropoff"></div><div class="t-text" style="text-align:left;"><h4>Destination</h4><p><?php echo htmlspecialchars($row['destination']); ?></p></div></div>
-                    </div>
-                    <div class="info-right-col">
-                        <span class="status-pill <?php echo $st_class; ?>"><?php echo ($status == 'APPROVED') ? 'ACCEPTED' : $status; ?></span>
-                        <?php if(!empty($row['driver_name'])): ?>
-                            <div class="driver-box-design" onclick="openDriverModal(this)" 
-                                 data-did="<?php echo $row['driver_id']; ?>"
-                                 data-name="<?php echo htmlspecialchars($row['driver_name']); ?>" 
-                                 data-img="<?php echo $img_url; ?>" 
-                                 data-phone="<?php echo htmlspecialchars($row['driver_phone']); ?>" 
-                                 data-email="<?php echo htmlspecialchars($row['driver_email']); ?>" 
-                                 data-gender="<?php echo htmlspecialchars($row['driver_gender']); ?>" 
-                                 data-car="<?php echo htmlspecialchars($row['vehicle_model']); ?>" 
-                                 data-plate="<?php echo htmlspecialchars($row['plate_number']); ?>" 
-                                 data-bio="<?php echo htmlspecialchars($row['driver_bio']); ?>">
-                                <div class="driver-img-wrap"><img src="<?php echo $img_url; ?>"></div>
-                                <div style="flex:1; text-align:left;">
-                                    <div style="font-size:13px; font-weight:800; color:#1e293b;"><?php echo htmlspecialchars($row['driver_name']); ?></div>
-                                    <div class="plate-badge-premium"><?php echo htmlspecialchars($row['plate_number']); ?></div>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div></div> 
-                    <form method="POST" onsubmit="confirmCancel(event, this)" style="margin:0;">
-                        <input type="hidden" name="cancel_id" value="<?php echo $row['booking_id']; ?>">
-                        <button type="submit" class="btn-pill-auto blue" style="border-radius: 50px !important;"><i class="fa-solid fa-ban" style="margin-right: 10px !important;"></i> Cancel Ride</button>
-                    </form>
-                    <div style="display:flex; justify-content:flex-end;">
-                        <a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-pill-auto green" style="border-radius: 50px !important;"><i class="fa-solid fa-comments" style="margin-right: 10px !important;"></i> Chat</a>
-                    </div>
+                <div class="info-right-col">
+                    <span class="status-pill <?php echo ($status == 'PENDING') ? 'st-pending' : 'st-accepted'; ?>"><?php echo ($status == 'APPROVED') ? 'ACCEPTED' : $status; ?></span>
+                    <?php if(!empty($row['driver_name'])): ?>
+                        <div class="driver-box-design" onclick="openDriverModal(this)" data-did="<?php echo $row['driver_id']; ?>" data-name="<?php echo htmlspecialchars($row['driver_name']); ?>" data-img="<?php echo $img_url; ?>" data-phone="<?php echo htmlspecialchars($row['driver_phone']); ?>" data-email="<?php echo htmlspecialchars($row['driver_email']); ?>" data-gender="<?php echo htmlspecialchars($row['driver_gender']); ?>" data-car="<?php echo htmlspecialchars($row['vehicle_model']); ?>" data-plate="<?php echo htmlspecialchars($row['plate_number']); ?>" data-bio="<?php echo htmlspecialchars($row['driver_bio']); ?>">
+                            <div class="driver-img-wrap"><img src="<?php echo $img_url; ?>"></div>
+                            <div style="flex:1; text-align:left;"><div style="font-size:13px; font-weight:800; color:#1e293b;"><?php echo htmlspecialchars($row['driver_name']); ?></div><div class="plate-badge-premium"><?php echo htmlspecialchars($row['plate_number']); ?></div></div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+            <div class="card-footer">
+                <div></div> 
+                <form method="POST" onsubmit="confirmCancel(event, this)" style="margin:0;"><input type="hidden" name="cancel_id" value="<?php echo $row['booking_id']; ?>"><button type="submit" class="btn-pill-auto blue" style="border-radius: 50px !important;"><i class="fa-solid fa-ban" style="margin-right: 10px !important;"></i> Cancel Ride</button></form>
+                <div style="display:flex; justify-content:flex-end;"><a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-pill-auto green" style="border-radius: 50px !important;"><i class="fa-solid fa-comments" style="margin-right: 10px !important;"></i> Chat</a></div>
+            </div>
+        </div>
+        <?php endforeach; ?>
     </div>
 
     <div id="content-history" style="display:none;">
@@ -265,21 +245,9 @@ $stmt->close();
                 <div class="info-right-col">
                     <span class="status-pill <?php echo $st_class; ?>"><?php echo $status; ?></span>
                     <?php if(!empty($row['driver_name'])): ?>
-                        <div class="driver-box-design" onclick="openDriverModal(this)" 
-                             data-did="<?php echo $row['driver_id']; ?>"
-                             data-name="<?php echo htmlspecialchars($row['driver_name']); ?>" 
-                             data-img="<?php echo $img_url; ?>" 
-                             data-phone="<?php echo htmlspecialchars($row['driver_phone']); ?>" 
-                             data-email="<?php echo htmlspecialchars($row['driver_email']); ?>" 
-                             data-gender="<?php echo htmlspecialchars($row['driver_gender']); ?>" 
-                             data-car="<?php echo htmlspecialchars($row['vehicle_model']); ?>" 
-                             data-plate="<?php echo htmlspecialchars($row['plate_number']); ?>" 
-                             data-bio="<?php echo htmlspecialchars($row['driver_bio']); ?>">
+                        <div class="driver-box-design" onclick="openDriverModal(this)" data-did="<?php echo $row['driver_id']; ?>" data-name="<?php echo htmlspecialchars($row['driver_name']); ?>" data-img="<?php echo $img_url; ?>" data-phone="<?php echo htmlspecialchars($row['driver_phone']); ?>" data-email="<?php echo htmlspecialchars($row['driver_email']); ?>" data-gender="<?php echo htmlspecialchars($row['driver_gender']); ?>" data-car="<?php echo htmlspecialchars($row['vehicle_model']); ?>" data-plate="<?php echo htmlspecialchars($row['plate_number']); ?>" data-bio="<?php echo htmlspecialchars($row['driver_bio']); ?>">
                             <div class="driver-img-wrap"><img src="<?php echo $img_url; ?>"></div>
-                            <div style="flex:1; text-align:left;">
-                                <div style="font-size:13px; font-weight:800; color:#1e293b;"><?php echo htmlspecialchars($row['driver_name']); ?></div>
-                                <div class="plate-badge-premium"><?php echo htmlspecialchars($row['plate_number']); ?></div>
-                            </div>
+                            <div style="flex:1; text-align:left;"><div style="font-size:13px; font-weight:800; color:#1e293b;"><?php echo htmlspecialchars($row['driver_name']); ?></div><div class="plate-badge-premium"><?php echo htmlspecialchars($row['plate_number']); ?></div></div>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -288,12 +256,10 @@ $stmt->close();
                 <div></div> 
                 <div style="display:flex; justify-content:center;">
                     <?php if($status == 'COMPLETED'): ?>
-                        <button onclick="handleRating('<?php echo $row['booking_id']; ?>', '<?php echo $row['rating']; ?>', '<?php echo htmlspecialchars($row['comment'] ?? ''); ?>')" class="btn-pill-auto orange" style="border-radius: 50px !important;"><i class="fa-solid fa-star" style="margin-right: 10px !important;"></i> <?php echo empty($row['rating']) ? 'Rate & Review' : 'Edit Review'; ?></button>
+                        <button onclick="handleRating('<?php echo $row['booking_id']; ?>', '<?php echo $row['rating']; ?>', '<?php echo htmlspecialchars($row['comment'] ?? ''); ?>')" class="btn-pill-auto orange" style="border-radius: 50px !important;"><i class="fa-solid fa-star" style="margin-right: 10px !important;"></i> <?php echo empty($row['rating']) ? 'Rate & Review' : 'My Reviews'; ?></button>
                     <?php endif; ?>
                 </div>
-                <div style="display:flex; justify-content:flex-end;">
-                    <a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-pill-auto green" style="border-radius: 50px !important;"><i class="fa-solid fa-comments" style="margin-right: 10px !important;"></i> Chat History</a>
-                </div>
+                <div style="display:flex; justify-content:flex-end;"><a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-pill-auto green" style="border-radius: 50px !important;"><i class="fa-solid fa-comments" style="margin-right: 10px !important;"></i> Chat History</a></div>
             </div>
         </div>
         <?php endforeach; ?>
@@ -371,23 +337,27 @@ $stmt->close();
     function handleRating(bookingId, currentRating, currentComment) {
         if(currentRating && currentRating !== "") {
             let starsHtml = '';
-            for(let i=1; i<=5; i++) { starsHtml += `<i class="fa-star ${i <= currentRating ? 'fa-solid' : 'fa-regular'}" style="color:#f97316; font-size: 24px; margin: 0 3px;"></i>`; }
-            Swal.fire({ title: 'Your Review', html: `<div style="margin-bottom: 15px;">${starsHtml}</div><p style="background: #f8fafc; padding: 15px; border-radius: 12px; font-style: italic; color: #475569; border: 1px solid #e2e8f0;">"${currentComment || 'No comment provided.'}"</p>`, showCancelButton: true, confirmButtonText: 'Edit Review', cancelButtonText: 'Close', confirmButtonColor: '#f97316', cancelButtonColor: '#64748b' }).then((result) => { if (result.isConfirmed) showRatePopup(bookingId, currentRating, currentComment, true); });
+            for(let i=1; i<=5; i++) { starsHtml += '<i class="fa-star ' + (i <= currentRating ? 'fa-solid' : 'fa-regular') + '" style="color:#f97316; font-size: 24px; margin: 0 3px;"></i>'; }
+            Swal.fire({ title: 'My Review', html: '<div style="margin-bottom: 15px;">' + starsHtml + '</div><p style="background: #f8fafc; padding: 15px; border-radius: 12px; font-style: italic; color: #475569; border: 1px solid #e2e8f0;">"' + (currentComment || 'No comment provided.') + '"</p>', showCancelButton: true, confirmButtonText: 'Edit Review', cancelButtonText: 'Close', confirmButtonColor: '#f97316', cancelButtonColor: '#64748b' }).then((result) => { if (result.isConfirmed) showRatePopup(bookingId, currentRating, currentComment, true); });
         } else { showRatePopup(bookingId, 0, "", false); }
     }
 
     function showRatePopup(bookingId, r, c, isEdit) {
-        Swal.fire({ title: isEdit ? 'Edit Review' : 'Rate & Review', html: `<div style="font-size: 28px; margin-bottom: 20px;">${[1,2,3,4,5].map(n => `<i class="fa-star ${n <= r ? 'fa-solid' : 'fa-regular'} star-btn" data-val="${n}" style="cursor:pointer; color:#f97316; margin: 0 5px;"></i>`).join('')}</div><input type="hidden" id="star_val" value="${r || 0}"><textarea id="swal_cmt" class="swal2-textarea" placeholder="Describe your experience..." style="width: 85%; height: 100px; font-size: 14px;">${c || ''}</textarea>`, didOpen: () => {
-            const stars = Swal.getHtmlContainer().querySelectorAll('.star-btn');
-            stars.forEach(s => s.onclick = () => {
-                const v = s.getAttribute('data-val'); document.getElementById('star_val').value = v;
-                stars.forEach(st => { st.classList.toggle('fa-solid', st.getAttribute('data-val') <= v); st.classList.toggle('fa-regular', st.getAttribute('data-val') > v); });
-            });
-        }, showCancelButton: true, confirmButtonText: 'Submit', confirmButtonColor: '#004b82', preConfirm: () => {
-            const rating = document.getElementById('star_val').value; const comment = document.getElementById('swal_cmt').value;
-            if (rating == 0) return Swal.showValidationMessage('Please select a rating!');
-            return { rating, comment };
-        }}).then((result) => {
+        Swal.fire({ title: isEdit ? 'My Review' : 'Rate & Review', html: '<div style="font-size: 28px; margin-bottom: 20px;">' + 
+                  [1,2,3,4,5].map(n => '<i class="fa-star ' + (n <= r ? 'fa-solid' : 'fa-regular') + ' star-btn" data-val="' + n + '" style="cursor:pointer; color:#f97316; margin: 0 5px;"></i>').join('') + 
+                  '</div><input type="hidden" id="star_val" value="' + (r || 0) + '"><textarea id="swal_cmt" class="swal2-textarea" placeholder="Describe your experience..." style="width: 85%; height: 100px; font-size: 14px;">' + (c || '') + '</textarea>',
+            didOpen: () => {
+                const stars = Swal.getHtmlContainer().querySelectorAll('.star-btn');
+                stars.forEach(s => s.onclick = () => {
+                    const v = s.getAttribute('data-val'); document.getElementById('star_val').value = v;
+                    stars.forEach(st => { st.classList.toggle('fa-solid', st.getAttribute('data-val') <= v); st.classList.toggle('fa-regular', st.getAttribute('data-val') > v); });
+                });
+            }, showCancelButton: true, confirmButtonText: 'Submit', confirmButtonColor: '#004b82', preConfirm: () => {
+                const rating = document.getElementById('star_val').value; const comment = document.getElementById('swal_cmt').value;
+                if (rating == 0) return Swal.showValidationMessage('Please select a rating!');
+                return { rating, comment };
+            }
+        }).then((result) => {
             if (result.isConfirmed) {
                 if (isEdit) { Swal.fire({ title: 'Are you sure?', text: "Update review?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#004b82', confirmButtonText: 'Yes' }).then((cr) => { if (cr.isConfirmed) submitReviewAjax(bookingId, result.value.rating, result.value.comment); }); } 
                 else { submitReviewAjax(bookingId, result.value.rating, result.value.comment); }
@@ -399,8 +369,7 @@ $stmt->close();
         const fd = new FormData(); fd.append('submit_rating', '1'); fd.append('booking_id', bookingId); fd.append('rating', rating); fd.append('comment', comment);
         fetch('passanger_rides.php', { method: 'POST', body: fd }).then(res => res.json()).then(data => {
             if(data.status === 'success') {
-                // FIXED: Wait for user to click OK before reload
-                Swal.fire({ title: 'Success!', text: 'Rate & Review submitted successfully!', icon: 'success', confirmButtonColor: '#004b82' }).then(() => { location.reload(); });
+                Swal.fire({ title: 'Success!', text: 'Rate & Review completed successfully!', icon: 'success', confirmButtonColor: '#004b82' }).then(() => { location.reload(); });
             } else { Swal.fire('Error', 'Could not save review: ' + data.msg, 'error'); }
         });
     }
