@@ -1,11 +1,11 @@
 <?php
 session_start(); 
 require_once 'db_connect.php';
+require_once 'admin_header.php';
 
 // --- STRICT SECURITY CHECK ---
 // ONLY 'admin' can access. 'staff' must be blocked.
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    // If user is staff, redirect them to dashboard (NOT login page, to avoid loops)
     header("Location: admin_dashboard.php"); 
     exit();
 }
@@ -34,15 +34,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $alert_script = "Swal.fire({ icon: 'error', title: 'Duplicate Found', text: 'Username or Email already exists.' });";
         } else {
             // 3. Register New Staff
-            // Hashing password for security (optional but recommended)
-            // For now, keeping it consistent with your admin logic (plain or hashed)
-            // Ideally use: $hashed_pass = password_hash($password, PASSWORD_DEFAULT);
-            
             $sql = "INSERT INTO admins (full_name, username, email, phone_number, password, role) 
-                    VALUES ('$full_name', '$username', '$email', '$phone', '$password', 'staff')"; // Role is 'staff'
+                    VALUES ('$full_name', '$username', '$email', '$phone', '$password', 'staff')";
 
             if (mysqli_query($conn, $sql)) {
-                $alert_script = "Swal.fire({ icon: 'success', title: 'Success', text: 'New Staff account created!' }).then(() => { window.location.href = 'admin_dashboard.php'; });";
+                $alert_script = "Swal.fire({ icon: 'success', title: 'Success', text: 'New Staff account created!' }).then(() => { window.location.href = 'manage_staff.php'; });";
             } else {
                 $alert_script = "Swal.fire({ icon: 'error', title: 'Database Error', text: '" . mysqli_error($conn) . "' });";
             }
@@ -54,70 +50,138 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
     <title>Add New Staff | Admin</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #2c3e50; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .reg-container { background-color: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 100%; max-width: 500px; }
-        .reg-header { text-align: center; margin-bottom: 25px; }
-        .reg-header h2 { margin: 10px 0 5px; color: #2c3e50; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-weight: 600; color: #555; margin-bottom: 5px; }
-        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        .btn-reg { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-reg:hover { background-color: #219150; }
-        .back-link { display: block; text-align: center; margin-top: 15px; color: #7f8c8d; text-decoration: none; }
-        .back-link:hover { color: #2c3e50; }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        
+        .page-header { margin-bottom: 25px; }
+        .page-title { font-size: 1.5rem; font-weight: 700; color: #111827; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .back-btn { font-size: 0.9rem; color: #6b7280; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 5px; margin-bottom: 10px; transition: 0.2s; }
+        .back-btn:hover { color: #111827; }
+
+        /* Card Style */
+        .form-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #e5e7eb;
+        }
+
+        .form-title-section { text-align: center; margin-bottom: 30px; }
+        .form-title-section h2 { margin: 0; color: #1f2937; font-size: 1.5rem; font-weight: 700; }
+        .form-title-section p { color: #6b7280; margin-top: 5px; }
+
+        /* Grid Layout for Form */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group { margin-bottom: 5px; }
+        .form-group label { display: block; font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 0.9rem; }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: 0.2s;
+            box-sizing: border-box; /* Fix padding issue */
+        }
+        .form-group input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
+        .full-width { grid-column: span 2; }
+
+        /* Buttons */
+        .btn-reg {
+            width: 100%;
+            padding: 14px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-reg:hover { background: #219150; transform: translateY(-1px); }
+
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .full-width { grid-column: span 1; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="reg-container">
-        <div class="reg-header">
-            <i class="fa-solid fa-user-shield fa-3x" style="color: #27ae60;"></i>
-            <h2>Register New Staff</h2>
-            <p style="color: #7f8c8d;">Create an account for your team member.</p>
+    <main class="dashboard-container">
+        
+        <a href="manage_staff.php" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Staff List</a>
+
+        <div class="form-card">
+            <div class="form-title-section">
+                <div style="width: 50px; height: 50px; background: #e0f2fe; color: #0284c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-size: 1.5rem;">
+                    <i class="fa-solid fa-user-plus"></i>
+                </div>
+                <h2>Register New Staff</h2>
+                <p>Create a secure account for a new administration member.</p>
+            </div>
+
+            <form method="POST">
+                <div class="form-grid">
+                    
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" name="full_name" required placeholder="e.g. Ali Bin Abu">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required placeholder="e.g. ali_staff">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Staff Email (@mmu.edu.my)</label>
+                        <input type="email" name="email" required placeholder="staff@mmu.edu.my">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" name="phone" required placeholder="e.g. 0123456789">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required placeholder="••••••••">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" name="confirm_password" required placeholder="••••••••">
+                    </div>
+
+                    <div class="full-width">
+                        <button type="submit" class="btn-reg">
+                            <i class="fa-solid fa-check-circle"></i> Create Account
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
 
-        <form method="POST">
-            <div class="form-group">
-                <label>Full Name</label>
-                <input type="text" name="full_name" required placeholder="e.g. Ali Bin Abu">
-            </div>
-
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" name="username" required placeholder="e.g. ali_staff">
-            </div>
-
-            <div class="form-group">
-                <label>Staff Email (@mmu.edu.my)</label>
-                <input type="email" name="email" required placeholder="staff@mmu.edu.my">
-            </div>
-
-            <div class="form-group">
-                <label>Phone Number</label>
-                <input type="text" name="phone" required placeholder="e.g. 0123456789">
-            </div>
-
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" required placeholder="********">
-            </div>
-
-            <div class="form-group">
-                <label>Confirm Password</label>
-                <input type="password" name="confirm_password" required placeholder="********">
-            </div>
-
-            <button type="submit" class="btn-reg">Create Account</button>
-        </form>
-
-        <a href="admin_dashboard.php" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
-    </div>
+    </main>
 
     <?php if(!empty($alert_script)): ?>
         <script>
