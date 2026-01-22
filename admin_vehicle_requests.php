@@ -2,7 +2,7 @@
 session_start();
 include "db_connect.php";
 
-// INCLUDE THE NEW HEADER
+// INCLUDE THE HEADER
 require_once 'admin_header.php';
 
 // Allow both Admin AND Staff
@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'staf
     header("Location: admin_login.php");
     exit();
 }
+
 // --- Processing Logic ---
 $alert_fire = ""; 
 
@@ -30,21 +31,16 @@ if (isset($_POST['process_request'])) {
             $update = $conn->prepare("UPDATE vehicle_change_requests SET status = 'rejected', processed_at = ? WHERE request_id = ?");
             $update->bind_param("si", $current_time, $request_id);
             if($update->execute()) {
-                $alert_fire = "Swal.fire({ icon: 'success', title: 'Rejected', text: 'Request has been rejected.', confirmButtonColor: '#e74c3c' }).then(() => { window.location.href='admin_vehicle_requests.php'; });";
+                $alert_fire = "Swal.fire({ icon: 'success', title: 'Rejected', text: 'Request has been rejected.', confirmButtonColor: '#e74c3c' });";
             }
             $update->close();
         } elseif ($action === 'approve') {
             $conn->begin_transaction();
             try {
                 $driver_id = $request['driver_id'];
-                $old_vid = $request['old_vehicle_id']; // This might be NULL for new drivers
                 
-                // Get New Data
-                $model = $request['new_vehicle_model']; // Note: Ensure your DB column names match these keys. 
-                // Based on previous context, your table columns are actually: vehicle_model, plate_number etc in vehicle_change_requests table.
-                // Let's fix the variable assignment based on STANDARD column names you added.
-                
-                $model = $request['vehicle_model']; // Correct column name
+                // Get New Data (Using column names from your latest file)
+                $model = $request['vehicle_model']; 
                 $plate = $request['plate_number'];
                 $type  = $request['vehicle_type'];
                 $color = $request['vehicle_color'];
@@ -52,8 +48,7 @@ if (isset($_POST['process_request'])) {
                 $road  = $request['road_tax_expiry'];
                 $ins   = $request['insurance_expiry'];
 
-                // 1. Check if driver already has a vehicle (Logic: Update existing OR Insert new)
-                // We check the 'vehicles' table directly to be safe
+                // 1. Check if driver already has a vehicle
                 $check_v = $conn->prepare("SELECT vehicle_id FROM vehicles WHERE driver_id = ?");
                 $check_v->bind_param("i", $driver_id);
                 $check_v->execute();
@@ -62,16 +57,14 @@ if (isset($_POST['process_request'])) {
                 $check_v->close();
 
                 if ($existing_vehicle) {
-                    // --- UPDATE EXISTING VEHICLE ---
+                    // UPDATE EXISTING
                     $vid = $existing_vehicle['vehicle_id'];
                     $up_veh = $conn->prepare("UPDATE vehicles SET vehicle_model=?, plate_number=?, vehicle_type=?, vehicle_color=?, seat_count=?, road_tax_expiry=?, insurance_expiry=? WHERE vehicle_id=?");
-                    // Types: s=string, i=int. (model, plate, type, color, seat(i), road, ins, vid(i))
                     $up_veh->bind_param("ssssissi", $model, $plate, $type, $color, $seat, $road, $ins, $vid);
                     $up_veh->execute();
                 } else {
-                    // --- INSERT NEW VEHICLE ---
+                    // INSERT NEW
                     $in_veh = $conn->prepare("INSERT INTO vehicles (driver_id, vehicle_model, plate_number, vehicle_type, vehicle_color, seat_count, road_tax_expiry, insurance_expiry) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                    // Types: i=driver_id, s...
                     $in_veh->bind_param("issssiss", $driver_id, $model, $plate, $type, $color, $seat, $road, $ins);
                     $in_veh->execute();
                 }
@@ -82,11 +75,10 @@ if (isset($_POST['process_request'])) {
                 $up_req->execute();
 
                 $conn->commit();
-                $alert_fire = "Swal.fire({ icon: 'success', title: 'Approved', text: 'Vehicle details updated successfully.', confirmButtonColor: '#27ae60' }).then(() => { window.location.href='admin_vehicle_requests.php'; });";
+                $alert_fire = "Swal.fire({ icon: 'success', title: 'Approved', text: 'Vehicle details updated successfully.', confirmButtonColor: '#27ae60' });";
 
             } catch (Exception $e) {
                 $conn->rollback();
-                // Show error message for debugging if needed (remove .$e->getMessage() in production)
                 $alert_fire = "Swal.fire({ icon: 'error', title: 'Error', text: 'Database error: " . addslashes($e->getMessage()) . "' });";
             }
         }
@@ -94,7 +86,7 @@ if (isset($_POST['process_request'])) {
 }
 
 // Fetch Pending Requests
-$sql = "SELECT r.*, d.full_name as driver_name, d.email as driver_email FROM vehicle_change_requests r LEFT JOIN drivers d ON r.driver_id = d.driver_id WHERE r.status = 'pending' ORDER BY r.created_at ASC";
+$sql = "SELECT r.*, d.full_name as driver_name FROM vehicle_change_requests r LEFT JOIN drivers d ON r.driver_id = d.driver_id WHERE r.status = 'pending' ORDER BY r.created_at ASC";
 $result = $conn->query($sql);
 ?>
 
@@ -132,7 +124,7 @@ $result = $conn->query($sql);
         .highlight { color: #004b82; font-weight: 700; }
 
         .req-actions { display: flex; flex-direction: column; gap: 10px; min-width: 140px; }
-        .btn-approve, .btn-reject { padding: 12px 20px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; text-align: center; width: 100%; color: white; }
+        .btn-act { padding: 12px 20px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; text-align: center; width: 100%; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-approve { background: #27ae60; box-shadow: 0 4px 6px rgba(39, 174, 96, 0.2); }
         .btn-approve:hover { background: #219150; transform: translateY(-1px); }
         .btn-reject { background: #e74c3c; box-shadow: 0 4px 6px rgba(231, 76, 60, 0.2); }
@@ -173,15 +165,18 @@ $result = $conn->query($sql);
                     </div>
 
                     <div class="req-actions">
-                        <form method="post" onsubmit="return confirm('Confirm APPROVE this vehicle update?');">
+                        <form method="post" id="form_<?php echo $row['request_id']; ?>">
                             <input type="hidden" name="request_id" value="<?php echo $row['request_id']; ?>">
-                            <input type="hidden" name="action" value="approve">
-                            <button type="submit" name="process_request" class="btn-approve"><i class="fa-solid fa-check"></i> Approve</button>
-                        </form>
-                        <form method="post" onsubmit="return confirm('Confirm REJECT this vehicle update?');">
-                            <input type="hidden" name="request_id" value="<?php echo $row['request_id']; ?>">
-                            <input type="hidden" name="action" value="reject">
-                            <button type="submit" name="process_request" class="btn-reject"><i class="fa-solid fa-xmark"></i> Reject</button>
+                            <input type="hidden" name="action" id="action_<?php echo $row['request_id']; ?>" value="">
+                            <input type="hidden" name="process_request" value="1">
+                            
+                            <button type="button" class="btn-act btn-approve" onclick="confirmVehicleAction(<?php echo $row['request_id']; ?>, 'approve')">
+                                <i class="fa-solid fa-check"></i> Approve
+                            </button>
+                            
+                            <button type="button" class="btn-act btn-reject" style="margin-top: 10px;" onclick="confirmVehicleAction(<?php echo $row['request_id']; ?>, 'reject')">
+                                <i class="fa-solid fa-xmark"></i> Reject
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -193,6 +188,32 @@ $result = $conn->query($sql);
             </div>
         <?php endif; ?>
     </div>
+
+    <script>
+    function confirmVehicleAction(reqId, actionType) {
+        const isApprove = actionType === 'approve';
+        
+        Swal.fire({
+            title: isApprove ? 'Approve Update?' : 'Reject Request?',
+            text: isApprove 
+                ? "This will automatically update the driver's vehicle data." 
+                : "This request will be marked as rejected.",
+            icon: isApprove ? 'question' : 'warning',
+            showCancelButton: true,
+            confirmButtonColor: isApprove ? '#27ae60' : '#e74c3c',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: isApprove ? 'Yes, Approve!' : 'Yes, Reject!',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Set the hidden action input
+                document.getElementById('action_' + reqId).value = actionType;
+                // Submit the form
+                document.getElementById('form_' + reqId).submit();
+            }
+        });
+    }
+    </script>
 
     <?php if(!empty($alert_fire)): ?>
         <script>
