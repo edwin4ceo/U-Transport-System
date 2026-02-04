@@ -177,6 +177,15 @@ $stmt->close();
     .m-detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; font-size: 15px; }
     .style-saved-modal { background-color: #ffe4e6 !important; color: #e11d48 !important; border: 1px solid #e11d48 !important; }
     .style-save-add-modal { background-color: #e0f2fe !important; color: #004b82 !important; border: 1px solid #004b82 !important; }
+
+    /* Updated Empty State Styles */
+    .empty-state { text-align: center; padding: 60px 20px; background: #fff; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+    .empty-state .icon-bg { font-size: 50px; color: #cbd5e1; margin-bottom: 15px; }
+    .empty-state h2 { font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; color: #64748b; margin-bottom: 25px; }
+    
+    /* Control icon inside the empty state button to match card buttons */
+    .empty-state .btn-pill-auto i { font-size: 14px !important; margin-right: 10px !important; }
 </style>
 
 <div class="rides-wrapper">
@@ -191,78 +200,100 @@ $stmt->close();
     </div>
 
     <div id="content-ongoing">
-        <?php foreach($ongoing_rides as $row): 
-            $status = strtoupper($row['status']);
-            $img_url = (!empty($row['profile_image'])) ? "uploads/" . $row['profile_image'] : "https://ui-avatars.com/api/?name=".urlencode($row['driver_name']);
-        ?>
-        <div class="ride-card">
-            <div class="card-header-row">
-                <span style="font-weight:700;"><i class="fa-regular fa-calendar-days"></i> <?php echo date("d M Y, h:i A", strtotime($row['date_time'])); ?></span>
-                <span style="color:#64748b; font-weight:700;">#<?php echo $row['booking_id']; ?></span>
+        <?php if(empty($ongoing_rides)): ?>
+            <div class="empty-state">
+                <i class="fa-solid fa-car-side icon-bg"></i>
+                <h2>No Ongoing Rides</h2>
+                <p>You don't have any active bookings at the moment. Need a ride?</p>
+                <a href="passanger_request_transport.php" class="btn-pill-auto blue" style="border-radius: 50px !important; padding: 10px 25px !important;">
+                    <i class="fa-solid fa-plus"></i> Book a Ride Now
+                </a>
             </div>
-            <div class="card-content-row">
-                <div class="timeline-container">
-                    <div class="timeline-line"></div>
-                    <div class="t-item"><div class="t-dot pickup"></div><div class="t-text" style="text-align:left;"><h4>Pickup</h4><p><?php echo htmlspecialchars($row['pickup_point']); ?></p></div></div>
-                    <div class="t-item"><div class="t-dot dropoff"></div><div class="t-text" style="text-align:left;"><h4>Destination</h4><p><?php echo htmlspecialchars($row['destination']); ?></p></div></div>
+        <?php else: ?>
+            <?php foreach($ongoing_rides as $row): 
+                $status = strtoupper($row['status']);
+                $img_url = (!empty($row['profile_image'])) ? "uploads/" . $row['profile_image'] : "https://ui-avatars.com/api/?name=".urlencode($row['driver_name']);
+            ?>
+            <div class="ride-card">
+                <div class="card-header-row">
+                    <span style="font-weight:700;"><i class="fa-regular fa-calendar-days"></i> <?php echo date("d M Y, h:i A", strtotime($row['date_time'])); ?></span>
+                    <span style="color:#64748b; font-weight:700;">#<?php echo $row['booking_id']; ?></span>
                 </div>
-                <div class="info-right-col">
-                    <span class="status-pill <?php echo ($status == 'PENDING') ? 'st-pending' : 'st-accepted'; ?>"><?php echo ($status == 'APPROVED') ? 'ACCEPTED' : $status; ?></span>
-                    <?php if(!empty($row['driver_name'])): ?>
-                        <div class="driver-box-design" onclick="openDriverModal(this)" data-did="<?php echo $row['driver_id']; ?>" data-name="<?php echo htmlspecialchars($row['driver_name']); ?>" data-img="<?php echo $img_url; ?>" data-phone="<?php echo htmlspecialchars($row['driver_phone']); ?>" data-email="<?php echo htmlspecialchars($row['driver_email']); ?>" data-gender="<?php echo htmlspecialchars($row['driver_gender']); ?>" data-car="<?php echo htmlspecialchars($row['vehicle_model']); ?>" data-plate="<?php echo htmlspecialchars($row['plate_number']); ?>" data-bio="<?php echo htmlspecialchars($row['driver_bio']); ?>">
-                            <div class="driver-img-wrap"><img src="<?php echo $img_url; ?>"></div>
-                            <div style="flex:1; text-align:left;"><div style="font-size:13px; font-weight:800; color:#1e293b;"><?php echo htmlspecialchars($row['driver_name']); ?></div><div class="plate-badge-premium"><?php echo htmlspecialchars($row['plate_number']); ?></div></div>
-                        </div>
-                    <?php endif; ?>
+                <div class="card-content-row">
+                    <div class="timeline-container">
+                        <div class="timeline-line"></div>
+                        <div class="t-item"><div class="t-dot pickup"></div><div class="t-text" style="text-align:left;"><h4>Pickup</h4><p><?php echo htmlspecialchars($row['pickup_point']); ?></p></div></div>
+                        <div class="t-item"><div class="t-dot dropoff"></div><div class="t-text" style="text-align:left;"><h4>Destination</h4><p><?php echo htmlspecialchars($row['destination']); ?></p></div></div>
+                    </div>
+                    <div class="info-right-col">
+                        <span class="status-pill <?php echo ($status == 'PENDING') ? 'st-pending' : 'st-accepted'; ?>"><?php echo ($status == 'APPROVED') ? 'ACCEPTED' : $status; ?></span>
+                        <?php if(!empty($row['driver_name'])): ?>
+                            <div class="driver-box-design" onclick="openDriverModal(this)" data-did="<?php echo $row['driver_id']; ?>" data-name="<?php echo htmlspecialchars($row['driver_name']); ?>" data-img="<?php echo $img_url; ?>" data-phone="<?php echo htmlspecialchars($row['driver_phone']); ?>" data-email="<?php echo htmlspecialchars($row['driver_email']); ?>" data-gender="<?php echo htmlspecialchars($row['driver_gender']); ?>" data-car="<?php echo htmlspecialchars($row['vehicle_model']); ?>" data-plate="<?php echo htmlspecialchars($row['plate_number']); ?>" data-bio="<?php echo htmlspecialchars($row['driver_bio']); ?>">
+                                <div class="driver-img-wrap"><img src="<?php echo $img_url; ?>"></div>
+                                <div style="flex:1; text-align:left;"><div style="font-size:13px; font-weight:800; color:#1e293b;"><?php echo htmlspecialchars($row['driver_name']); ?></div><div class="plate-badge-premium"><?php echo htmlspecialchars($row['plate_number']); ?></div></div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div></div> 
+                    <form method="POST" onsubmit="confirmCancel(event, this)" style="margin:0;"><input type="hidden" name="cancel_id" value="<?php echo $row['booking_id']; ?>"><button type="submit" class="btn-pill-auto blue" style="border-radius: 50px !important;"><i class="fa-solid fa-ban" style="margin-right: 10px !important;"></i> Cancel Ride</button></form>
+                    <div style="display:flex; justify-content:flex-end;"><a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-pill-auto green" style="border-radius: 50px !important;"><i class="fa-solid fa-comments" style="margin-right: 10px !important;"></i> Chat</a></div>
                 </div>
             </div>
-            <div class="card-footer">
-                <div></div> 
-                <form method="POST" onsubmit="confirmCancel(event, this)" style="margin:0;"><input type="hidden" name="cancel_id" value="<?php echo $row['booking_id']; ?>"><button type="submit" class="btn-pill-auto blue" style="border-radius: 50px !important;"><i class="fa-solid fa-ban" style="margin-right: 10px !important;"></i> Cancel Ride</button></form>
-                <div style="display:flex; justify-content:flex-end;"><a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-pill-auto green" style="border-radius: 50px !important;"><i class="fa-solid fa-comments" style="margin-right: 10px !important;"></i> Chat</a></div>
-            </div>
-        </div>
-        <?php endforeach; ?>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 
     <div id="content-history" style="display:none;">
-        <?php foreach($history_rides as $row): 
-            $status = strtoupper($row['status']);
-            $st_class = ($status == 'COMPLETED') ? 'st-completed' : 'st-cancelled';
-            $img_url = (!empty($row['profile_image'])) ? "uploads/" . $row['profile_image'] : "https://ui-avatars.com/api/?name=".urlencode($row['driver_name'] ?? 'U');
-        ?>
-        <div class="ride-card">
-            <div class="card-header-row">
-                <span style="font-weight:700;"><i class="fa-regular fa-calendar-days"></i> <?php echo date("d M Y, h:i A", strtotime($row['date_time'])); ?></span>
-                <span style="color:#64748b; font-weight:700;">#<?php echo $row['booking_id']; ?></span>
+        <?php if(empty($history_rides)): ?>
+            <div class="empty-state">
+                <i class="fa-solid fa-clock-rotate-left icon-bg"></i>
+                <h2>No History</h2>
+                <p>Your journey history will appear here. Ready to go somewhere?</p>
+                <a href="passanger_request_transport.php" class="btn-pill-auto blue" style="border-radius: 50px !important; padding: 10px 25px !important;">
+                    <i class="fa-solid fa-plus"></i> Book a Ride Now
+                </a>
             </div>
-            <div class="card-content-row">
-                <div class="timeline-container">
-                    <div class="timeline-line"></div>
-                    <div class="t-item"><div class="t-dot pickup"></div><div class="t-text" style="text-align:left;"><h4>Pickup</h4><p><?php echo htmlspecialchars($row['pickup_point']); ?></p></div></div>
-                    <div class="t-item"><div class="t-dot dropoff"></div><div class="t-text" style="text-align:left;"><h4>Destination</h4><p><?php echo htmlspecialchars($row['destination']); ?></p></div></div>
+        <?php else: ?>
+            <?php foreach($history_rides as $row): 
+                $status = strtoupper($row['status']);
+                $st_class = ($status == 'COMPLETED') ? 'st-completed' : 'st-cancelled';
+                $img_url = (!empty($row['profile_image'])) ? "uploads/" . $row['profile_image'] : "https://ui-avatars.com/api/?name=".urlencode($row['driver_name'] ?? 'U');
+            ?>
+            <div class="ride-card">
+                <div class="card-header-row">
+                    <span style="font-weight:700;"><i class="fa-regular fa-calendar-days"></i> <?php echo date("d M Y, h:i A", strtotime($row['date_time'])); ?></span>
+                    <span style="color:#64748b; font-weight:700;">#<?php echo $row['booking_id']; ?></span>
                 </div>
-                <div class="info-right-col">
-                    <span class="status-pill <?php echo $st_class; ?>"><?php echo $status; ?></span>
-                    <?php if(!empty($row['driver_name'])): ?>
-                        <div class="driver-box-design" onclick="openDriverModal(this)" data-did="<?php echo $row['driver_id']; ?>" data-name="<?php echo htmlspecialchars($row['driver_name']); ?>" data-img="<?php echo $img_url; ?>" data-phone="<?php echo htmlspecialchars($row['driver_phone']); ?>" data-email="<?php echo htmlspecialchars($row['driver_email']); ?>" data-gender="<?php echo htmlspecialchars($row['driver_gender']); ?>" data-car="<?php echo htmlspecialchars($row['vehicle_model']); ?>" data-plate="<?php echo htmlspecialchars($row['plate_number']); ?>" data-bio="<?php echo htmlspecialchars($row['driver_bio']); ?>">
-                            <div class="driver-img-wrap"><img src="<?php echo $img_url; ?>"></div>
-                            <div style="flex:1; text-align:left;"><div style="font-size:13px; font-weight:800; color:#1e293b;"><?php echo htmlspecialchars($row['driver_name']); ?></div><div class="plate-badge-premium"><?php echo htmlspecialchars($row['plate_number']); ?></div></div>
-                        </div>
-                    <?php endif; ?>
+                <div class="card-content-row">
+                    <div class="timeline-container">
+                        <div class="timeline-line"></div>
+                        <div class="t-item"><div class="t-dot pickup"></div><div class="t-text" style="text-align:left;"><h4>Pickup</h4><p><?php echo htmlspecialchars($row['pickup_point']); ?></p></div></div>
+                        <div class="t-item"><div class="t-dot dropoff"></div><div class="t-text" style="text-align:left;"><h4>Destination</h4><p><?php echo htmlspecialchars($row['destination']); ?></p></div></div>
+                    </div>
+                    <div class="info-right-col">
+                        <span class="status-pill <?php echo $st_class; ?>"><?php echo $status; ?></span>
+                        <?php if(!empty($row['driver_name'])): ?>
+                            <div class="driver-box-design" onclick="openDriverModal(this)" data-did="<?php echo $row['driver_id']; ?>" data-name="<?php echo htmlspecialchars($row['driver_name']); ?>" data-img="<?php echo $img_url; ?>" data-phone="<?php echo htmlspecialchars($row['driver_phone']); ?>" data-email="<?php echo htmlspecialchars($row['driver_email']); ?>" data-gender="<?php echo htmlspecialchars($row['driver_gender']); ?>" data-car="<?php echo htmlspecialchars($row['vehicle_model']); ?>" data-plate="<?php echo htmlspecialchars($row['plate_number']); ?>" data-bio="<?php echo htmlspecialchars($row['driver_bio']); ?>">
+                                <div class="driver-img-wrap"><img src="<?php echo $img_url; ?>"></div>
+                                <div style="flex:1; text-align:left;"><div style="font-size:13px; font-weight:800; color:#1e293b;"><?php echo htmlspecialchars($row['driver_name']); ?></div><div class="plate-badge-premium"><?php echo htmlspecialchars($row['plate_number']); ?></div></div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div></div> 
+                    <div style="display:flex; justify-content:center;">
+                        <?php if($status == 'COMPLETED'): ?>
+                            <button onclick="handleRating('<?php echo $row['booking_id']; ?>', '<?php echo $row['rating']; ?>', '<?php echo htmlspecialchars($row['comment'] ?? ''); ?>')" class="btn-pill-auto orange" style="border-radius: 50px !important;"><i class="fa-solid fa-star" style="margin-right: 10px !important;"></i> <?php echo empty($row['rating']) ? 'Rate & Review' : 'My Reviews'; ?></button>
+                        <?php endif; ?>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end;"><a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-pill-auto green" style="border-radius: 50px !important;"><i class="fa-solid fa-comments" style="margin-right: 10px !important;"></i> Chat History</a></div>
                 </div>
             </div>
-            <div class="card-footer">
-                <div></div> 
-                <div style="display:flex; justify-content:center;">
-                    <?php if($status == 'COMPLETED'): ?>
-                        <button onclick="handleRating('<?php echo $row['booking_id']; ?>', '<?php echo $row['rating']; ?>', '<?php echo htmlspecialchars($row['comment'] ?? ''); ?>')" class="btn-pill-auto orange" style="border-radius: 50px !important;"><i class="fa-solid fa-star" style="margin-right: 10px !important;"></i> <?php echo empty($row['rating']) ? 'Rate & Review' : 'My Reviews'; ?></button>
-                    <?php endif; ?>
-                </div>
-                <div style="display:flex; justify-content:flex-end;"><a href="ride_chat.php?room=<?php echo $row['booking_id']; ?>" class="btn-pill-auto green" style="border-radius: 50px !important;"><i class="fa-solid fa-comments" style="margin-right: 10px !important;"></i> Chat History</a></div>
-            </div>
-        </div>
-        <?php endforeach; ?>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 </div>
 
